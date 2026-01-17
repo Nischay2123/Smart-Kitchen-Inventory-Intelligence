@@ -1,0 +1,82 @@
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import SiteHeader from "@/components/site-header";
+import BrandGrid from "@/components/card/grid";
+import { CreateBrandModal } from "@/components/Form/super-admin-form/create-brand-form";
+import { useGetAllTenantsQuery,useDeleteBrandMutation } from "@/redux/apis/super-admin/brandApi";
+
+const SuperAdmin = () => {
+  const navigate = useNavigate();
+  const [open, setOpen] = React.useState(false);
+
+  const {
+    data,
+    isLoading,
+    isError,
+  } = useGetAllTenantsQuery();
+
+  const [deleteBrand, { isLoading: isDeleting }] =
+    useDeleteBrandMutation();
+
+  const brands =
+    data?.data?.map((tenant) => ({
+      id: tenant._id,
+      name: tenant.name,
+      count: tenant.outletsCount ?? 0,
+    })) ?? [];
+
+  const handleDeleteBrand = async (brand) => {
+    try {
+      await deleteBrand({tenantId:brand.id}).unwrap();
+    } catch (err) {
+      console.error(err);
+      alert(err?.data?.message || "Failed to delete brand");
+    }
+  };
+
+  return (
+    <div className="w-full">
+      <SiteHeader
+        headerTitle="Brands"
+        description="Manage brands and brand managers"
+        actionTooltip="Create Brand"
+        onActionClick={() => setOpen(true)}
+      />
+
+      <div className="px-4 lg:p-6">
+        {isLoading && (
+          <p className="text-sm text-muted-foreground">
+            Loading brands...
+          </p>
+        )}
+
+        {isError && (
+          <p className="text-sm text-red-500">
+            Failed to load brands
+          </p>
+        )}
+
+        {!isLoading && !isError && (
+          <BrandGrid
+            brands={brands}
+            onOpenBrand={(brand) =>
+              navigate(`/brand/${brand.id}`,{
+                state: { name: brand.name },
+              })
+            }
+            onDeleteBrand={handleDeleteBrand}
+            disabled={isDeleting} // optional
+          />
+        )}
+      </div>
+
+      <CreateBrandModal
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </div>
+  );
+};
+
+
+export default SuperAdmin;
