@@ -24,7 +24,6 @@ const baseUnit = new Schema(
       type: String,
       required: true,
       trim: true,
-      index: true,
     },
 
     baseUnit: {

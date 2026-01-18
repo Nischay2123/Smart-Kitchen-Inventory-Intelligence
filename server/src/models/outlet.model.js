@@ -36,7 +36,6 @@ const OutletSchema = new Schema(
         type: String,
         required: true,
         trim: true,
-        index: true,
       },
       state: {
         type: String,

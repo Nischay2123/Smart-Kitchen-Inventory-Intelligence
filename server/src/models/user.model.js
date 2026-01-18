@@ -12,7 +12,6 @@ const UserSchema = new Schema(
         tenantId: {
           type: mongoose.Schema.Types.ObjectId,
           ref:"Tenant",
-          index: true,
         },
         tenantName: {
           type: String,
@@ -26,7 +25,7 @@ const UserSchema = new Schema(
       type: {
         outletId: {
           type: mongoose.Schema.Types.ObjectId,
-          index: true,
+          ref:"Outlet",
         },
         outletName: {
           type: String,
@@ -49,7 +48,6 @@ const UserSchema = new Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
 
     password: {
@@ -62,7 +60,6 @@ const UserSchema = new Schema(
       type: String,
       enum: ["SUPER_ADMIN", "BRAND_ADMIN", "OUTLET_MANAGER"],
       required: true,
-      index: true,
     },
   },
   {

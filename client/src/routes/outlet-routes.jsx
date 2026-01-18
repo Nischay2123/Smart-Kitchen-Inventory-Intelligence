@@ -1,10 +1,15 @@
-import Dashboard from "@/pages/outlet/Dashboard"
-import Orders from "@/pages/outlet/Orders"
+import {Stocks} from "@/pages/outlet-manager/stocks"
+import Orders from "@/pages/outlet-manager/orders"
+import {Restocks} from "@/pages/outlet-manager/Restocks"
 
 export const outletAdminRoutes = [
   {
-    path: "/dashboard",
-    element: <Dashboard />
+    path: "/",
+    element: <Stocks />
+  },
+  {
+    path: "/restock",
+    element: <Restocks />
   },
   {
     path: "/orders",
