@@ -134,11 +134,11 @@ export const createStockMovement = asyncHandler(async (req, res) => {
 
     if (
       stock.currentStockInBase <=
-      ingredient.threshold.critical
+      ingredient.threshold.criticalInBase
     ) {
       stock.alertState = "CRITICAL"
     } else if (
-      stock.currentStockInBase <= ingredient.threshold.low
+      stock.currentStockInBase <= ingredient.threshold.lowInBase
     ) {
       stock.alertState = "LOW"
     } else {
@@ -162,6 +162,7 @@ export const createStockMovement = asyncHandler(async (req, res) => {
           orderId:
             reason === "ORDER" ? orderId || null : null,
           stockId: stock._id,
+          purchasePriceInUnit:purchasePrice
         },
       ],
       { session }

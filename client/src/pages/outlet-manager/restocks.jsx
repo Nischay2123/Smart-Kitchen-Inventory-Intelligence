@@ -34,6 +34,15 @@ const ingredientColumn = (navigate) => [
     ),
   },
   {
+    accessorKey: "purchasePriceInUnit",
+    header: "Price",
+    cell:({row})=>(
+      <span>
+        {row.original.purchasePriceInUnit ? row.original.purchasePriceInUnit : "--"}
+      </span>
+    )
+  },
+  {
     accessorKey: "reason",
     header: "Reason",
     cell: ({ row }) => {

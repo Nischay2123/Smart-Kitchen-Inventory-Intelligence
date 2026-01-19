@@ -30,6 +30,7 @@ const ingredientColumn = (setOpen, setSelectedIngredient) => [
     accessorKey: "baseUnit",
     header: "Unit",
   },
+  
   {
     accessorKey: "alertState",
     header: "Status",
@@ -69,7 +70,6 @@ const ingredientColumn = (setOpen, setSelectedIngredient) => [
         onClick={(e) => {
           e.stopPropagation();
 
-          // 👇 PASS DATA TO MODAL
           setSelectedIngredient({
             ingredientMasterId: row.original.ingredientId,
             ingredientName: row.original.ingredientName,

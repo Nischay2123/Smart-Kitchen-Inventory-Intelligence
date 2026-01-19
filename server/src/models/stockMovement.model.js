@@ -77,6 +77,12 @@ const StockMovementSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref:"Stock",
       default:null
+    },
+
+    purchasePriceInUnit:{
+      type: Number,
+      default: null,
+      min:0
     }
   },
   {

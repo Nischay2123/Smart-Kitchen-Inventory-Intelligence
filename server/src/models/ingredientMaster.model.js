@@ -27,12 +27,12 @@ const IngredientMasterSchema = new Schema(
     },
 
     threshold: {
-      low: {
+      lowInBase: {
         type: Number,
         required: true,
         min: 0,
       },
-      critical: {
+      criticalInBase: {
         type: Number,
         required: true,
         min: 0,

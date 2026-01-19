@@ -15,7 +15,7 @@ export const createIngredient = asyncHandler(async (req, res) => {
   const { name, unitId, threshold} = req.body;
   console.log(name,unitId, threshold);
   
-  if (!name || !unitId || !threshold || !threshold.low || !threshold.critical) {
+  if (!name || !unitId || !threshold || !threshold.lowInBase || !threshold.criticalInBase) {
     throw new ApiError(400, "name and unitId and threshold parameters are required");
   }
 
@@ -27,7 +27,9 @@ export const createIngredient = asyncHandler(async (req, res) => {
   if (!tenantContext?.tenantId) {
     throw new ApiError(400, "User is not associated with any tenant");
   }
-
+  if (threshold.criticalInBase>threshold.lowInBase) {
+    throw new ApiError(400, "Low Value can not be smaller than critical value");
+  }
   // 1️⃣ Validate tenant
   const tenantExists = await Tenant.findById(tenantContext.tenantId);
   if (!tenantExists) {
@@ -74,8 +76,8 @@ export const createIngredient = asyncHandler(async (req, res) => {
       conversionRate: unit.conversionRate,
     },
     threshold:{
-      low :(threshold.low * unit.conversionRate),
-      critical:(threshold.critical * unit.conversionRate)
+      lowInBase :(threshold.lowInBase * unit.conversionRate),
+      criticalInBase:(threshold.criticalInBase * unit.conversionRate)
     }
   });
 

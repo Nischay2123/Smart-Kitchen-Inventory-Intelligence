@@ -32,8 +32,8 @@ export function CreateIngredientModal({ open, onOpenChange }) {
     name: "",
     unit: "",
     threshold: {
-      low: "",
-      critical: "",
+      lowInBase: "",
+      criticalInBase: "",
     },
   })
 
@@ -73,8 +73,8 @@ export function CreateIngredientModal({ open, onOpenChange }) {
         name: "",
         unit: "",
         threshold: {
-          low: "",
-          critical: "",
+          lowInBase: "",
+          criticalInBase: "",
         },
       })
     } catch (err) {
@@ -136,15 +136,15 @@ export function CreateIngredientModal({ open, onOpenChange }) {
 
             {/* Thresholds */}
             <div className="grid grid-cols-2 gap-3">
-              <label>Low Threshold:</label>
+              <label>low Threshold:</label>
               <Input
                 type="number"
                 min={0}
                 step={0.01}
                 placeholder="Low Threshold"
-                value={form.threshold.low}
+                value={form.threshold.lowInBase}
                 onChange={(e) =>
-                  handleThresholdChange("low", e.target.value)
+                  handleThresholdChange("lowInBase", e.target.value)
                 }
                 required
               />
@@ -155,9 +155,9 @@ export function CreateIngredientModal({ open, onOpenChange }) {
                 min={0}
                 step = {0.01}
                 placeholder="Critical Threshold"
-                value={form.threshold.critical}
+                value={form.threshold.criticalInBase}
                 onChange={(e) =>
-                  handleThresholdChange("critical", e.target.value)
+                  handleThresholdChange("criticalInBase", e.target.value)
                 }
                 required
               />
