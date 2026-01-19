@@ -69,19 +69,6 @@ const StockSchema = new Schema(
             min:0
         },
 
-        threshold: {
-            low: {
-                type: Number,
-                required: true,
-                min: 0,
-            },
-            critical: {
-                type: Number,
-                required: true,
-                min: 0,
-            },
-        },
-
         alertState: {
             type: String,
             enum: ["OK", "LOW", "CRITICAL"],

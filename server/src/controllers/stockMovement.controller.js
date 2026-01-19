@@ -7,29 +7,28 @@ import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const createStockMovement = asyncHandler(async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const session = await mongoose.startSession()
+  session.startTransaction()
 
   try {
     const {
       ingredientMasterId,
-      delta,
+      quantity,
       reason,
-      referenceId,
+      orderId,
       purchasePrice,
-    } = req.body;
+    } = req.body
 
-    // ───────────── VALIDATION ─────────────
-
-    if (!ingredientMasterId || typeof delta !== "number" || !reason) {
+    if (
+      !ingredientMasterId ||
+      typeof quantity !== "number" ||
+      quantity <= 0 ||
+      !reason
+    ) {
       throw new ApiError(
         400,
-        "ingredientMasterId, delta and reason are required"
-      );
-    }
-
-    if (delta <= 0) {
-      throw new ApiError(400, "delta must be greater than 0");
+        "ingredientMasterId, quantity (>0) and reason are required"
+      )
     }
 
     const VALID_REASONS = [
@@ -37,249 +36,174 @@ export const createStockMovement = asyncHandler(async (req, res) => {
       "PURCHASE",
       "POSITIVE_ADJUSTMENT",
       "NEGATIVE_ADJUSTMENT",
-    ];
+    ]
 
     if (!VALID_REASONS.includes(reason)) {
-      throw new ApiError(400, "Invalid reason type");
+      throw new ApiError(400, "Invalid reason")
     }
 
     if (reason === "PURCHASE" && !purchasePrice) {
-      throw new ApiError(
-        400,
-        "purchasePrice is required for PURCHASE reason"
-      );
+      throw new ApiError(400, "purchasePrice is required for PURCHASE")
     }
 
-    const tenantContext = req.user.tenant;
-    const outletContext = req.user.outlet;
+    const tenantContext = req.user.tenant
+    const outletContext = req.user.outlet
 
     if (!tenantContext?.tenantId || !outletContext?.outletId) {
-      throw new ApiError(
-        400,
-        "User is not associated with tenant or outlet"
-      );
+      throw new ApiError(400, "User not linked to tenant or outlet")
     }
-
-    // ───────────── GET INGREDIENT ─────────────
 
     const ingredient = await IngredientMaster.findOne({
       _id: ingredientMasterId,
       "tenant.tenantId": tenantContext.tenantId,
-    }).session(session);
+    }).session(session)
 
     if (!ingredient) {
-      throw new ApiError(
-        404,
-        "Ingredient not found or does not belong to your tenant"
-      );
+      throw new ApiError(404, "Ingredient not found")
     }
 
-    const conversionRate = ingredient.unit.conversionRate;
+    const conversionRate = ingredient.unit.conversionRate
+    const quantityInBase = quantity * conversionRate
 
-    const POSITIVE_REASONS = ["PURCHASE", "POSITIVE_ADJUSTMENT"];
-    const ORDER_REASONS = ["ORDER"];
-
-    const isPositive = POSITIVE_REASONS.includes(reason);
-
-    // ───────────── BASE UNIT CALCULATION ─────────────
-
-    let deltaInBase = isPositive
-      ? delta * conversionRate
-      : -delta * conversionRate;
-
-    // ───────────── FIND EXISTING STOCK ─────────────
+    const POSITIVE_REASONS = ["PURCHASE", "POSITIVE_ADJUSTMENT"]
+    const signedQtyInBase = POSITIVE_REASONS.includes(reason)
+      ? quantityInBase
+      : -quantityInBase
 
     let stock = await Stock.findOne({
       "tenant.tenantId": tenantContext.tenantId,
       "outlet.outletId": outletContext.outletId,
       "masterIngredient.ingredientMasterId": ingredient._id,
-    }).session(session);
-
-    let calculatedUnitCost = 0;
-
-    // ───────────── CREATE STOCK IF NOT EXISTS ─────────────
+    }).session(session)
 
     if (!stock) {
-      if (deltaInBase < 0) {
+      if (signedQtyInBase < 0) {
         throw new ApiError(
           400,
           "Cannot deduct stock before initialization"
-        );
+        )
       }
 
-      // Cost only matters on PURCHASE
-      if (reason === "PURCHASE") {
-        calculatedUnitCost = purchasePrice / deltaInBase;
-      }
+      const unitCost =
+        reason === "PURCHASE"
+          ? purchasePrice / conversionRate
+          : 0
 
       stock = await Stock.create(
         [
           {
-            tenant: {
-              tenantId: tenantContext.tenantId,
-              tenantName: tenantContext.tenantName,
-            },
-
-            outlet: {
-              outletId: outletContext.outletId,
-              outletName: outletContext.outletName,
-            },
-
+            tenant: tenantContext,
+            outlet: outletContext,
             masterIngredient: {
               ingredientMasterId: ingredient._id,
               ingredientMasterName: ingredient.name,
             },
-
             baseUnit: ingredient.unit.baseUnit,
-
-            currentStockInBase: deltaInBase,
-
-            unitCost: calculatedUnitCost,
-
-            threshold: {
-              low: 0,
-              critical: 0,
-            },
-
+            currentStockInBase: quantityInBase,
+            unitCost,
             alertState: "OK",
           },
         ],
         { session }
-      );
+      )
 
-      stock = stock[0];
-    }
+      stock = stock[0]
+    } else {
+      const newQty =
+        stock.currentStockInBase + signedQtyInBase
 
-    // ───────────── UPDATE EXISTING STOCK ─────────────
-
-    else {
-      const newStockQty =
-        stock.currentStockInBase + deltaInBase;
-
-      if (newStockQty < 0) {
-        throw new ApiError(
-          400,
-          "Stock cannot go below zero"
-        );
+      if (newQty < 0) {
+        throw new ApiError(400, "Stock cannot go below zero")
       }
-
-      // ───── WEIGHTED AVG COST (ONLY ON PURCHASE) ─────
 
       if (reason === "PURCHASE") {
         const oldValue =
-          stock.currentStockInBase * stock.unitCost;
+          stock.currentStockInBase * stock.unitCost
 
-        const newValue = purchasePrice;
+        const newValue =
+          quantityInBase *
+          (purchasePrice / conversionRate)
 
-        const totalQty = newStockQty;
-
-        calculatedUnitCost =
-          (oldValue + newValue) / totalQty;
-
-        stock.unitCost = calculatedUnitCost;
+        stock.unitCost =
+          (oldValue + newValue) / newQty
       }
 
-      stock.currentStockInBase = newStockQty;
+      stock.currentStockInBase = newQty
     }
-
-    // ───────────── ALERT STATE ─────────────
-
-    if (stock.currentStockInBase <= stock.threshold.critical) {
-      stock.alertState = "CRITICAL";
-    } else if (
-      stock.currentStockInBase <= stock.threshold.low
-    ) {
-      stock.alertState = "LOW";
-    } else {
-      stock.alertState = "OK";
-    }
-
-    await stock.save({ session });
-
-    // ───────────── REFERENCE ID LOGIC ─────────────
-
-    let finalReferenceId = referenceId || null;
 
     if (
-      !ORDER_REASONS.includes(reason) &&
-      stock?._id &&
-      !referenceId
+      stock.currentStockInBase <=
+      ingredient.threshold.critical
     ) {
-      finalReferenceId = stock._id;
+      stock.alertState = "CRITICAL"
+    } else if (
+      stock.currentStockInBase <= ingredient.threshold.low
+    ) {
+      stock.alertState = "LOW"
+    } else {
+      stock.alertState = "OK"
     }
 
-    // ───────────── CREATE MOVEMENT ─────────────
+    await stock.save({ session })
 
     const movement = await StockMovement.create(
       [
         {
-          tenant: {
-            tenantId: tenantContext.tenantId,
-            tenantName: tenantContext.tenantName,
-          },
-
-          outlet: {
-            outletId: outletContext.outletId,
-            outletName: outletContext.outletName,
-          },
-
+          tenant: tenantContext,
+          outlet: outletContext,
           ingredient: {
             ingredientMasterId: ingredient._id,
             ingredientMasterName: ingredient.name,
           },
-
-          deltaInBase,
-
+          quantity,
+          unit: ingredient.unit.unitName,
           reason,
-
-          referenceId: finalReferenceId,
+          orderId:
+            reason === "ORDER" ? orderId || null : null,
+          stockId: stock._id,
         },
       ],
       { session }
-    );
+    )
 
-    await session.commitTransaction();
-    session.endSession();
+    await session.commitTransaction()
+    session.endSession()
+
+    const io = req.app.get("io")
+    io.to(
+      `tenant:${tenantContext.tenantId}:outlet:${outletContext.outletId}`
+    ).emit("stock_updated", {
+      ingredientId: ingredient._id,
+      currentStockInBase: stock.currentStockInBase,
+      alertState: stock.alertState,
+    })
 
     return res.status(201).json(
       new ApiResoponse(
         201,
-        {
-          stock,
-          movement: movement[0],
-        },
-        "Stock movement recorded successfully"
+        { stock, movement: movement[0] },
+        "Stock movement created successfully"
       )
-    );
+    )
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    throw error;
+    await session.abortTransaction()
+    session.endSession()
+    throw error
   }
-});
+})
+
+
 
 
 
 export const getAllStockMovementsExceptOrders = asyncHandler(async (req, res) => {
-  // 1️⃣ Authorization
   if (req.user.role !== "OUTLET_MANAGER") {
-    throw new ApiError(
-      403,
-      "Only OUTLET_MANAGER can view stock movements"
-    );
+    throw new ApiError(403, "Access denied");
   }
 
   const tenantContext = req.user.tenant;
   const outletContext = req.user.outlet;
 
-  if (!tenantContext?.tenantId || !outletContext?.outletId) {
-    throw new ApiError(
-      400,
-      "User is not associated with tenant or outlet"
-    );
-  }
-
-  // 2️⃣ Optional filters
   const { ingredientMasterId, fromDate, toDate } = req.query;
 
   const filter = {
@@ -298,15 +222,10 @@ export const getAllStockMovementsExceptOrders = asyncHandler(async (req, res) =>
     if (toDate) filter.createdAt.$lte = new Date(toDate);
   }
 
-  // 3️⃣ Fetch movements
   const movements = await StockMovement.find(filter)
     .sort({ createdAt: -1 });
 
   return res.status(200).json(
-    new ApiResoponse(
-      200,
-      movements,
-      "Stock movements fetched successfully"
-    )
+    new ApiResoponse(200, movements, "Stock movements fetched")
   );
 });

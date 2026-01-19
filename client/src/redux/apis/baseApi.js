@@ -9,7 +9,7 @@ export const baseApi = createApi({
   reducerPath: "api",
   baseQuery: async (args, api, extraOption) => {
 
-    //console.log("args apis", args, api, extraOption)
+    // console.log("args apis", args, api, extraOption)
     const result = await baseQuery(args, api, extraOption)
     return result
 

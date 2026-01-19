@@ -5,6 +5,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser'
 import morgan from "morgan"
 import apiRoutes from "./src/routes/index.js";
+import http from "http";
+import { initSocket } from "./src/sockets/socket.js";
 
 const port = process.env.PORT ?? 8000
 const corsOptions = {
@@ -17,9 +19,17 @@ const corsOptions = {
     credentials: true,
 };
 
+
+
+
 const app = express();
 env.config()
 connectDB(process.env.MONGOD_URI);
+
+
+const server = http.createServer(app);
+const io = initSocket(server,corsOptions);
+app.set("io", io);
 
 app.use(cors(corsOptions));
 
@@ -42,4 +52,4 @@ app.get("/",(req,res)=>{
 
 
 
-app.listen(port,()=> console.log(`Server is running on: http://localhost:${port}`));
+server.listen(port,()=> console.log(`Server is running on: http://localhost:${port}`));

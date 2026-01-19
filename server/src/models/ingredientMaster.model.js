@@ -23,19 +23,32 @@ const IngredientMasterSchema = new Schema(
     name: {
       type: String,
       required: true,
-      trim: true,
+      trim: true
+    },
+
+    threshold: {
+      low: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
+      critical: {
+        type: Number,
+        required: true,
+        min: 0,
+      },
     },
 
     unit: {
       unitId: {
         type: Schema.Types.ObjectId,
-        ref:"Unit",
+        ref: "Unit",
         required: true,
       },
       unitName: {
         type: String,
         required: true,
-        trim: true, 
+        trim: true,
       },
       baseUnit: {
         type: String,

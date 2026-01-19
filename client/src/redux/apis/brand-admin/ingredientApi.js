@@ -12,10 +12,10 @@ export const ingredient = baseApi.injectEndpoints({
     }),
 
     createIngredients: builder.mutation({
-      query: ({ name, unitId }) => ({
+      query: ({ name, unitId ,threshold}) => ({
         url: "ingredient/create_ingredient",
         method: "POST",
-        body: { name, unitId },
+        body: { name, unitId, threshold },
       }),
       invalidatesTags: ["Ingredient"],
     }),

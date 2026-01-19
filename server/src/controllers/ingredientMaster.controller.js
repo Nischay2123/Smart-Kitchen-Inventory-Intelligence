@@ -12,11 +12,11 @@ export const createIngredient = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Only BRAND_ADMIN can create ingredients");
   }
 
-  const { name, unitId } = req.body;
-  console.log(name,unitId);
+  const { name, unitId, threshold} = req.body;
+  console.log(name,unitId, threshold);
   
-  if (!name || !unitId) {
-    throw new ApiError(400, "name and unitId are required");
+  if (!name || !unitId || !threshold || !threshold.low || !threshold.critical) {
+    throw new ApiError(400, "name and unitId and threshold parameters are required");
   }
 
   if (!mongoose.Types.ObjectId.isValid(unitId)) {
@@ -73,6 +73,10 @@ export const createIngredient = asyncHandler(async (req, res) => {
       baseUnit: unit.baseUnit,
       conversionRate: unit.conversionRate,
     },
+    threshold:{
+      low :(threshold.low * unit.conversionRate),
+      critical:(threshold.critical * unit.conversionRate)
+    }
   });
 
   return res.status(201).json(
@@ -83,6 +87,7 @@ export const createIngredient = asyncHandler(async (req, res) => {
         name: ingredient.name,
         unit: ingredient.unit,
         tenant: ingredient.tenant,
+        threshold: ingredient.threshold,
         createdAt: ingredient.createdAt,
       },
       "Ingredient created successfully"
@@ -91,8 +96,8 @@ export const createIngredient = asyncHandler(async (req, res) => {
 });
 
 export const getAllIngredients = asyncHandler(async (req, res) => {
-  if (req.user.role !== "BRAND_ADMIN") {
-    throw new ApiError(403, "Only BRAND_ADMIN can view ingredients");
+  if (req.user.role === "SUPER_ADMIN") {
+    throw new ApiError(403, "Only BRAND_ADMIN and OUTLET_MANAGER can view ingredients");
   }
 
   const tenantContext = req.user.tenant;

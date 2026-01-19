@@ -1,11 +1,18 @@
-import DataCard from '@/components/data-card/data-card'
-import SiteHeader from '@/components/site-header'
-import { Button } from '@/components/ui/button'
-import { useGetStockDetailsQuery } from '@/redux/apis/outlet-manager/stocksApi'
-import { Trash2 } from 'lucide-react'
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 
+import DataCard from "@/components/data-card/data-card";
+import SiteHeader from "@/components/site-header";
+import { Button } from "@/components/ui/button";
+
+import { useGetStockDetailsQuery } from "@/redux/apis/outlet-manager/stocksApi";
+import { setStocks, updateStockInStore } from "@/redux/reducers/outlet-manager/stockSlice";
+
+import { useAuth } from "@/auth/auth";
+import { useStockSocket } from "@/sockets/sockets";
+
+/* -------------------- TABLE COLUMNS -------------------- */
 
 const ingredientColumn = (navigate) => [
   {
@@ -21,9 +28,7 @@ const ingredientColumn = (navigate) => [
     accessorKey: "currentStockInBase",
     header: "Current Stock",
     cell: ({ row }) => (
-      <span>
-        {row.original.currentStockInBase}
-      </span>
+      <span>{row.original.currentStockInBase}</span>
     ),
   },
   {
@@ -39,26 +44,29 @@ const ingredientColumn = (navigate) => [
     accessorKey: "alertState",
     header: "Status",
     cell: ({ row }) => {
-      const state = row.original.alertState
+      const state = row.original.alertState;
 
       const statusColor = {
-        OK: "text-green-600",
-        LOW: "text-yellow-600",
-        CRITICAL: "text-red-600",
-        NOT_INITIALIZED: "text-gray-500",
-      }
+        OK: "text-green-700",
+        LOW: "text-yellow-700",
+        CRITICAL: "text-red-700",
+        NOT_INITIALIZED: "text-gray-600",
+      };
+
       const statusBg = {
-        OK: "bg-green-300",
-        LOW: "bg-yellow-300",
-        CRITICAL: "bg-red-300",
+        OK: "bg-green-200",
+        LOW: "bg-yellow-200",
+        CRITICAL: "bg-red-200",
         NOT_INITIALIZED: "bg-gray-200",
-      }
+      };
 
       return (
-        <span className={`font-medium p-2 rounded-sm ${statusColor[state]} ${statusBg[state]}`}>
+        <span
+          className={`font-medium px-2 py-1 rounded ${statusColor[state]} ${statusBg[state]}`}
+        >
           {state}
         </span>
-      )
+      );
     },
   },
   {
@@ -69,31 +77,53 @@ const ingredientColumn = (navigate) => [
         variant="outline"
         size="sm"
         onClick={(e) => {
-          e.stopPropagation()
-          navigate(`/restock`)
+          e.stopPropagation();
+          navigate("/restock");
         }}
       >
         Restock
       </Button>
     ),
   },
-]
+];
 
+/* -------------------- PAGE -------------------- */
 
 export const Stocks = () => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useAuth();
 
-  const {
-    data,
-    isLoading,
-    isError,
-  } = useGetStockDetailsQuery()
+  /* 🔥 Redux is the single source of truth */
+  const ingredientStocks = useSelector(
+    (state) => state.Stock.list
+  );
+
+  
+
+  /* Initial REST snapshot */
+  const { data, isLoading } = useGetStockDetailsQuery();
+
+  React.useEffect(() => {
+    if (data?.data) {
+      dispatch(setStocks(data.data));
+    }
+  }, [data, dispatch]);
+
+  /* 🔌 Real-time socket updates */
+  useStockSocket({
+    tenantId: user?.tenant?.tenantId,
+    outletId: user?.outlet?.outletId,
+    onUpdate: (stock) => {
+      dispatch(updateStockInStore(stock));
+    },
+  });
 
   return (
     <div className="w-full bg-gray-50 min-h-screen">
       <SiteHeader
         headerTitle="Stocks"
-        description="available stock for the ingredients in outlet"
+        description="Available stock for the ingredients in this outlet"
         isTooltip={false}
       />
 
@@ -102,17 +132,17 @@ export const Stocks = () => {
           <div>Loading...</div>
         ) : (
           <DataCard
-            title="Avalaible Stock"
+            title="Available Stock"
             searchable
-            loading={isLoading}
             columns={ingredientColumn(navigate)}
-            data={data?.data ?? []}
+            data={ingredientStocks ?? []}
             titleWhenEmpty="No ingredients found"
             descriptionWhenEmpty="We couldn’t find any ingredients here."
           />
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
+export default Stocks;

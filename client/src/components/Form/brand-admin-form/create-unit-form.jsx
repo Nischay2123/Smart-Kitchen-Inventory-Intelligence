@@ -30,13 +30,6 @@ export function CreateUnitModal({ open, onOpenChange }) {
     conversionRate: "",
   })
 
-  const unitOptions = [
-    { value: "gm", label: "Gram (gm)" },
-    { value: "kg", label: "Kilogram (kg)" },
-    { value: "ml", label: "Milliliter (ml)" },
-    { value: "l", label: "Liter (l)" },
-    { value: "piece", label: "Piece (pc)" },
-  ]
 
   const baseUnitOptions = [
     { value: "gm", label: "Gram (gm)" },
@@ -101,27 +94,15 @@ export function CreateUnitModal({ open, onOpenChange }) {
         {(status === "idle" || status === "loading") && (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Unit */}
-            <Select
+            <Input
+              placeholder="Enter Unit (e.g. kg, gm, pc)"
               value={form.unit}
-              onValueChange={(val) =>
-                handleChange("unit", val)
+              onChange={(e) =>
+                handleChange("unit", e.target.value)
               }
               required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select Unit" />
-              </SelectTrigger>
-              <SelectContent>
-                {unitOptions.map((unit) => (
-                  <SelectItem
-                    key={unit.value}
-                    value={unit.value}
-                  >
-                    {unit.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
+
 
             {/* Base Unit */}
             <Select

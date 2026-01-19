@@ -54,18 +54,16 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
         baseUnit: ingredient.unit.baseUnit,
         currentStockInBase: 0,
         alertState: "NOT_INITIALIZED",
-        threshold: null,
         action: "INITIALIZE_STOCK",
       };
     }
 
     return {
       ingredientId: ingredient._id,
-      ingredientName: stock.masterIngredient.ingredientName,
+      ingredientName: ingredient.name,
       baseUnit: stock.baseUnit,
       currentStockInBase: stock.currentStockInBase,
       alertState: stock.alertState,
-      threshold: stock.threshold,
       action:
         stock.alertState === "CRITICAL"
           ? "URGENT_RESTOCK"

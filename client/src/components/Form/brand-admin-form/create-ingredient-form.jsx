@@ -25,15 +25,16 @@ export function CreateIngredientModal({ open, onOpenChange }) {
 
   const [createIngredient] = useCreateIngredientsMutation()
 
-  const {
-    data: unitsData,
-    isLoading: unitsLoading,
-    isError: unitsError,
-  } = useGetAllUnitsQuery()
+  const { data: unitsData, isLoading: unitsLoading } =
+    useGetAllUnitsQuery()
 
   const [form, setForm] = React.useState({
     name: "",
     unit: "",
+    threshold: {
+      low: "",
+      critical: "",
+    },
   })
 
   const handleChange = (field, value) => {
@@ -43,17 +44,26 @@ export function CreateIngredientModal({ open, onOpenChange }) {
     }))
   }
 
+  const handleThresholdChange = (field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      threshold: {
+        ...prev.threshold,
+        [field]: Number(value),
+      },
+    }))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     setStatus("loading")
     setMessage("")
-    console.log(form);
-    
+
     try {
       await createIngredient({
         name: form.name,
         unitId: form.unit,
+        threshold: form.threshold,
       }).unwrap()
 
       setStatus("success")
@@ -62,9 +72,12 @@ export function CreateIngredientModal({ open, onOpenChange }) {
       setForm({
         name: "",
         unit: "",
+        threshold: {
+          low: "",
+          critical: "",
+        },
       })
     } catch (err) {
-      console.error(err)
       setStatus("error")
       setMessage(err?.data?.message || "Failed to create item")
     }
@@ -85,7 +98,7 @@ export function CreateIngredientModal({ open, onOpenChange }) {
         <DialogHeader>
           <DialogTitle>Create Item</DialogTitle>
           <DialogDescription>
-            Add a new item and select its unit.
+            Add a new item and configure its thresholds.
           </DialogDescription>
         </DialogHeader>
 
@@ -95,30 +108,23 @@ export function CreateIngredientModal({ open, onOpenChange }) {
             <Input
               placeholder="Item Name"
               value={form.name}
-              onChange={(e) =>
-                handleChange("name", e.target.value)
-              }
+              onChange={(e) => handleChange("name", e.target.value)}
               required
             />
 
             {/* Unit */}
             <Select
               value={form.unit}
-              onValueChange={(val) =>
-                handleChange("unit", val)
-              }
+              onValueChange={(val) => handleChange("unit", val)}
               required
             >
               <SelectTrigger>
                 <SelectValue
                   placeholder={
-                    unitsLoading
-                      ? "Loading units..."
-                      : "Select Unit"
+                    unitsLoading ? "Loading units..." : "Select Unit"
                   }
                 />
               </SelectTrigger>
-
               <SelectContent>
                 {unitsData?.data?.map((unit) => (
                   <SelectItem key={unit._id} value={unit._id}>
@@ -128,14 +134,41 @@ export function CreateIngredientModal({ open, onOpenChange }) {
               </SelectContent>
             </Select>
 
+            {/* Thresholds */}
+            <div className="grid grid-cols-2 gap-3">
+              <label>Low Threshold:</label>
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                placeholder="Low Threshold"
+                value={form.threshold.low}
+                onChange={(e) =>
+                  handleThresholdChange("low", e.target.value)
+                }
+                required
+              />
+
+              <label>Critical Threshold:</label>
+              <Input
+                type="number"
+                min={0}
+                step = {0.01}
+                placeholder="Critical Threshold"
+                value={form.threshold.critical}
+                onChange={(e) =>
+                  handleThresholdChange("critical", e.target.value)
+                }
+                required
+              />
+            </div>
+
             <Button
               type="submit"
               className="w-full"
               disabled={status === "loading" || unitsLoading}
             >
-              {status === "loading"
-                ? "Creating..."
-                : "Create Item"}
+              {status === "loading" ? "Creating..." : "Create Item"}
             </Button>
           </form>
         )}
@@ -143,10 +176,7 @@ export function CreateIngredientModal({ open, onOpenChange }) {
         {status === "success" && (
           <div className="flex flex-col items-center gap-3 py-6">
             <CheckCircle2 className="h-12 w-12 text-green-500" />
-            <p className="text-sm text-muted-foreground">
-              {message}
-            </p>
-
+            <p className="text-sm text-muted-foreground">{message}</p>
             <Button
               className="mt-2"
               onClick={() => {
@@ -162,14 +192,8 @@ export function CreateIngredientModal({ open, onOpenChange }) {
         {status === "error" && (
           <div className="flex flex-col items-center gap-3 py-6">
             <XCircle className="h-12 w-12 text-red-500" />
-            <p className="text-sm text-muted-foreground">
-              {message}
-            </p>
-
-            <Button
-              variant="outline"
-              onClick={() => setStatus("idle")}
-            >
+            <p className="text-sm text-muted-foreground">{message}</p>
+            <Button variant="outline" onClick={() => setStatus("idle")}>
               Try Again
             </Button>
           </div>

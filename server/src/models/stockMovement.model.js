@@ -52,9 +52,14 @@ const StockMovementSchema = new Schema(
       required: true,
     },
 
-    deltaInBase: {
+    quantity: {     
       type: Number,
       required: true,
+    },
+
+    unit:{
+      type: String,
+      required:true
     },
 
     reason: {
@@ -63,10 +68,16 @@ const StockMovementSchema = new Schema(
       enum: ["ORDER", "PURCHASE", "POSITIVE_ADJUSTMENT","NEGATIVE_ADJUSTMENT"],
     },
 
-    referenceId: {
+    orderId: {
       type: Schema.Types.ObjectId,
       default: null,
     },
+
+    stockId:{
+      type: Schema.Types.ObjectId,
+      ref:"Stock",
+      default:null
+    }
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
