@@ -1,5 +1,4 @@
 import DataCard from '@/components/data-card/data-card'
-import { CreateStockMovementForm } from '@/components/Form/outlet-manager-form/create-stock-movement'
 import SiteHeader from '@/components/site-header'
 import { useGetStockMovementDetailsQuery } from '@/redux/apis/outlet-manager/stockMovementApi'
 import React, { useState } from 'react'
@@ -62,11 +61,9 @@ export const Restocks = () => {
   return (
     <div className="w-full bg-gray-50 min-h-screen">
       <SiteHeader
-        headerTitle="Stocks"
-        description="available stock for the ingredients in outlet"
-        actionTooltip='Create Stock Entry'
-        isTooltip={true}
-        onActionClick={()=>setOpen(true)}
+        headerTitle="Stock Movements"
+        description="stock movements of the ingredients"
+        isTooltip={false}
       />
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
@@ -74,7 +71,7 @@ export const Restocks = () => {
           <div>Loading...</div>
         ) : (
           <DataCard
-            title="Avalaible Stock"
+            title="Stock Movement Entries"
             searchable
             loading={isLoading}
             columns={ingredientColumn(navigate)}
@@ -84,8 +81,6 @@ export const Restocks = () => {
           />
         )}
       </div>
-
-      <CreateStockMovementForm onOpenChange={setOpen} open={open} />
     </div>
   )
 }

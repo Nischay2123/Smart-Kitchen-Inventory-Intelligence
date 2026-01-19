@@ -18,7 +18,8 @@ export const createStockMovement = asyncHandler(async (req, res) => {
       orderId,
       purchasePrice,
     } = req.body
-
+    console.log(ingredientMasterId, quantity , reason ,purchasePrice);
+    
     if (
       !ingredientMasterId ||
       typeof quantity !== "number" ||

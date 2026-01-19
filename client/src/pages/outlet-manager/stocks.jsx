@@ -11,34 +11,24 @@ import { setStocks, updateStockInStore } from "@/redux/reducers/outlet-manager/s
 
 import { useAuth } from "@/auth/auth";
 import { useStockSocket } from "@/sockets/sockets";
+import { CreateStockMovementForm } from "@/components/Form/outlet-manager-form/create-stock-movement";
 
 /* -------------------- TABLE COLUMNS -------------------- */
 
-const ingredientColumn = (navigate) => [
+const ingredientColumn = (setOpen, setSelectedIngredient) => [
   {
     accessorKey: "ingredientName",
     header: "Ingredient",
-    cell: ({ row }) => (
-      <span className="font-medium">
-        {row.original.ingredientName}
-      </span>
-    ),
   },
+
   {
     accessorKey: "currentStockInBase",
     header: "Current Stock",
-    cell: ({ row }) => (
-      <span>{row.original.currentStockInBase}</span>
-    ),
   },
+
   {
     accessorKey: "baseUnit",
     header: "Unit",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.baseUnit}
-      </span>
-    ),
   },
   {
     accessorKey: "alertState",
@@ -78,7 +68,15 @@ const ingredientColumn = (navigate) => [
         size="sm"
         onClick={(e) => {
           e.stopPropagation();
-          navigate("/restock");
+
+          // 👇 PASS DATA TO MODAL
+          setSelectedIngredient({
+            ingredientMasterId: row.original.ingredientId,
+            ingredientName: row.original.ingredientName,
+            unit: row.original.unit,
+          });
+
+          setOpen(true);
         }}
       >
         Restock
@@ -86,6 +84,7 @@ const ingredientColumn = (navigate) => [
     ),
   },
 ];
+
 
 /* -------------------- PAGE -------------------- */
 
@@ -103,6 +102,9 @@ export const Stocks = () => {
 
   /* Initial REST snapshot */
   const { data, isLoading } = useGetStockDetailsQuery();
+
+  const [open, setOpen] = React.useState(false);
+  const [selectedIngredient, setSelectedIngredient] = React.useState(null);
 
   React.useEffect(() => {
     if (data?.data) {
@@ -134,13 +136,21 @@ export const Stocks = () => {
           <DataCard
             title="Available Stock"
             searchable
-            columns={ingredientColumn(navigate)}
+            columns={ingredientColumn(setOpen,setSelectedIngredient)}
             data={ingredientStocks ?? []}
             titleWhenEmpty="No ingredients found"
             descriptionWhenEmpty="We couldn’t find any ingredients here."
           />
         )}
       </div>
+
+
+      <CreateStockMovementForm
+        open={open}
+        onOpenChange={setOpen}
+        ingredient={selectedIngredient}
+      />
+      
     </div>
   );
 };

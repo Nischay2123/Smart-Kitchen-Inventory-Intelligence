@@ -18,101 +18,95 @@ import {
 import { CheckCircle2, XCircle } from "lucide-react"
 
 import { useCreateStockMovementMutation } from "@/redux/apis/outlet-manager/stockMovementApi"
-import { useGetAllIngredientsQuery } from "@/redux/apis/brand-admin/ingredientApi"
 
-export function CreateStockMovementForm({ open, onOpenChange }) {
-  const { data: ingredients, isLoading } = useGetAllIngredientsQuery()
-  const [createStockMovement] = useCreateStockMovementMutation()
+export function CreateStockMovementForm({
+  open,
+  onOpenChange,
+  ingredient,        // from parent row
+}) {
+  const [createStockMovement] = useCreateStockMovementMutation();
 
-  const [ingredientMasterId, setIngredientMasterId] = React.useState("")
-  const [delta, setDelta] = React.useState("")
-  const [reason, setReason] = React.useState("")
-  const [purchasePrice, setPurchasePrice] = React.useState("")
+  const [ingredientMasterId, setIngredientMasterId] = React.useState("");
+  const [delta, setDelta] = React.useState("");
+  const [reason, setReason] = React.useState("");
+  const [purchasePrice, setPurchasePrice] = React.useState("");
 
-  const [status, setStatus] = React.useState("idle") // idle | loading | success | error
-  const [message, setMessage] = React.useState("")
+  const [status, setStatus] = React.useState("idle");
+  const [message, setMessage] = React.useState("");
 
-  const selectedIngredient = ingredients?.data?.find(
-    (i) => i._id === ingredientMasterId
-  )
+  // 👇 Unit directly from parent
+  const unitName = ingredient?.unit ?? "";
+  const ingredientName = ingredient?.ingredientName ?? "";
 
-  const unitName = selectedIngredient?.unit?.unitName ?? ""
+  /* Prefill when modal opens */
+  React.useEffect(() => {
+    if (ingredient) {
+      setIngredientMasterId(ingredient.ingredientMasterId);
+    }
+  }, [ingredient]);
 
   const resetForm = () => {
-    setIngredientMasterId("")
-    setDelta("")
-    setReason("")
-    setPurchasePrice("")
-    setStatus("idle")
-    setMessage("")
-  }
+    setDelta("");
+    setReason("");
+    setPurchasePrice("");
+    setStatus("idle");
+    setMessage("");
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    setStatus("loading")
-    setMessage("")
-    
+    setStatus("loading");
+    setMessage("");
+
     try {
-      console.log(typeof delta);
-      
       await createStockMovement({
         ingredientMasterId,
         quantity: Number(delta),
         reason,
         purchasePrice:
           reason === "PURCHASE" ? Number(purchasePrice) : undefined,
-      }).unwrap()
+      }).unwrap();
 
-      setStatus("success")
-      setMessage("Stock movement created successfully")
+      setStatus("success");
+      setMessage("Stock movement created successfully");
     } catch (err) {
-      console.error(err)
-      setStatus("error")
+      setStatus("error");
       setMessage(
         err?.data?.message || "Failed to create stock movement"
-      )
+      );
     }
-  }
+  };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(val) => {
-        if (!val) resetForm()
-        onOpenChange(val)
+        if (!val) resetForm();
+        onOpenChange(val);
       }}
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create Stock Movement</DialogTitle>
           <DialogDescription>
-            Select an ingredient and adjust its stock.
+            Adjust stock for selected ingredient
           </DialogDescription>
         </DialogHeader>
 
         {(status === "idle" || status === "loading") && (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Ingredient */}
-            <Select
-              value={ingredientMasterId}
-              onValueChange={setIngredientMasterId}
-              disabled={isLoading || status === "loading"}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select ingredient" />
-              </SelectTrigger>
-              <SelectContent>
-                {ingredients?.data?.map((ingredient) => (
-                  <SelectItem
-                    key={ingredient._id}
-                    value={ingredient._id}
-                  >
-                    {ingredient.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            {/* ✅ READ ONLY INGREDIENT */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                Ingredient
+              </label>
+
+              <div className="px-3 py-2 border rounded bg-muted">
+                {ingredientName || "—"}
+              </div>
+            </div>
 
             {/* Quantity */}
             <div className="flex items-center gap-2">
@@ -124,6 +118,7 @@ export function CreateStockMovementForm({ open, onOpenChange }) {
                 required
                 disabled={status === "loading"}
               />
+
               {unitName && (
                 <span className="text-sm text-muted-foreground">
                   {unitName}
@@ -140,13 +135,16 @@ export function CreateStockMovementForm({ open, onOpenChange }) {
               <SelectTrigger>
                 <SelectValue placeholder="Select movement type" />
               </SelectTrigger>
+
               <SelectContent>
                 <SelectItem value="PURCHASE">
                   Purchase
                 </SelectItem>
+
                 <SelectItem value="POSITIVE_ADJUSTMENT">
                   Positive Adjustment
                 </SelectItem>
+
                 <SelectItem value="NEGATIVE_ADJUSTMENT">
                   Negative Adjustment
                 </SelectItem>
@@ -179,6 +177,7 @@ export function CreateStockMovementForm({ open, onOpenChange }) {
           </form>
         )}
 
+        {/* SUCCESS */}
         {status === "success" && (
           <div className="flex flex-col items-center gap-3 py-6">
             <CheckCircle2 className="h-12 w-12 text-green-500" />
@@ -189,8 +188,8 @@ export function CreateStockMovementForm({ open, onOpenChange }) {
             <Button
               className="mt-2"
               onClick={() => {
-                resetForm()
-                onOpenChange(false)
+                resetForm();
+                onOpenChange(false);
               }}
             >
               Close
@@ -198,6 +197,7 @@ export function CreateStockMovementForm({ open, onOpenChange }) {
           </div>
         )}
 
+        {/* ERROR */}
         {status === "error" && (
           <div className="flex flex-col items-center gap-3 py-6">
             <XCircle className="h-12 w-12 text-red-500" />
@@ -215,5 +215,6 @@ export function CreateStockMovementForm({ open, onOpenChange }) {
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
+
