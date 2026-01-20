@@ -1,5 +1,4 @@
 import Unit from "../models/baseUnit.model.js";
-import Tenant from "../models/tenant.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -31,10 +30,6 @@ export const createUnit = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User is not associated with any tenant");
   }
 
-  const tenantExists = await Tenant.findById(tenantContext.tenantId);
-  if (!tenantExists) {
-    throw new ApiError(404, "Tenant not found");
-  }
 
   const existingUnit = await Unit.findOne({
     "tenant.tenantId": tenantContext.tenantId,

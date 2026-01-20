@@ -33,14 +33,6 @@ export const createOutlet = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User is not associated with any tenant");
   }
 
-  const tenantExists = await Tenant.findById(
-    tenantContext.tenantId
-  );
-
-  if (!tenantExists) {
-    throw new ApiError(404, "Tenant not found");
-  }
-
   const existingOutlet = await Outlet.findOne({
     "tenant.tenantId": tenantContext.tenantId,
     outletName: outletName.trim(),

@@ -5,7 +5,6 @@ import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const getAllStockDetails = asyncHandler(async (req, res) => {
-  // 1️⃣ Authorization
   if (req.user.role !== "OUTLET_MANAGER") {
     throw new ApiError(
       403,
@@ -23,18 +22,15 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
     );
   }
 
-  // 2️⃣ Fetch all ingredient masters (tenant-level)
   const ingredients = await IngredientMaster.find({
     "tenant.tenantId": tenantContext.tenantId,
   });
 
-  // 3️⃣ Fetch all stock for this outlet
   const stocks = await Stock.find({
     "tenant.tenantId": tenantContext.tenantId,
     "outlet.outletId": outletContext.outletId,
   });
 
-  // 4️⃣ Build stock map (ingredientMasterId → stock)
   const stockMap = new Map(
     stocks.map(s => [
       s.masterIngredient.ingredientMasterId.toString(),
@@ -42,11 +38,9 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
     ])
   );
 
-  // 5️⃣ Merge ingredient list with stock
   const result = ingredients.map(ingredient => {
     const stock = stockMap.get(ingredient._id.toString());
 
-    // Stock not initialized yet
     if (!stock) {
       return {
         ingredientId: ingredient._id,

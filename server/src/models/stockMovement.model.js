@@ -69,9 +69,11 @@ const StockMovementSchema = new Schema(
     },
 
     orderId: {
-      type: Schema.Types.ObjectId,
-      default: null,
+      type: String,        
+      required: true,
+      ref: "Sales",
     },
+
 
     stockId:{
       type: Schema.Types.ObjectId,

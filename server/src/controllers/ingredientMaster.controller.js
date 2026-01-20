@@ -13,7 +13,7 @@ export const createIngredient = asyncHandler(async (req, res) => {
   }
 
   const { name, unitId, threshold} = req.body;
-  console.log(name,unitId, threshold);
+  // console.log(name,unitId, threshold);
   
   if (!name || !unitId || !threshold || !threshold.lowInBase || !threshold.criticalInBase) {
     throw new ApiError(400, "name and unitId and threshold parameters are required");
@@ -30,13 +30,7 @@ export const createIngredient = asyncHandler(async (req, res) => {
   if (threshold.criticalInBase>threshold.lowInBase) {
     throw new ApiError(400, "Low Value can not be smaller than critical value");
   }
-  // 1️⃣ Validate tenant
-  const tenantExists = await Tenant.findById(tenantContext.tenantId);
-  if (!tenantExists) {
-    throw new ApiError(404, "Tenant not found");
-  }
 
-  // 2️⃣ Validate unit belongs to tenant
   const unit = await Unit.findOne({
     _id: unitId,
     "tenant.tenantId": tenantContext.tenantId,
@@ -49,7 +43,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
     );
   }
 
-  // 3️⃣ Prevent duplicate ingredient per tenant
   const existingIngredient = await IngredientMaster.findOne({
     "tenant.tenantId": tenantContext.tenantId,
     name: name.trim(),
@@ -62,7 +55,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
     );
   }
 
-  // 4️⃣ Create ingredient
   const ingredient = await IngredientMaster.create({
     tenant: {
       tenantId: tenantContext.tenantId,
@@ -152,7 +144,6 @@ export const deleteIngredient = asyncHandler(async (req, res) => {
     );
   }
 
-  // ⚠️ Future safety: prevent delete if used in recipes
   await IngredientMaster.deleteOne({ _id: ingredient._id });
 
   return res.status(200).json(

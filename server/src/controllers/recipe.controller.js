@@ -84,11 +84,10 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
       ingredientMasterId: ingredient._id,
       ingredientName: ingredient.name,
       baseQty,
-      baseUnit: ingredient.unit.baseUnit, // ✅ STORED
+      baseUnit: ingredient.unit.baseUnit, 
     };
   });
 
-  // 4️⃣ UPSERT recipe
   const recipe = await Recipe.findOneAndUpdate(
     {
       "tenant.tenantId": tenantContext.tenantId,
@@ -121,46 +120,6 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
   );
 });
 
-// export const getSingleRecipe = asyncHandler(async (req, res) => {
-//   if (req.user.role !== "BRAND_ADMIN") {
-//     throw new ApiError(403, "Only BRAND_ADMIN can view recipes");
-//   }
-
-//   const { itemId } = req.params;
-//   const tenantContext = req.user.tenant;
-
-//   if (!mongoose.Types.ObjectId.isValid(itemId)) {
-//     throw new ApiError(400, "Invalid itemId");
-//   }
-
-//   if (!tenantContext?.tenantId) {
-//     throw new ApiError(400, "User is not associated with any tenant");
-//   }
-
-//   const recipe = await Recipe.findOne({
-//     "tenant.tenantId": tenantContext.tenantId,
-//     "item.itemId": itemId,
-//   });
-
-//   if (!recipe) {
-//     return res.status(200).json(
-//     new ApiResoponse(
-//       200,
-//       {},
-//       "Recipe don't exist"
-//     )
-//   );
-//   }
-
-//   return res.status(200).json(
-//     new ApiResoponse(
-//       200,
-//       recipe,
-//       "Recipe fetched successfully"
-//     )
-//   );
-// });
-
 export const getSingleRecipe = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
     throw new ApiError(403, "Only BRAND_ADMIN can view recipes");
@@ -192,7 +151,6 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
     );
   }
 
-  // 🔁 Fetch ingredient masters to restore unitName + conversionRate
   const ingredientIds = recipe.recipeItems.map(
     i => i.ingredientMasterId
   );
@@ -205,13 +163,10 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
     ingredients.map(i => [i._id.toString(), i])
   );
 
-  // 🔄 Transform recipeItems for response
   const transformedRecipeItems = recipe.recipeItems.map(item => {
     const ingredient = ingredientMap.get(
       item.ingredientMasterId.toString()
     );
-
-    if (!ingredient) return item; // safety fallback
 
     return {
       ingredientId: item.ingredientMasterId,

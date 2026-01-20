@@ -9,6 +9,8 @@ import Recipe from "./recipe.routes.js";
 import Unit from "./baseUnit.routes.js";
 import Stocks from "./stock.routes.js";
 import StockMovements from "./stockMovement.routes.js";
+import { createSale } from "../controllers/sale.controller.js";
+import { verifyJwt } from "../middlerwares/auth.middleware.js";
 
 const router = express.Router();
 
@@ -21,5 +23,7 @@ router.use("/ingredient", IngredientMaster);
 router.use("/recipes", Recipe);
 router.use("/stocks", Stocks);
 router.use("/stockMovements", StockMovements);
+
+router.post("/",verifyJwt,createSale)
 
 export default router;

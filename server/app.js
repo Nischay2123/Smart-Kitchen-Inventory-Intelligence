@@ -24,7 +24,7 @@ const corsOptions = {
 
 const app = express();
 env.config()
-connectDB(process.env.MONGOD_URI);
+connectDB();
 
 
 const server = http.createServer(app);
