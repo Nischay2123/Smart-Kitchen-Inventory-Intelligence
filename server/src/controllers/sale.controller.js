@@ -5,24 +5,28 @@ import { validateStock } from "../services/stockValidator.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
 import Stock from "../models/stock.model.js";
+import Sale from "../models/sale.model.js";
 import { ApiError } from "../utils/apiError.js";
+import { ApiResoponse } from "../utils/apiResponse.js";
 
 export const createSale = asyncHandler(async (req, res) => {
 
   const { items } = req.body;
   const tenant = req.user.tenant;
   const outlet = req.user.outlet;
-
+  
   const requirementList =
     await buildStockRequirement(items, tenant.tenantId);
 
   const validation =
     await validateStock(requirementList, outlet.outletId);
 
+  const requestId = uuid();
+
   if (!validation.isValid) {
 
     await orderQueue.add("sale.failed", {
-      requestId: uuid(),
+      requestId,
       state: "CANCELED",
       items,
       tenant,
@@ -32,12 +36,12 @@ export const createSale = asyncHandler(async (req, res) => {
 
     return res.status(400).json({
       state: "CANCELED",
+      requestId,
       failed: validation.failed,
     });
   }
 
   const session = await mongoose.startSession();
-  const requestId = uuid();
 
   try {
     session.startTransaction();
@@ -67,16 +71,12 @@ export const createSale = asyncHandler(async (req, res) => {
 
     await session.commitTransaction();
 
-    res.status(201).json({
-      state: "CONFIRMED",
-      requestId,
-    });
+    
 
 
-    try {
-      // console.log(items);
+    
       
-      const job = await orderQueue.add("sale.confirmed", {
+       orderQueue.add("sale.confirmed", {
         requestId,
         tenant,
         outlet,
@@ -84,11 +84,11 @@ export const createSale = asyncHandler(async (req, res) => {
         requirementList,
       });
 
-      console.log("JOB ADDED", job.id);
 
-    } catch (err) {
-      console.error("QUEUE_PUBLISH_FAILED", err);
-    }
+    return res.status(201).json({
+      state: "CONFIRMED",
+      requestId,
+    });
 
   } catch (err) {
     await session.abortTransaction();
@@ -97,4 +97,35 @@ export const createSale = asyncHandler(async (req, res) => {
   } finally {
     session.endSession();
   }
+});
+
+
+export const getAllSales = asyncHandler(async(req,res)=>{
+  if (req.user.role !== "OUTLET_MANAGER") {
+    throw new ApiError(403, "Access denied");
+  }
+
+  const tenantContext = req.user.tenant;
+  const outletContext = req.user.outlet;
+
+  const { fromDate, toDate } = req.query;
+
+  const filter = {
+    "tenant.tenantId": tenantContext.tenantId,
+    "outlet.outletId": outletContext.outletId,
+  };
+
+
+  if (fromDate || toDate) {
+    filter.createdAt = {};
+    if (fromDate) filter.createdAt.$gte = new Date(fromDate);
+    if (toDate) filter.createdAt.$lte = new Date(toDate);
+  }
+
+  const movements = await Sale.find(filter)
+    .sort({ createdAt: -1 });
+
+  return res.status(200).json(
+    new ApiResoponse(200, movements, "Stock movements fetched")
+  );
 });

@@ -68,7 +68,6 @@ export const processStockMovement = async (data) => {
       { 
         new:true,
         upsert: true,
-        rawResult: true,
       }
     );
     // console.log(result);

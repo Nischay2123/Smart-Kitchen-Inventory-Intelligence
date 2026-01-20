@@ -2,6 +2,7 @@ import Sales from "../models/sale.model.js";
 import MenuItem from "../models/menuItem.model.js";
 import Stock from "../models/stock.model.js";
 import Recipe from "../models/recipes.model.js";
+import { emitEvent } from "../workers/socket.js";
 
 export const processSalesSnapshot = async (data) => {
 
@@ -66,7 +67,7 @@ export const processSalesSnapshot = async (data) => {
 
   if (saleItems.length === 0) return;
 
-  await Sales.updateOne(
+  const result = await Sales.findOneAndUpdate(
     { requestId },
 
     {
@@ -88,7 +89,17 @@ export const processSalesSnapshot = async (data) => {
       },
     },
 
-    { upsert: true }
+    { 
+      new:true,
+      upsert: true 
+    }
   );
+
+  if (!result.lastErrorObject?.upserted) {
+    const room = `tenant:${tenant.tenantId}:outlet:${outlet.outletId}`;
+    console.log(result);
+    
+    emitEvent(room, "SALES_CREATED", result.toObject());  
+  }
 };
 

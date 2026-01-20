@@ -9,6 +9,7 @@ import Recipe from "./recipe.routes.js";
 import Unit from "./baseUnit.routes.js";
 import Stocks from "./stock.routes.js";
 import StockMovements from "./stockMovement.routes.js";
+import Sales from "./sale.routes.js";
 import { createSale } from "../controllers/sale.controller.js";
 import { verifyJwt } from "../middlerwares/auth.middleware.js";
 
@@ -23,7 +24,7 @@ router.use("/ingredient", IngredientMaster);
 router.use("/recipes", Recipe);
 router.use("/stocks", Stocks);
 router.use("/stockMovements", StockMovements);
+router.use("/sales",Sales)
 
-router.post("/",verifyJwt,createSale)
 
 export default router;
