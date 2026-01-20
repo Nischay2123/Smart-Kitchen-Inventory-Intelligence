@@ -13,7 +13,6 @@ import { useAuth } from "@/auth/auth";
 import { useStockSocket } from "@/sockets/sockets";
 import { CreateStockMovementForm } from "@/components/Form/outlet-manager-form/create-stock-movement";
 
-/* -------------------- TABLE COLUMNS -------------------- */
 
 const ingredientColumn = (setOpen, setSelectedIngredient) => [
   {
@@ -86,22 +85,19 @@ const ingredientColumn = (setOpen, setSelectedIngredient) => [
 ];
 
 
-/* -------------------- PAGE -------------------- */
 
 export const Stocks = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useAuth();
 
-  /* 🔥 Redux is the single source of truth */
   const ingredientStocks = useSelector(
     (state) => state.Stock.list
   );
 
   
 
-  /* Initial REST snapshot */
-  const { data, isLoading } = useGetStockDetailsQuery();
+  const { data, isLoading, refetch } = useGetStockDetailsQuery();
 
   const [open, setOpen] = React.useState(false);
   const [selectedIngredient, setSelectedIngredient] = React.useState(null);
@@ -112,7 +108,6 @@ export const Stocks = () => {
     }
   }, [data, dispatch]);
 
-  /* 🔌 Real-time socket updates */
   useStockSocket({
     tenantId: user?.tenant?.tenantId,
     outletId: user?.outlet?.outletId,
@@ -127,6 +122,9 @@ export const Stocks = () => {
         headerTitle="Stocks"
         description="Available stock for the ingredients in this outlet"
         isTooltip={false}
+        isRefetch={true}
+        onRefetch = {refetch}
+        actionTooltip="Refetch"
       />
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">

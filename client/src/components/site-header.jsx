@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "./ui/button";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCcw } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -13,7 +13,9 @@ const SiteHeader = ({
   description,
   actionTooltip = "Create",
   onActionClick,
-  isTooltip=true
+  isTooltip=true,
+  onRefetch,
+  isRefetch=false
 }) => {
   return (
     <div className="flex flex-col w-full py-10 lg:py-0">
@@ -49,6 +51,33 @@ const SiteHeader = ({
                   size="icon"
                 >
                   <Plus className="h-4 w-4" strokeWidth={3} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{actionTooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>}
+
+
+        {isRefetch &&
+          <div className="flex items-center gap-2 px-4 lg:p-6">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={onRefetch}
+                  className="
+                    bg-red-500 
+                    hover:bg-red-600 
+                    active:scale-95
+                    transition-all
+                    duration-200
+                  "
+                  size="icon"
+                >
+                  <RefreshCcw className="h-4 w-4" strokeWidth={3} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">

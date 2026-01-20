@@ -198,6 +198,39 @@ export const createStockMovement = asyncHandler(async (req, res) => {
 
 
 
+export const getAllStockMovementsForOrders = asyncHandler(async (req, res) => {
+  if (req.user.role !== "OUTLET_MANAGER") {
+    throw new ApiError(403, "Access denied");
+  }
+
+  const tenantContext = req.user.tenant;
+  const outletContext = req.user.outlet;
+
+  const { ingredientMasterId, fromDate, toDate } = req.query;
+
+  const filter = {
+    "tenant.tenantId": tenantContext.tenantId,
+    "outlet.outletId": outletContext.outletId,
+    reason: { $eq: "ORDER" },
+  };
+
+  if (ingredientMasterId) {
+    filter["ingredient.ingredientMasterId"] = ingredientMasterId;
+  }
+
+  if (fromDate || toDate) {
+    filter.createdAt = {};
+    if (fromDate) filter.createdAt.$gte = new Date(fromDate);
+    if (toDate) filter.createdAt.$lte = new Date(toDate);
+  }
+
+  const movements = await StockMovement.find(filter)
+    .sort({ createdAt: -1 });
+
+  return res.status(200).json(
+    new ApiResoponse(200, movements, "Stock movements fetched")
+  );
+});
 export const getAllStockMovementsExceptOrders = asyncHandler(async (req, res) => {
   if (req.user.role !== "OUTLET_MANAGER") {
     throw new ApiError(403, "Access denied");

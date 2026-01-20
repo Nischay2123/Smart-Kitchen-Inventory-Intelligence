@@ -23,7 +23,15 @@ export const initSocket = (httpServer, corsOptions) => {
     socket.on("disconnect", () => {
       console.log("❌ Socket disconnected:", socket.id);
     });
+
+    socket.on("worker_emit", ({ room, event, payload }) => {
+      console.log("socket server",room);
+      
+      io.to(room).emit(event, payload);
+    });
+
   });
+
 
   return io;
 };

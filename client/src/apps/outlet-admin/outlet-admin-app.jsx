@@ -48,6 +48,11 @@ export const OutletAdminApp = () => {
         url: "/orders",
         icon: ListOrdered,
       },
+      {
+        name: "StockMovement",
+        url: "/saleStockMovement",
+        icon: ListOrdered,
+      },
     ],
   };
 

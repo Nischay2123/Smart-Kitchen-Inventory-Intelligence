@@ -70,8 +70,8 @@ const StockMovementSchema = new Schema(
 
     orderId: {
       type: String,        
-      required: true,
       ref: "Sales",
+      default:null
     },
 
 

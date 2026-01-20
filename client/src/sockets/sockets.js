@@ -14,13 +14,34 @@ export const useStockSocket = ({ tenantId, outletId, onUpdate }) => {
 
     socket.on("stock_updated", onUpdate);
 
-    socket.on("stock_alert", (data) => {
-      console.warn("⚠️ Stock alert:", data);
-    });
-
     return () => {
       socket.off("stock_updated", onUpdate);
       socket.off("stock_alert");
     };
   }, [tenantId, outletId]);
+};
+
+
+export const useStockMovementSocket = ({
+  tenantId,
+  outletId,
+  onCreate,
+  onError,
+}) => {
+  useEffect(() => {
+    console.log(tenantId, outletId);
+    if (!tenantId || !outletId) return;
+    
+    socket.emit("join_outlet", { tenantId, outletId });
+
+    socket.on("STOCK_MOVEMENT_CREATED", onCreate);
+    socket.on("connect_error", onError);
+    socket.on("disconnect", onError);
+
+    return () => {
+      socket.off("STOCK_MOVEMENT_CREATED", onCreate);
+      socket.off("connect_error", onError);
+      socket.off("disconnect", onError);
+    };
+  }, [tenantId, outletId, onCreate, onError]);
 };

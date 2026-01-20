@@ -1,6 +1,7 @@
 import StockMovement from "../models/stockMovement.model.js";
 import IngredientMaster from "../models/ingredientMaster.model.js";
 import Stock from "../models/stock.model.js";
+import {emitEvent} from "../workers/socket.js"
 
 export const processStockMovement = async (data) => {
 
@@ -27,7 +28,7 @@ export const processStockMovement = async (data) => {
       "masterIngredient.ingredientMasterId": r.ingredientMasterId,
     }).lean();
 
-    await StockMovement.updateOne(
+    const result = await StockMovement.findOneAndUpdate(
 
       {
         orderId: requestId,
@@ -64,8 +65,20 @@ export const processStockMovement = async (data) => {
           stockId: stock?._id || null,
         },
       },
-
-      { upsert: true }
+      { 
+        new:true,
+        upsert: true,
+        rawResult: true,
+      }
     );
+    // console.log(result);
+    
+    if (!result.lastErrorObject?.upserted) {
+      const room = `tenant:${tenant.tenantId}:outlet:${outlet.outletId}`;
+      console.log("Worker");
+      
+      emitEvent(room, "STOCK_MOVEMENT_CREATED", result.toObject());  
+    }
+
   }
 };
