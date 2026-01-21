@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Recipe from "../models/recipes.model.js";
 import MenuItem from "../models/menuItem.model.js";
 import IngredientMaster from "../models/ingredientMaster.model.js";
+import Unit from "../models/baseUnit.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -32,7 +33,7 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
   const menuItem = await MenuItem.findOne({
     _id: itemId,
     "tenant.tenantId": tenantContext.tenantId,
-  });
+  }).lean();
 
   if (!menuItem) {
     throw new ApiError(
@@ -41,53 +42,64 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
     );
   }
 
-  const ingredientIds = recipeItems.map(
-    i => new mongoose.Types.ObjectId(i.ingredientId)
-  );
 
-  const ingredients = await IngredientMaster.find({
-    _id: { $in: ingredientIds },
-    "tenant.tenantId": tenantContext.tenantId,
-  });
 
-  if (ingredients.length !== ingredientIds.length) {
+  /* -------------------- Unit Fetch (SINGLE CALL) -------------------- */
+  const unitIds = [
+    ...new Set(
+      recipeItems.map(i => i.unitId?.toString())
+    ),
+  ];
+
+  const units = await Unit.find({
+    _id: { $in: unitIds },
+  })
+    .select("_id conversionRate baseUnit")
+    .lean();
+
+  if (units.length !== unitIds.length) {
     throw new ApiError(
       400,
-      "One or more ingredients are invalid or not part of your tenant"
+      "One or more units are invalid"
     );
   }
 
-  const ingredientMap = new Map(
-    ingredients.map(i => [i._id.toString(), i])
+  const unitMap = new Map(
+    units.map(u => [u._id.toString(), u])
   );
 
+  /* -------------------- Normalize Recipe Items -------------------- */
   const normalizedRecipeItems = recipeItems.map(item => {
-    const ingredient = ingredientMap.get(
-      item.ingredientId.toString()
-    );
 
-    if (!ingredient) {
-      throw new ApiError(400, "Invalid ingredient reference");
-    }
-
-    if (!item.quantity || item.quantity <= 0) {
+    const qty = Number(item.Qty);
+    if (!qty || qty <= 0) {
       throw new ApiError(
         400,
-        `Invalid quantity for ${ingredient.name}`
+        `Invalid quantity for ${item.ingredientName}`
       );
     }
 
-    const baseQty =
-      item.quantity * ingredient.unit.conversionRate;
+    const unit = unitMap.get(item.unitId.toString());
+    if (!unit || !unit.conversionRate) {
+      throw new ApiError(
+        400,
+        `Invalid unit configuration for ${item.ingredientName}`
+      );
+    }
+
+    const baseQty = qty * unit.conversionRate;
 
     return {
-      ingredientMasterId: ingredient._id,
-      ingredientName: ingredient.name,
-      baseQty,
-      baseUnit: ingredient.unit.baseUnit, 
+      ingredientMasterId: item.ingredientMasterId,
+      ingredientName: item.ingredientName,
+
+      qty,               
+      baseQty,           
+      unit: item.unit,   
     };
   });
 
+  /* -------------------- Upsert Recipe -------------------- */
   const recipe = await Recipe.findOneAndUpdate(
     {
       "tenant.tenantId": tenantContext.tenantId,
@@ -119,6 +131,7 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
     )
   );
 });
+
 
 export const getSingleRecipe = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {

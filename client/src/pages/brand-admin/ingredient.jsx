@@ -1,43 +1,115 @@
 import DataCard from '@/components/data-card/data-card'
 import SiteHeader from '@/components/site-header'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+
 import {
   useGetAllIngredientsQuery,
   useDeleteIngredientMutation,
 } from "@/redux/apis/brand-admin/ingredientApi"
+
 import { CreateIngredientModal } from '@/components/Form/brand-admin-form/create-ingredient-form'
 
 
-const ingredientColumn  = (onDelete, Navigate) => [
+// ─────────────────────────────────────────────
+// COLUMNS UPDATED FOR NEW SCHEMA
+// ─────────────────────────────────────────────
+
+const ingredientColumn = (onDelete) => [
+
   {
     accessorKey: "name",
     header: "Ingredient Name",
+
     cell: ({ row }) => (
       <span className="font-medium">
         {row.original.name}
       </span>
     ),
   },
+
+  // ───── MULTI UNITS ─────
   {
-    accessorKey: "unit.unitName",
-    header: "Unit",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.unit.unitName}
-      </span>
-    ),
+    id: "units",
+    header: "Units",
+
+    cell: ({ row }) => {
+
+      const units = row.original.unit || []
+
+      return (
+        <div className="flex flex-wrap gap-1">
+
+          {units.map(u => (
+            <span
+              key={u.unitId}
+              className="
+                text-xs bg-accent
+                px-2 py-0.5 rounded
+              "
+            >
+              {u.unitName}
+            </span>
+          ))}
+
+        </div>
+      )
+    },
   },
+
+  // ───── THRESHOLD INFO ─────
+  {
+    id: "threshold",
+    header: "Threshold",
+
+    cell: ({ row }) => {
+
+      const t = row.original.threshold
+
+      if (!t) return "-"
+
+      return (
+        <div className="text-xs space-y-1">
+
+          <div>
+            Low: {t.lowInBase}{" "}
+            <span className="text-muted-foreground">
+              (base)
+            </span>
+          </div>
+
+          <div>
+            Critical: {t.criticalInBase}{" "}
+            <span className="text-muted-foreground">
+              (base)
+            </span>
+          </div>
+
+          <div className="text-muted-foreground">
+            unit: {t.unit?.unitName}
+          </div>
+
+        </div>
+      )
+    },
+  },
+
+  // ───── DELETE ─────
   {
     id: "deleteActions",
-    header: "Delete Action",
+    header: "Delete",
+
     cell: ({ row }) => (
       <Button
         variant="ghost"
         size="icon"
-        className="text-destructive hover:bg-destructive/10"
+        className="
+          text-destructive
+          hover:bg-destructive/10
+        "
+
         onClick={(e) => {
           e.stopPropagation()
           onDelete(row.original)
@@ -49,9 +121,14 @@ const ingredientColumn  = (onDelete, Navigate) => [
   },
 ]
 
+
+// ─────────────────────────────────────────────
+// PAGE COMPONENT
+// ─────────────────────────────────────────────
+
 export const Ingredients = () => {
+
   const [open, setOpen] = useState(false)
-  const Navigate = useNavigate()
 
   const {
     data,
@@ -63,49 +140,68 @@ export const Ingredients = () => {
     useDeleteIngredientMutation()
 
   const handleDeleteItem = async (ingredient) => {
+
     const result = window.confirm(
-      `Are you sure you want to delete the Outlet Manager "${ingredient.name}"?`
+      `Are you sure you want to delete ingredient "${ingredient.name}"?`
     )
 
     if (!result) return
 
     try {
-      await deleteIngredient({ ingredientId: ingredient._id }).unwrap()
+      await deleteIngredient({
+        ingredientId: ingredient._id,
+      }).unwrap()
+
     } catch (error) {
-      console.error("Failed to delete outlet manager", error)
+      console.error("Failed to delete ingredient", error)
     }
   }
+
   return (
-    <div className='w-full bg-gray-50 min-h-screen'>
+    <div className="w-full bg-gray-50 min-h-screen">
+
       <SiteHeader
-        headerTitle={`Ingredients`}
+        headerTitle="Ingredients"
         description="Manage ingredients for items"
-        actionTooltip="Create New Item"
+        actionTooltip="Create New Ingredient"
         onActionClick={() => setOpen(true)}
       />
+
       <div className="flex-1 min-h-0 p-4 lg:p-6">
-        {
-          isLoading ?
-            <div>Loading...</div> :
-            <DataCard
-              title={"INGREDIENTS"}
-              searchable
-              loading={isLoading || isDeleting}
-              columns={ingredientColumn(handleDeleteItem, Navigate)}
-              data={data?.data ?? []}
-              titleWhenEmpty={"No ingredients found"}
-              descriptionWhenEmpty={"We couldn’t find any ingredients here. Try adding a new one or adjust your filters."}
-            />
-        }
+
+        {isLoading ? (
+
+          <div>Loading...</div>
+
+        ) : (
+
+          <DataCard
+            title="INGREDIENTS"
+
+            searchable
+
+            loading={isLoading || isDeleting}
+
+            columns={ingredientColumn(handleDeleteItem)}
+
+            data={data?.data ?? []}
+
+            titleWhenEmpty="No ingredients found"
+
+            descriptionWhenEmpty="
+              We couldn’t find any ingredients here.
+              Try adding a new one.
+            "
+          />
+        )}
 
       </div>
-      
+
       <CreateIngredientModal
         open={open}
         onOpenChange={setOpen}
       />
 
-      
     </div>
   )
 }

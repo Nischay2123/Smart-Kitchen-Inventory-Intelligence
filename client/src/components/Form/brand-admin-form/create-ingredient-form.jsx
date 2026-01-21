@@ -6,82 +6,90 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select"
-import { CheckCircle2, XCircle } from "lucide-react"
+
 import { useCreateIngredientsMutation } from "@/redux/apis/brand-admin/ingredientApi"
 import { useGetAllUnitsQuery } from "@/redux/apis/brand-admin/baseUnitApi"
 
+import { MultiUnitPicker } from "@/components/MultiUnitPicker"
+import { Success } from "@/components/success"
+import { Error } from "@/components/error"
+
 export function CreateIngredientModal({ open, onOpenChange }) {
+
   const [status, setStatus] = React.useState("idle")
   const [message, setMessage] = React.useState("")
 
   const [createIngredient] = useCreateIngredientsMutation()
-
   const { data: unitsData, isLoading: unitsLoading } =
     useGetAllUnitsQuery()
 
+
   const [form, setForm] = React.useState({
     name: "",
-    unit: "",
+    unitIds: [],
+
     threshold: {
-      lowInBase: "",
-      criticalInBase: "",
+      low: "",
+      critical: "",
+      unitId: "",
     },
   })
 
-  const handleChange = (field, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-  }
 
   const handleThresholdChange = (field, value) => {
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
       threshold: {
         ...prev.threshold,
-        [field]: Number(value),
+        [field]: value,
       },
     }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
     setStatus("loading")
     setMessage("")
 
     try {
       await createIngredient({
         name: form.name,
-        unitId: form.unit,
-        threshold: form.threshold,
+
+        unitIds: form.unitIds,
+
+        threshold: {
+          low: form.threshold.low,
+          critical: form.threshold.critical,
+          unitId: form.threshold.unitId,
+        },
       }).unwrap()
 
       setStatus("success")
-      setMessage("Item created successfully")
+      setMessage("Ingredient created successfully")
 
+      // reset
       setForm({
         name: "",
-        unit: "",
+        unitIds: [],
         threshold: {
-          lowInBase: "",
-          criticalInBase: "",
+          low: "",
+          critical: "",
+          unitId: "",
         },
       })
+
     } catch (err) {
       setStatus("error")
-      setMessage(err?.data?.message || "Failed to create item")
+      setMessage(
+        err?.data?.message || "Failed to create ingredient"
+      )
     }
   }
+
 
   return (
     <Dialog
@@ -94,110 +102,157 @@ export function CreateIngredientModal({ open, onOpenChange }) {
         onOpenChange(val)
       }}
     >
+
       <DialogContent className="sm:max-w-md">
+
         <DialogHeader>
-          <DialogTitle>Create Item</DialogTitle>
+          <DialogTitle>Create Ingredient</DialogTitle>
+
           <DialogDescription>
-            Add a new item and configure its thresholds.
+            Add ingredient, allowed units and threshold.
           </DialogDescription>
         </DialogHeader>
 
         {(status === "idle" || status === "loading") && (
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name */}
+
+            {/* NAME */}
             <Input
-              placeholder="Item Name"
+              placeholder="Ingredient Name"
               value={form.name}
-              onChange={(e) => handleChange("name", e.target.value)}
+              onChange={(e) =>
+                setForm(p => ({
+                  ...p,
+                  name: e.target.value,
+                }))
+              }
               required
             />
 
-            {/* Unit */}
-            <Select
-              value={form.unit}
-              onValueChange={(val) => handleChange("unit", val)}
-              required
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    unitsLoading ? "Loading units..." : "Select Unit"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {unitsData?.data?.map((unit) => (
-                  <SelectItem key={unit._id} value={unit._id}>
-                    {unit.unit}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MultiUnitPicker
+              units={unitsData?.data || []}
+              value={form.unitIds}
+              onChange={(arr) =>
+                setForm(p => ({
+                  ...p,
+                  unitIds: arr,
 
-            {/* Thresholds */}
+                  // reset threshold unit if removed
+                  threshold: {
+                    ...p.threshold,
+                    unitId: arr.includes(p.threshold.unitId)
+                      ? p.threshold.unitId
+                      : "",
+                  },
+                }))
+              }
+            />
+
+            {form.unitIds.length > 0 && (
+              <div className="space-y-2">
+
+                <p className="text-sm font-medium">
+                  Threshold Unit
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+
+                  {unitsData?.data
+                    ?.filter(u =>
+                      form.unitIds.includes(u._id)
+                    )
+                    .map(unit => (
+
+                      <button
+                        key={unit._id}
+                        type="button"
+
+                        onClick={() =>
+                          handleThresholdChange(
+                            "unitId",
+                            unit._id
+                          )
+                        }
+
+                        className={`
+                          px-3 py-1 rounded border text-sm
+                          ${
+                            form.threshold.unitId ===
+                            unit._id
+                              ? "bg-primary text-white"
+                              : "bg-background"
+                          }
+                        `}
+                      >
+                        {unit.unit}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
-              <label>low Threshold:</label>
+
               <Input
                 type="number"
                 min={0}
                 step={0.01}
                 placeholder="Low Threshold"
-                value={form.threshold.lowInBase}
+                value={form.threshold.low}
                 onChange={(e) =>
-                  handleThresholdChange("lowInBase", e.target.value)
+                  handleThresholdChange(
+                    "low",
+                    e.target.value
+                  )
                 }
                 required
               />
 
-              <label>Critical Threshold:</label>
               <Input
                 type="number"
                 min={0}
-                step = {0.01}
+                step={0.01}
                 placeholder="Critical Threshold"
-                value={form.threshold.criticalInBase}
+                value={form.threshold.critical}
                 onChange={(e) =>
-                  handleThresholdChange("criticalInBase", e.target.value)
+                  handleThresholdChange(
+                    "critical",
+                    e.target.value
+                  )
                 }
                 required
               />
+
             </div>
 
             <Button
               type="submit"
               className="w-full"
-              disabled={status === "loading" || unitsLoading}
+
+              disabled={
+                status === "loading" ||
+                unitsLoading ||
+                form.unitIds.length === 0 ||
+                !form.threshold.unitId
+              }
             >
-              {status === "loading" ? "Creating..." : "Create Item"}
+              {status === "loading"
+                ? "Creating..."
+                : "Create Ingredient"}
             </Button>
+
           </form>
         )}
 
         {status === "success" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <CheckCircle2 className="h-12 w-12 text-green-500" />
-            <p className="text-sm text-muted-foreground">{message}</p>
-            <Button
-              className="mt-2"
-              onClick={() => {
-                setStatus("idle")
-                onOpenChange(false)
-              }}
-            >
-              Close
-            </Button>
-          </div>
+          <Success onOpenChange={onOpenChange} />
         )}
 
         {status === "error" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <XCircle className="h-12 w-12 text-red-500" />
-            <p className="text-sm text-muted-foreground">{message}</p>
-            <Button variant="outline" onClick={() => setStatus("idle")}>
-              Try Again
-            </Button>
-          </div>
+          <Error setStatus={setStatus} />
         )}
+
       </DialogContent>
     </Dialog>
   )

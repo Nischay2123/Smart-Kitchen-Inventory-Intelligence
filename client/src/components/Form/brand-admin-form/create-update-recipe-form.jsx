@@ -26,10 +26,12 @@ const CreateRecipeForm = ({
   data = {},
   isUpdate = false,
 }) => {
+  // console.log(data);
   
   const navigate = useNavigate();
   const { itemId } = useParams();
-
+  console.log(itemId);
+  
   const {
     data: ingredientOptions = { data: [] },
     isLoading,
@@ -40,22 +42,43 @@ const CreateRecipeForm = ({
     useCreateRecipeMutation();
 
   const [ingredients, setIngredients] = useState([
-    { ingredientId: "", name: "", quantity: "", unit: "" },
+    {
+      ingredientId: "",
+      name: "",
+      quantity: "",
+      unitId: "",
+      unitName: "",
+    },
   ]);
 
-  // ✅ PREFILL LOGIC FOR UPDATE MODE
-  useEffect(() => {
-    if (isUpdate && data?.recipeItems?.length) {
-      const mapped = data.recipeItems.map((item) => ({
-        ingredientId: item.ingredientId,
-        name: item.ingredientName,
-        quantity: item.quantity,
-        unit: item.unitName,
-      }));
+  // ───────── PREFILL FOR UPDATE ─────────
+useEffect(() => {
 
-      setIngredients(mapped);
-    }
-  }, [isUpdate, data]);
+  if (!isUpdate || !data?.recipeItems?.length) return;
+
+  const mapped = data.recipeItems.map((item) => {
+
+    const master = ingredientOptions.data.find(
+      (ing) => ing._id === item.ingredientId
+    );
+
+    const unitObj = master?.unit?.find(
+      (u) => u.unitName === item.unitName
+    );
+
+    return {
+      ingredientId: item.ingredientId,
+      name: item.ingredientName,
+      quantity: item.quantity,
+      unitId: unitObj?.unitId || "",
+      unitName: item.unitName,
+    };
+  });
+
+  setIngredients(mapped);
+
+}, [isUpdate, data, ingredientOptions.data]);
+
 
   const selectedIngredientIds = ingredients
     .map((ing) => ing.ingredientId)
@@ -72,7 +95,13 @@ const CreateRecipeForm = ({
   const addRow = () => {
     setIngredients((prev) => [
       ...prev,
-      { ingredientId: "", name: "", quantity: "", unit: "" },
+      {
+        ingredientId: "",
+        name: "",
+        quantity: "",
+        unitId: "",
+        unitName: "",
+      },
     ]);
   };
 
@@ -80,6 +109,7 @@ const CreateRecipeForm = ({
     setIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // ───────── INGREDIENT CHANGE ─────────
   const handleIngredientChange = (index, ingredientId) => {
     const selected = ingredientOptions.data.find(
       (ing) => ing._id === ingredientId
@@ -89,13 +119,36 @@ const CreateRecipeForm = ({
 
     setIngredients((prev) => {
       const updated = [...prev];
+
       updated[index] = {
-        ...updated[index],
         ingredientId: selected._id,
         name: selected.name,
-        quantity: updated[index].quantity || "",
-        unit: selected.unit?.unitName || "",
+        quantity: "",
+        unitId: "",
+        unitName: "",
+        units: selected.unit || [],   // store available units
       };
+
+      return updated;
+    });
+  };
+
+  // ───────── UNIT CHANGE ─────────
+  const handleUnitChange = (index, unitId) => {
+    setIngredients((prev) => {
+      const updated = [...prev];
+
+      const ing = ingredientOptions.data.find(
+        (i) => i._id === updated[index].ingredientId
+      );
+
+      const selectedUnit = ing?.unit?.find(
+        (u) => u.unitId === unitId
+      );
+
+      updated[index].unitId = unitId;
+      updated[index].unitName = selectedUnit?.unitName || "";
+
       return updated;
     });
   };
@@ -108,6 +161,7 @@ const CreateRecipeForm = ({
     });
   };
 
+  // ───────── SUBMIT ─────────
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -121,18 +175,27 @@ const CreateRecipeForm = ({
     }
 
     const invalid = ingredients.some(
-      (i) => !i.ingredientId || !i.quantity
+      (i) => !i.ingredientId || !i.quantity || !i.unitId
     );
 
     if (invalid) {
-      alert("Please select ingredient and quantity for all rows");
+      alert("Please select ingredient, unit and quantity for all rows");
       return;
     }
 
     try {
       await createRecipe({
         itemId,
-        recipeItems: ingredients,
+
+        recipeItems: ingredients.map((i) => ({
+          ingredientMasterId: i.ingredientId,
+          ingredientName: i.name,
+
+          Qty: Number(i.quantity),
+
+          unit: i.unitName,
+          unitId: i.unitId,
+        })),
       }).unwrap();
 
       alert(
@@ -142,21 +205,26 @@ const CreateRecipeForm = ({
       );
 
       navigate("/recipes");
+
     } catch (error) {
       console.error(error);
       alert("Error saving recipe");
     }
   };
 
+  // ───────── RENDER ─────────
   return (
     <Card className="max-w-6xl mx-auto mt-6">
+
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
           <h2 className="text-xl font-semibold">
             {isUpdate ? "Update Recipe" : "Create Recipe"}
           </h2>
 
           <div className="flex flex-col sm:flex-row gap-2">
+
             <Button type="button" variant="outline" onClick={addRow}>
               <Plus size={16} className="mr-2" />
               Add Ingredient
@@ -169,11 +237,13 @@ const CreateRecipeForm = ({
             >
               Create New Ingredient
             </Button>
+
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="p-4 sm:p-6">
+
         {isLoading && (
           <p className="text-center text-sm text-muted-foreground">
             Loading ingredients...
@@ -187,73 +257,112 @@ const CreateRecipeForm = ({
         )}
 
         {!isLoading && !isError && (
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {ingredients.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center"
-              >
-                <div className="sm:col-span-5">
-                  <Select
-                    value={item.ingredientId}
-                    onValueChange={(val) =>
-                      handleIngredientChange(index, val)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Ingredient" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableIngredients(
-                        item.ingredientId
-                      ).map((ing) => (
-                        <SelectItem key={ing._id} value={ing._id}>
-                          {ing.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                <div className="sm:col-span-3">
-                  <Input
-                    type="number"
-                    placeholder="Quantity"
-                    value={item.quantity}
-                    onChange={(e) =>
-                      handleQuantityChange(index, e.target.value)
-                    }
-                  />
-                </div>
+            {ingredients.map((item, index) => {
 
-                {/* UNIT BADGE */}
-                <div className="sm:col-span-3 flex items-center">
-                  {item.unit ? (
-                    <Badge variant="primary" className="px-3 py-1 rounded-sm">
-                      <span className="text-sm text-muted-foreground">
-                        {item.unit}
-                      </span>
-                    </Badge>
-                  ) : (
-                    <Badge variant="primary" className="px-3 py-1 rounded-sm">
-                      <span className="text-sm text-muted-foreground">
-                        Auto from ingredient
-                      </span>
-                    </Badge>
-                  )}
-                </div>
+              const ing = ingredientOptions.data.find(
+                (x) => x._id === item.ingredientId
+              );
 
-                <div className="sm:col-span-1 flex justify-end">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => removeRow(index)}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+              const units = ing?.unit || [];
+
+              return (
+
+                <div
+                  key={index}
+                  className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center"
+                >
+
+                  {/* INGREDIENT */}
+                  <div className="sm:col-span-4">
+                    <Select
+                      value={item.ingredientId}
+                      onValueChange={(val) =>
+                        handleIngredientChange(index, val)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Ingredient" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {getAvailableIngredients(
+                          item.ingredientId
+                        ).map((ing) => (
+                          <SelectItem key={ing._id} value={ing._id}>
+                            {ing.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* QUANTITY */}
+                  <div className="sm:col-span-3">
+                    <Input
+                      type="number"
+                      placeholder="Quantity"
+                      value={item.quantity}
+                      onChange={(e) =>
+                        handleQuantityChange(index, e.target.value)
+                      }
+                    />
+                  </div>
+
+                  {/* UNIT SELECT - NEW */}
+                  <div className="sm:col-span-3">
+
+                    {item.ingredientId ? (
+
+                      <Select
+                        value={item.unitId}
+                        onValueChange={(val) =>
+                          handleUnitChange(index, val)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Unit" />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          {units.map((u) => (
+                            <SelectItem
+                              key={u.unitId}
+                              value={u.unitId}
+                            >
+                              {u.unitName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+
+                      </Select>
+
+                    ) : (
+
+                      <Badge className="px-3 py-1 rounded-sm">
+                        Select ingredient first
+                      </Badge>
+
+                    )}
+
+                  </div>
+
+                  {/* DELETE */}
+                  <div className="sm:col-span-2 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => removeRow(index)}
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div className="flex justify-center pt-4">
               <Button
@@ -270,8 +379,10 @@ const CreateRecipeForm = ({
                   : "Create Recipe"}
               </Button>
             </div>
+
           </form>
         )}
+
       </CardContent>
     </Card>
   );

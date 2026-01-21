@@ -20,11 +20,16 @@ const RecipeItemSchema = new Schema(
       required: true,
       min: 0,
     },
-    baseUnit: {
+    unit: {
       type: String,
       required: true,
       trim:true
     },
+    qty:{
+      type: Number,
+      required: true,
+      min: 0,
+    }
   },
   { _id: false }
 );

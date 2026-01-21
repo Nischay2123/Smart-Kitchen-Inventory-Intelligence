@@ -37,9 +37,31 @@ const IngredientMasterSchema = new Schema(
         required: true,
         min: 0,
       },
+      unit: {
+        unitId: {
+          type: Schema.Types.ObjectId,
+          ref: "Unit",
+          required: true,
+        },
+        unitName: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        baseUnit: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        conversionRate: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+      }
     },
 
-    unit: {
+    unit: [{
       unitId: {
         type: Schema.Types.ObjectId,
         ref: "Unit",
@@ -60,7 +82,7 @@ const IngredientMasterSchema = new Schema(
         required: true,
         min: 0,
       },
-    },
+    }],
   },
   {
     timestamps: true,
