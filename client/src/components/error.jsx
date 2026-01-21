@@ -3,7 +3,8 @@ import React from 'react'
 import { Button } from './ui/button'
 
 export const Error = ({
-    setStatus
+    setStatus,
+    message
 }) => {
     return (
         <div className="flex flex-col items-center gap-3 py-6">

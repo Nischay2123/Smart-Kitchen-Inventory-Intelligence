@@ -19,10 +19,10 @@ export const StockMovement = baseApi.injectEndpoints({
     }),
 
     createStockMovement: builder.mutation({
-      query: ({ ingredientMasterId, quantity,reason,purchasePrice }) => ({
+      query: ({ ingredientMasterId, quantity,reason,purchasePricePerUnit,unitId }) => ({
         url: "stockMovements/create_stock_movement",
         method: "POST",
-        body: { ingredientMasterId, quantity, reason, purchasePrice },
+        body: { ingredientMasterId, quantity, reason, purchasePricePerUnit, unitId },
       }),
       invalidatesTags: ["Stocks"],
     }),

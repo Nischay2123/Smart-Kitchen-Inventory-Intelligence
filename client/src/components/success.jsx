@@ -3,7 +3,9 @@ import React from 'react'
 import { Button } from './ui/button'
 
 export const Success = ({
-    onOpenChange
+    onOpenChange,
+    message,
+    resetForm
 }) => {
   return (
     <div className="flex flex-col items-center gap-3 py-6">
@@ -15,7 +17,10 @@ export const Success = ({
             </p>
 
             <Button
-              onClick={() => onOpenChange(false)}
+              onClick={() =>{ 
+                onOpenChange(false)
+                resetForm && resetForm()
+              }}
             >
               Close
             </Button>

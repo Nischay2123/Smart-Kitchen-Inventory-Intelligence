@@ -8,40 +8,51 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { CheckCircle2, XCircle } from "lucide-react"
 
 import { useCreateStockMovementMutation } from "@/redux/apis/outlet-manager/stockMovementApi"
+import { ReusableSelect } from "@/components/resuable"
+import { Success } from "@/components/success"
+import { Error } from "@/components/error"
+
+
+const STOCK_MOVEMENT_REASONS = [
+  {
+    value: "PURCHASE",
+    label: "Purchase",
+  },
+  {
+    value: "POSITIVE_ADJUSTMENT",
+    label: "Positive Adjustment",
+  },
+  {
+    value: "NEGATIVE_ADJUSTMENT",
+    label: "Negative Adjustment",
+  },
+];
 
 export function CreateStockMovementForm({
   open,
   onOpenChange,
-  ingredient,        // from parent row
+  ingredient,
 }) {
   const [createStockMovement] = useCreateStockMovementMutation();
 
   const [ingredientMasterId, setIngredientMasterId] = React.useState("");
   const [delta, setDelta] = React.useState("");
+  const [selectedUnitId, setSelectedUnitId] = React.useState("");
   const [reason, setReason] = React.useState("");
   const [purchasePrice, setPurchasePrice] = React.useState("");
 
   const [status, setStatus] = React.useState("idle");
   const [message, setMessage] = React.useState("");
 
-  // 👇 Unit directly from parent
-  const unitName = ingredient?.unit ?? "";
   const ingredientName = ingredient?.ingredientName ?? "";
+  const units = ingredient?.unit ?? [];
 
-  /* Prefill when modal opens */
   React.useEffect(() => {
     if (ingredient) {
       setIngredientMasterId(ingredient.ingredientMasterId);
+      setSelectedUnitId(""); 
     }
   }, [ingredient]);
 
@@ -49,6 +60,7 @@ export function CreateStockMovementForm({
     setDelta("");
     setReason("");
     setPurchasePrice("");
+    setSelectedUnitId("");
     setStatus("idle");
     setMessage("");
   };
@@ -56,18 +68,24 @@ export function CreateStockMovementForm({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!selectedUnitId) {
+      setStatus("error");
+      setMessage("Please select a unit");
+      return;
+    }
+
     setStatus("loading");
     setMessage("");
-
     try {
       await createStockMovement({
         ingredientMasterId,
         quantity: Number(delta),
+        unitId: selectedUnitId,
         reason,
-        purchasePrice:
+        purchasePricePerUnit:
           reason === "PURCHASE" ? Number(purchasePrice) : undefined,
       }).unwrap();
-
+      
       setStatus("success");
       setMessage("Stock movement created successfully");
     } catch (err) {
@@ -97,19 +115,17 @@ export function CreateStockMovementForm({
         {(status === "idle" || status === "loading") && (
           <form onSubmit={handleSubmit} className="space-y-4">
 
-            {/* ✅ READ ONLY INGREDIENT */}
+            {/* Ingredient */}
             <div className="space-y-1">
               <label className="text-sm font-medium">
                 Ingredient
               </label>
-
               <div className="px-3 py-2 border rounded bg-muted">
                 {ingredientName || "—"}
               </div>
             </div>
 
-            {/* Quantity */}
-            <div className="flex items-center gap-2">
+            <div className="flex gap-2">
               <Input
                 type="number"
                 placeholder="Quantity"
@@ -119,47 +135,36 @@ export function CreateStockMovementForm({
                 disabled={status === "loading"}
               />
 
-              {unitName && (
-                <span className="text-sm text-muted-foreground">
-                  {unitName}
-                </span>
-              )}
+              <ReusableSelect
+                data={units}
+                value={selectedUnitId}
+                onChange={setSelectedUnitId}
+                valueKey="unitId"
+                labelKey="unitName"
+                placeholder="Unit"
+                disabled={status === "loading"}
+              />
             </div>
 
-            {/* Reason */}
-            <Select
+            <ReusableSelect
+              data={STOCK_MOVEMENT_REASONS}
               value={reason}
-              onValueChange={setReason}
+              onChange={setReason}
+              valueKey="value"
+              labelKey="label"
+              placeholder="Select movement type"
               disabled={status === "loading"}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select movement type" />
-              </SelectTrigger>
+            />
 
-              <SelectContent>
-                <SelectItem value="PURCHASE">
-                  Purchase
-                </SelectItem>
-
-                <SelectItem value="POSITIVE_ADJUSTMENT">
-                  Positive Adjustment
-                </SelectItem>
-
-                <SelectItem value="NEGATIVE_ADJUSTMENT">
-                  Negative Adjustment
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Purchase Price */}
             {reason === "PURCHASE" && (
               <Input
                 type="number"
-                placeholder="Purchase price"
+                placeholder="Purchase price per unit"
                 value={purchasePrice}
                 onChange={(e) =>
                   setPurchasePrice(e.target.value)
                 }
+                step={0.01}
                 required
                 disabled={status === "loading"}
               />
@@ -177,44 +182,16 @@ export function CreateStockMovementForm({
           </form>
         )}
 
-        {/* SUCCESS */}
+        {/* Success */}
         {status === "success" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <CheckCircle2 className="h-12 w-12 text-green-500" />
-            <p className="text-sm text-muted-foreground">
-              {message}
-            </p>
-
-            <Button
-              className="mt-2"
-              onClick={() => {
-                resetForm();
-                onOpenChange(false);
-              }}
-            >
-              Close
-            </Button>
-          </div>
+          <Success onOpenChange={onOpenChange} message={message} resetForm={resetForm}/>
         )}
 
-        {/* ERROR */}
+        {/* Error */}
         {status === "error" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <XCircle className="h-12 w-12 text-red-500" />
-            <p className="text-sm text-muted-foreground">
-              {message}
-            </p>
-
-            <Button
-              variant="outline"
-              onClick={() => setStatus("idle")}
-            >
-              Try Again
-            </Button>
-          </div>
+            <Error setStatus={setStatus} message={message}/>
         )}
       </DialogContent>
     </Dialog>
   );
 }
-

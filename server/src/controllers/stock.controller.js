@@ -37,7 +37,8 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
       s,
     ])
   );
-
+  // console.log(ingredients);
+  
   const result = ingredients.map(ingredient => {
     const stock = stockMap.get(ingredient._id.toString());
 
@@ -45,11 +46,10 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
       return {
         ingredientId: ingredient._id,
         ingredientName: ingredient.name,
-        baseUnit: ingredient.unit.baseUnit,
-        unit: ingredient.unit.unitName,
+        baseUnit: ingredient.unit[0].baseUnit,
+        unit: ingredient.unit,
         currentStockInBase: 0,
         alertState: "NOT_INITIALIZED",
-        action: "INITIALIZE_STOCK",
       };
     }
 
@@ -57,15 +57,9 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
       ingredientId: ingredient._id,
       ingredientName: ingredient.name,
       baseUnit: stock.baseUnit,
-      unit:ingredient.unit.unitName,
+      unit:ingredient.unit,
       currentStockInBase: stock.currentStockInBase,
       alertState: stock.alertState,
-      action:
-        stock.alertState === "CRITICAL"
-          ? "URGENT_RESTOCK"
-          : stock.alertState === "LOW"
-          ? "RESTOCK"
-          : "NONE",
     };
   });
 
