@@ -40,7 +40,8 @@ export const validateStock = async (
 
       result.failed.push({
         ingredientMasterId: req.ingredientMasterId,
-        reason: "STOCK_NOT_FOUND"
+        required: req.requiredBaseQty,
+        available: 0
       });
 
       continue;
@@ -51,9 +52,9 @@ export const validateStock = async (
 
       result.failed.push({
         ingredientMasterId: req.ingredientMasterId,
-        reason: "OUT_OF_STOCK",
+        ingredientMasterName: stock.masterIngredient.ingredientMasterName,
         required: req.requiredBaseQty,
-        available: stock.currentStockInBase
+        available: stock.currentStockInBase,
       });
     }
   }

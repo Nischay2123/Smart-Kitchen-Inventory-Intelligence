@@ -34,7 +34,7 @@ export function DataTable({
   pageSize = 10,
   searchable = false,
   pagination= false,
-  onRowClick,
+  onRowClick = ()=>{},
   rowSelection,
   onRowSelectionChange,
   selectedRowId,

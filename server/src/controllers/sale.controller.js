@@ -24,8 +24,8 @@ export const createSale = asyncHandler(async (req, res) => {
   const requestId = uuid();
 
   if (!validation.isValid) {
-
-    await orderQueue.add("sale.failed", {
+    
+    orderQueue.add("sale.failed", {
       requestId,
       state: "CANCELED",
       items,

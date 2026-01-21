@@ -33,6 +33,43 @@ const SaleItemSchema = new Schema(
       required: true,
       min: 0,
     },
+
+    cancelIngredientDetails: {
+      type: [
+        {
+          ingredientMasterId: {
+            type: Schema.Types.ObjectId,
+            ref: "IngredientMaster",
+            required: true,
+          },
+          ingredientMasterName: {
+            type: String,
+            required: true,
+          },
+          requiredQty: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+          issue: {
+          type: String,
+            enum: [
+              "INGREDIENT_NOT_FOUND",
+              "INSUFFICIENT_STOCK",
+            ],
+            required: true,
+         },
+          availableStock: {
+            type: Number,
+            required: true,
+            min: 0,
+          },
+        },
+      ],
+      default: [], 
+    },
+
+
   },
   { _id: false }
 );
