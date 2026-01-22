@@ -4,12 +4,8 @@ import { useNavigate } from "react-router-dom";
 import SiteHeader from '@/components/site-header'
 import { CreateOutletModal } from '@/components/Form/brand-admin-form/create-outlet-form';
 import { useGetAllOutletsQuery, useDeleteOutletMutation } from "@/redux/apis/brand-admin/outletApi";
+import { GridLoader } from '@/components/laoder';
 
-
-// const brands = [
-//     { id: "1", name: "Acme Corp", count: 3 },
-//     { id: "2", name: "Beta Ltd", count: 1 },
-//   ]
 const BrandAdmin = () => {
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false)
@@ -30,10 +26,8 @@ const BrandAdmin = () => {
     })) ?? [];
 
     const handleDeleteOutlet = async (outlet) => {
-      //console.log(outlet);
       
     try {
-      //console.log(outlet.id);
       
       await deleteOutlet({outletId:outlet.id}).unwrap();
     } catch (err) {
@@ -52,9 +46,7 @@ const BrandAdmin = () => {
       />
       <div className="px-4 lg:p-6">
         {isLoading && (
-          <p className="text-sm text-muted-foreground">
-            Loading brands...
-          </p>
+          <GridLoader />
         )}
 
         {isError && (

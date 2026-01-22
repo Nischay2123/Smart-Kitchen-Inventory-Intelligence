@@ -1,7 +1,5 @@
 import SiteHeader from '@/components/site-header'
 import React, {  useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { Trash2 } from "lucide-react"
 import DataCard from '@/components/data-card/data-card'
 
 import {
@@ -10,44 +8,10 @@ import {
 } from "@/redux/apis/brand-admin/outletApi"
 import { useLocation, useParams } from 'react-router-dom'
 import { CreateOutletManagerModal } from '@/components/Form/brand-admin-form/create-outlet-manager-form'
+import { outletManagerColumns } from '@/utils/columns/brand-admin'
+import { GridLoader, SkeletonLoader } from '@/components/laoder'
 
-export const outletManagerColumns = (onDelete) => [
-  {
-    accessorKey: "userName",
-    header: "Outlet Manager Name",
-    cell: ({ row }) => (
-      <span className="font-medium">
-        {row.original.userName}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "email",
-    header: "Email",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.email}
-      </span>
-    ),
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="text-destructive hover:bg-destructive/10"
-        onClick={(e) => {
-          e.stopPropagation() // ⛔ prevent row click
-          onDelete(row.original)
-        }}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
-    ),
-  },
-]
+
 
 
 export const Outlet = () => {
@@ -90,7 +54,7 @@ export const Outlet = () => {
         <div className="flex-1 min-h-0 p-4 lg:p-6">
           {
             isLoading?
-            <div>Loading...</div>:
+            <SkeletonLoader/>:
             <DataCard
               title={"Outlet Managers"}
               searchable

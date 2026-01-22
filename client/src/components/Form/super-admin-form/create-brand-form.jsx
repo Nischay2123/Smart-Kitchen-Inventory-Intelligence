@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { CheckCircle2, XCircle } from "lucide-react"
 import { useCreateBrandMutation } from "@/redux/apis/super-admin/brandApi"
 import { Error } from "@/components/error"
 import { Success } from "@/components/success"

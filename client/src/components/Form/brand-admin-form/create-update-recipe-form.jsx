@@ -26,7 +26,6 @@ const CreateRecipeForm = ({
   data = {},
   isUpdate = false,
 }) => {
-  // console.log(data);
   
   const navigate = useNavigate();
   const { itemId } = useParams();
@@ -51,7 +50,6 @@ const CreateRecipeForm = ({
     },
   ]);
 
-  // ───────── PREFILL FOR UPDATE ─────────
 useEffect(() => {
 
   if (!isUpdate || !data?.recipeItems?.length) return;
@@ -109,7 +107,6 @@ useEffect(() => {
     setIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ───────── INGREDIENT CHANGE ─────────
   const handleIngredientChange = (index, ingredientId) => {
     const selected = ingredientOptions.data.find(
       (ing) => ing._id === ingredientId
@@ -126,14 +123,13 @@ useEffect(() => {
         quantity: "",
         unitId: "",
         unitName: "",
-        units: selected.unit || [],   // store available units
+        units: selected.unit || [],  
       };
 
       return updated;
     });
   };
 
-  // ───────── UNIT CHANGE ─────────
   const handleUnitChange = (index, unitId) => {
     setIngredients((prev) => {
       const updated = [...prev];
@@ -161,7 +157,6 @@ useEffect(() => {
     });
   };
 
-  // ───────── SUBMIT ─────────
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -212,7 +207,6 @@ useEffect(() => {
     }
   };
 
-  // ───────── RENDER ─────────
   return (
     <Card className="max-w-6xl mx-auto mt-6">
 
@@ -299,7 +293,6 @@ useEffect(() => {
                     </Select>
                   </div>
 
-                  {/* QUANTITY */}
                   <div className="sm:col-span-3">
                     <Input
                       type="number"
@@ -311,7 +304,6 @@ useEffect(() => {
                     />
                   </div>
 
-                  {/* UNIT SELECT - NEW */}
                   <div className="sm:col-span-3">
 
                     {item.ingredientId ? (
@@ -349,7 +341,6 @@ useEffect(() => {
 
                   </div>
 
-                  {/* DELETE */}
                   <div className="sm:col-span-2 flex justify-end">
                     <Button
                       type="button"

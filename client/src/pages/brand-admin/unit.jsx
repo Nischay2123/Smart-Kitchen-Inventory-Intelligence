@@ -5,37 +5,9 @@ import {
   useGetAllUnitsQuery,
 } from "@/redux/apis/brand-admin/baseUnitApi.js"
 import { CreateUnitModal } from '@/components/Form/brand-admin-form/create-unit-form'
+import { unitColumn } from '@/utils/columns/brand-admin'
+import { SkeletonLoader } from '@/components/laoder'
 
-
- const unitColumn = () => [
-  {
-    accessorKey: "unit",
-    header: "Unit",
-    cell: ({ row }) => (
-      <span className="font-medium">
-        {row.original.unit}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "baseUnit",
-    header: "Base Unit",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.baseUnit}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "conversionRate",
-    header: "Converstion Rate",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.conversionRate}
-      </span>
-    ),
-  },
-]
 
 export const Unit = () => {
   const [open, setOpen] = useState(false)
@@ -58,7 +30,7 @@ export const Unit = () => {
       <div className="flex-1 min-h-0 p-4 lg:p-6">
         {
           isLoading ?
-            <div>Loading...</div> :
+            <SkeletonLoader/>:
             <DataCard
               title={"Create and update Recipies for the items"}
               searchable

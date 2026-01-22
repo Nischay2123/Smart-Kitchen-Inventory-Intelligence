@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/select"
 import { CheckCircle2, XCircle } from "lucide-react"
 import { useCreateUnitMutation } from "@/redux/apis/brand-admin/baseUnitApi"
+import { Success } from "@/components/success"
+import { Error } from "@/components/error"
 
 export function CreateUnitModal({ open, onOpenChange }) {
   const [status, setStatus] = React.useState("idle")
@@ -93,7 +95,6 @@ export function CreateUnitModal({ open, onOpenChange }) {
 
         {(status === "idle" || status === "loading") && (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Unit */}
             <Input
               placeholder="Enter Unit (e.g. kg, gm, pc)"
               value={form.unit}
@@ -103,8 +104,6 @@ export function CreateUnitModal({ open, onOpenChange }) {
               required
             />
 
-
-            {/* Base Unit */}
             <Select
               value={form.baseUnit}
               onValueChange={(val) =>
@@ -153,38 +152,11 @@ export function CreateUnitModal({ open, onOpenChange }) {
         )}
 
         {status === "success" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <CheckCircle2 className="h-12 w-12 text-green-500" />
-            <p className="text-sm text-muted-foreground">
-              {message}
-            </p>
-
-            <Button
-              className="mt-2"
-              onClick={() => {
-                setStatus("idle")
-                onOpenChange(false)
-              }}
-            >
-              Close
-            </Button>
-          </div>
+          <Success message={message} setStatus={setStatus} onOpenChange={onOpenChange} />
         )}
 
         {status === "error" && (
-          <div className="flex flex-col items-center gap-3 py-6">
-            <XCircle className="h-12 w-12 text-red-500" />
-            <p className="text-sm text-muted-foreground">
-              {message}
-            </p>
-
-            <Button
-              variant="outline"
-              onClick={() => setStatus("idle")}
-            >
-              Try Again
-            </Button>
-          </div>
+            <Error message={message} setStatus={setStatus} />
         )}
       </DialogContent>
     </Dialog>

@@ -1,5 +1,5 @@
 import React from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 
 import DataCard from "@/components/data-card/data-card";
 import SiteHeader from "@/components/site-header";
