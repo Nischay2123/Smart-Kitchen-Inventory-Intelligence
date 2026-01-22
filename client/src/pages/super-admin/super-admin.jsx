@@ -22,7 +22,6 @@ const SuperAdmin = () => {
     data?.data?.map((tenant) => ({
       id: tenant._id,
       name: tenant.name,
-      count: tenant.outletsCount ?? 0,
     })) ?? [];
 
   const handleDeleteBrand = async (brand) => {
@@ -39,7 +38,7 @@ const SuperAdmin = () => {
       <SiteHeader
         headerTitle="Brands"
         description="Manage brands and brand managers"
-        actionTooltip="Create Brand"
+        actionTooltip="Create New Brand"
         onActionClick={() => setOpen(true)}
       />
 
@@ -65,7 +64,7 @@ const SuperAdmin = () => {
               })
             }
             onDeleteBrand={handleDeleteBrand}
-            disabled={isDeleting} // optional
+            disabled={isDeleting} 
           />
         )}
       </div>

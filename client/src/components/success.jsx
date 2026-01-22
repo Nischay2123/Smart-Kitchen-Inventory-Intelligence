@@ -5,7 +5,8 @@ import { Button } from './ui/button'
 export const Success = ({
     onOpenChange,
     message,
-    resetForm
+    resetForm,
+    setStatus
 }) => {
   return (
     <div className="flex flex-col items-center gap-3 py-6">
@@ -20,6 +21,7 @@ export const Success = ({
               onClick={() =>{ 
                 onOpenChange(false)
                 resetForm && resetForm()
+                setStatus && setStatus("idle")
               }}
             >
               Close
