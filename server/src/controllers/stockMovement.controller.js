@@ -6,193 +6,6 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-// export const createStockMovement = asyncHandler(async (req, res) => {
-//   const session = await mongoose.startSession()
-//   session.startTransaction()
-
-//   try {
-//     const {
-//       ingredientMasterId,
-//       quantity,
-//       reason,
-//       purchasePricePerUnit,
-//       unitId
-//     } = req.body
-//     console.log(ingredientMasterId, quantity , reason ,purchasePricePerUnit);
-    
-//     if (
-//       !ingredientMasterId ||
-//       typeof quantity !== "number" ||
-//       quantity <= 0 ||
-//       !reason
-//     ) {
-//       throw new ApiError(
-//         400,
-//         "ingredientMasterId, quantity (>0) and reason are required"
-//       )
-//     }
-
-//     const VALID_REASONS = [
-//       "PURCHASE",
-//       "POSITIVE_ADJUSTMENT",
-//       "NEGATIVE_ADJUSTMENT",
-//     ]
-
-//     if (!VALID_REASONS.includes(reason)) {
-//       throw new ApiError(400, "Invalid reason")
-//     }
-
-//     if (reason === "PURCHASE" && !purchasePricePerUnit) {
-//       throw new ApiError(400, "purchasePrice is required for PURCHASE")
-//     }
-
-//     const tenantContext = req.user.tenant
-//     const outletContext = req.user.outlet
-
-//     if (!tenantContext?.tenantId || !outletContext?.outletId) {
-//       throw new ApiError(400, "User not linked to tenant or outlet")
-//     }
-
-//     const ingredient = await IngredientMaster.findOne({
-//       _id: ingredientMasterId,
-//       "tenant.tenantId": tenantContext.tenantId,
-//     }).session(session)
-
-//     if (!ingredient) {
-//       throw new ApiError(404, "Ingredient not found")
-//     }
-
-//     const conversionRate = ingredient.unit.conversionRate
-//     const quantityInBase = quantity * conversionRate
-
-//     const POSITIVE_REASONS = ["PURCHASE", "POSITIVE_ADJUSTMENT"]
-//     const signedQtyInBase = POSITIVE_REASONS.includes(reason)
-//       ? quantityInBase
-//       : -quantityInBase
-
-//     let stock = await Stock.findOne({
-//       "tenant.tenantId": tenantContext.tenantId,
-//       "outlet.outletId": outletContext.outletId,
-//       "masterIngredient.ingredientMasterId": ingredient._id,
-//     }).session(session)
-
-//     if (!stock) {
-//       if (signedQtyInBase < 0) {
-//         throw new ApiError(
-//           400,
-//           "Cannot deduct stock before initialization"
-//         )
-//       }
-
-//       const unitCost =
-//         reason === "PURCHASE"
-//           ? purchasePrice / conversionRate
-//           : 0
-
-//       stock = await Stock.create(
-//         [
-//           {
-//             tenant: tenantContext,
-//             outlet: outletContext,
-//             masterIngredient: {
-//               ingredientMasterId: ingredient._id,
-//               ingredientMasterName: ingredient.name,
-//             },
-//             baseUnit: ingredient.unit.baseUnit,
-//             currentStockInBase: quantityInBase,
-//             unitCost,
-//             alertState: "OK",
-//           },
-//         ],
-//         { session }
-//       )
-
-//       stock = stock[0]
-//     } else {
-//       const newQty =
-//         stock.currentStockInBase + signedQtyInBase
-
-//       if (newQty < 0) {
-//         throw new ApiError(400, "Stock cannot go below zero")
-//       }
-
-//       if (reason === "PURCHASE") {
-//         const oldValue =
-//           stock.currentStockInBase * stock.unitCost
-
-//         const newValue =
-//           quantityInBase *
-//           (purchasePrice / conversionRate)
-
-//         stock.unitCost =
-//           (oldValue + newValue) / newQty
-//       }
-
-//       stock.currentStockInBase = newQty
-//     }
-
-//     if (
-//       stock.currentStockInBase <=
-//       ingredient.threshold.criticalInBase
-//     ) {
-//       stock.alertState = "CRITICAL"
-//     } else if (
-//       stock.currentStockInBase <= ingredient.threshold.lowInBase
-//     ) {
-//       stock.alertState = "LOW"
-//     } else {
-//       stock.alertState = "OK"
-//     }
-
-//     await stock.save({ session })
-
-//     const movement = await StockMovement.create(
-//       [
-//         {
-//           tenant: tenantContext,
-//           outlet: outletContext,
-//           ingredient: {
-//             ingredientMasterId: ingredient._id,
-//             ingredientMasterName: ingredient.name,
-//           },
-//           quantity,
-//           unit: ingredient.unit.unitName,
-//           reason,
-//           orderId:
-//             reason === "ORDER" ? orderId || null : null,
-//           stockId: stock._id,
-//           purchasePriceInUnit:purchasePrice
-//         },
-//       ],
-//       { session }
-//     )
-
-//     await session.commitTransaction()
-//     session.endSession()
-
-//     const io = req.app.get("io")
-//     io.to(
-//       `tenant:${tenantContext.tenantId}:outlet:${outletContext.outletId}`
-//     ).emit("stock_updated", {
-//       ingredientId: ingredient._id,
-//       currentStockInBase: stock.currentStockInBase,
-//       alertState: stock.alertState,
-//     })
-
-//     return res.status(201).json(
-//       new ApiResoponse(
-//         201,
-//         { stock, movement: movement[0] },
-//         "Stock movement created successfully"
-//       )
-//     )
-//   } catch (error) {
-//     await session.abortTransaction()
-//     session.endSession()
-//     throw error
-//   }
-// })
-
 export const createStockMovement = asyncHandler(async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -479,5 +292,85 @@ export const getAllStockMovementsExceptOrders = asyncHandler(async (req, res) =>
 
   return res.status(200).json(
     new ApiResoponse(200, movements, "Stock movements fetched")
+  );
+});
+
+
+
+export const getOrderConsumptionSummary = asyncHandler(async (req, res) => {
+  if (req.user.role !== "OUTLET_MANAGER") {
+    throw new ApiError(
+      403,
+      "Only OUTLET_MANAGER can view order consumption"
+    );
+  }
+
+  const tenantContext = req.user.tenant;
+  const outletContext = req.user.outlet;
+
+  if (!tenantContext?.tenantId || !outletContext?.outletId) {
+    throw new ApiError(
+      400,
+      "User is not associated with tenant or outlet"
+    );
+  }
+
+  const { fromDate, toDate } = req.query;
+
+  if (!fromDate || !toDate) {
+    throw new ApiError(
+      400,
+      "fromDate and toDate are required"
+    );
+  }
+
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+    throw new ApiError(400, "Invalid date format");
+  }
+
+  const result = await StockMovement.aggregate([
+    {
+      $match: {
+        "tenant.tenantId": tenantContext.tenantId,
+        "outlet.outletId": outletContext.outletId,
+        reason: "ORDER",
+        createdAt: { $gte: from, $lte: to },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          ingredientName: "$ingredient.ingredientMasterName",
+          unit: "$unit",
+        },
+        totalConsumed: {
+          $sum: "$quantity",
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        ingredientName: "$_id.ingredientName",
+        unit: "$_id.unit",
+        totalConsumed: 1,
+      },
+    },
+    {
+      $sort: {
+        ingredientName: 1,
+      },
+    },
+  ]);
+
+  return res.status(200).json(
+    new ApiResoponse(
+      200,
+      result,
+      "Order consumption summary fetched successfully"
+    )
   );
 });

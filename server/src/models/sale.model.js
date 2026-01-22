@@ -2,6 +2,41 @@ import mongoose from "mongoose";
 
 const { Schema, model } = mongoose;
 
+const CancelIngredientSchema = new Schema(
+  {
+    ingredientMasterId: {
+      type: Schema.Types.ObjectId,
+      ref: "IngredientMaster",
+      required: true,
+    },
+
+    ingredientMasterName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    requiredQty: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    availableStock: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    issue: {
+      type: String,
+      enum: ["INGREDIENT_NOT_FOUND", "INSUFFICIENT_STOCK"],
+      required: true,
+    },
+  },
+  { _id: false }
+);
+
 const SaleItemSchema = new Schema(
   {
     itemId: {
@@ -35,99 +70,70 @@ const SaleItemSchema = new Schema(
     },
 
     cancelIngredientDetails: {
-      type: [
-        {
-          ingredientMasterId: {
-            type: Schema.Types.ObjectId,
-            ref: "IngredientMaster",
-            required: true,
-          },
-          ingredientMasterName: {
-            type: String,
-            required: true,
-          },
-          requiredQty: {
-            type: Number,
-            required: true,
-            min: 0,
-          },
-          issue: {
-          type: String,
-            enum: [
-              "INGREDIENT_NOT_FOUND",
-              "INSUFFICIENT_STOCK",
-            ],
-            required: true,
-         },
-          availableStock: {
-            type: Number,
-            required: true,
-            min: 0,
-          },
-        },
-      ],
-      default: [], 
+      type: [CancelIngredientSchema],
+      default: [],
     },
-
-
   },
   { _id: false }
 );
 
 const SalesSchema = new Schema(
   {
+    
+
     tenant: {
-      type: {
-        tenantId: {
-          type: Schema.Types.ObjectId,
-          ref: "Tenant",
-          required: true,
-        },
-        tenantName: {
-          type: String,
-          required: true,
-          trim: true,
-        },
+      tenantId: {
+        type: Schema.Types.ObjectId,
+        ref: "Tenant",
+        required: true,
       },
-      required: true,
+      tenantName: {
+        type: String,
+        required: true,
+        trim: true,
+      },
     },
 
     outlet: {
-      type: {
-        outletId: {
-          type: Schema.Types.ObjectId,
-          ref: "Outlet",
-          required: true,
-        },
-        outletName: {
-          type: String,
-          required: true,
-          trim: true,
-        },
+      outletId: {
+        type: Schema.Types.ObjectId,
+        ref: "Outlet",
+        required: true,
       },
-      required: true,
+      outletName: {
+        type: String,
+        required: true,
+        trim: true,
+      },
     },
-
-  requestId: {
-    type: String,
-    required: true,
-    unique: true,
-  },
 
     items: {
       type: [SaleItemSchema],
       required: true,
       validate: {
-        validator: (v) => Array.isArray(v) && v.length > 0,
+        validator(v) {
+          return Array.isArray(v) && v.length > 0;
+        },
         message: "Sale must contain at least one item",
       },
     },
 
     state: {
       type: String,
-      enum: ["CONFIRMED", "CANCELED"],
+      enum: ["PENDING", "CONFIRMED", "CANCELED"],
       required: true,
-      default: "CONFIRMED",
+      default: "PENDING",
+    },
+
+    reason: {
+      type: String,
+      enum: [
+        "RECIPE_NOT_FOUND",
+        "INGREDIENT_NOT_FOUND",
+        "INSUFFICIENT_STOCK",
+        "STOCK_CHANGED",
+      ],
+      default: null,
     },
   },
   {

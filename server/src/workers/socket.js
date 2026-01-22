@@ -5,7 +5,7 @@ export const socket = io("http://localhost:8000", {
 });
 
 export const emitEvent = (room, event, payload) => {
-  // console.log("worker socket");
+  // console.log(event, payload);
   
   socket.emit("worker_emit", { room, event, payload });
 

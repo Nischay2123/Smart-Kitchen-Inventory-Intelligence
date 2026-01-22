@@ -64,7 +64,7 @@ const MenuItem = () => {
                 {
                     isLoading ?
                         <div>Loading...</div> :
-                        data.data.length == 0 ?
+                        data?.data?.length  == 0 ?
                             <div className='flex flex-col justify-center items-center'>
                                 <Empty />
                                 <Button 

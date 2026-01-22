@@ -10,8 +10,6 @@ import Unit from "./baseUnit.routes.js";
 import Stocks from "./stock.routes.js";
 import StockMovements from "./stockMovement.routes.js";
 import Sales from "./sale.routes.js";
-import { createSale } from "../controllers/sale.controller.js";
-import { verifyJwt } from "../middlerwares/auth.middleware.js";
 
 const router = express.Router();
 

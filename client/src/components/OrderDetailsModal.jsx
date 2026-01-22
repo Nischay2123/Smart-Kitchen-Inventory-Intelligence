@@ -83,7 +83,7 @@ const OrderDetailsModal = ({ open, onClose, order, isLoading ,isCanceled}) => {
 
                 <div className="mt-2 text-sm text-gray-600">
                     <span className="font-medium">Request ID:</span>{" "}
-                    {order.requestId}
+                    {order._id}
                 </div>
 
                 <div className="mt-4 border rounded-md overflow-hidden">

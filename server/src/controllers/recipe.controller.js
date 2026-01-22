@@ -132,7 +132,6 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
   );
 });
 
-
 export const getSingleRecipe = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
     throw new ApiError(403, "Only BRAND_ADMIN can view recipes");
@@ -149,6 +148,7 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User is not associated with any tenant");
   }
 
+  // 1️⃣ Fetch recipe
   const recipe = await Recipe.findOne({
     "tenant.tenantId": tenantContext.tenantId,
     "item.itemId": itemId,
@@ -156,14 +156,11 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
 
   if (!recipe) {
     return res.status(200).json(
-      new ApiResoponse(
-        200,
-        {},
-        "Recipe doesn't exist"
-      )
+      new ApiResoponse(200, {}, "Recipe doesn't exist")
     );
   }
 
+  // 2️⃣ Fetch ingredient masters
   const ingredientIds = recipe.recipeItems.map(
     i => i.ingredientMasterId
   );
@@ -176,16 +173,36 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
     ingredients.map(i => [i._id.toString(), i])
   );
 
+  // 3️⃣ Transform recipe items
   const transformedRecipeItems = recipe.recipeItems.map(item => {
     const ingredient = ingredientMap.get(
       item.ingredientMasterId.toString()
     );
 
+    if (!ingredient) {
+      throw new ApiError(
+        500,
+        `Ingredient not found for recipe item ${item.ingredientName}`
+      );
+    }
+    console.log(ingredient);
+    
+    const selectedUnit = ingredient.unit.find(
+      u => u.unitName === item.unit
+    );
+
+    if (!selectedUnit) {
+      throw new ApiError(
+        500,
+        `Unit ${item.unit} not configured for ingredient ${ingredient.name}`
+      );
+    }
+
     return {
       ingredientId: item.ingredientMasterId,
       ingredientName: item.ingredientName,
-      quantity: item.baseQty / ingredient.unit.conversionRate,
-      unitName: ingredient.unit.unitName,
+      quantity: item.qty,                 
+      unitName: item.unit,            
     };
   });
 
@@ -193,8 +210,11 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
     new ApiResoponse(
       200,
       {
-        ...recipe,
+        _id: recipe._id,
+        item: recipe.item,
         recipeItems: transformedRecipeItems,
+        createdAt: recipe.createdAt,
+        updatedAt: recipe.updatedAt,
       },
       "Recipe fetched successfully"
     )

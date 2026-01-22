@@ -1,43 +1,142 @@
-import { orderQueue } from "../queues/order.queue.js";
-import { v4 as uuid } from "uuid";
+
+import mongoose from "mongoose";
+
 import { buildStockRequirement } from "../services/stockRequirement.service.js";
 import { validateStock } from "../services/stockValidator.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import mongoose from "mongoose";
+
 import Stock from "../models/stock.model.js";
 import Sale from "../models/sale.model.js";
+import Recipe from "../models/recipes.model.js";
+
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 
-export const createSale = asyncHandler(async (req, res) => {
+import { orderQueue } from "../queues/order.queue.js";
 
+export const createSale = asyncHandler(async (req, res) => {
   const { items } = req.body;
   const tenant = req.user.tenant;
   const outlet = req.user.outlet;
-  
-  const requirementList =
-    await buildStockRequirement(items, tenant.tenantId);
 
-  const validation =
-    await validateStock(requirementList, outlet.outletId);
 
-  const requestId = uuid();
+  const saleRecord = await Sale.create({
+    tenant,
+    outlet,
+    state: "PENDING",
+    items: items.map(i => ({
+      itemId: i.itemId,
+      itemName: i.itemName,
+      qty: i.qty,
+      totalAmount: 0,
+      makingCost: 0,
+      cancelIngredientDetails: [],
+    })),
+  });
 
-  if (!validation.isValid) {
-    
-    orderQueue.add("sale.failed", {
-      requestId,
-      state: "CANCELED",
-      items,
-      tenant,
-      outlet,
-      failed: validation.failed,
-    });
+
+  const itemIds = items.map(i => i.itemId);
+
+  const recipes = await Recipe.find({
+    "tenant.tenantId": tenant.tenantId,
+    "item.itemId": { $in: itemIds },
+  }).lean()
+    ;
+  console.log(recipes);
+
+  const recipeMap = new Map(
+    recipes.map(r => [String(r.item.itemId), r])
+  );
+
+  const { requirementList, recipeErrors } =
+    await buildStockRequirement(items, recipeMap);
+
+  if (recipeErrors.length > 0) {
+    await Sale.updateOne(
+      { _id: saleRecord._id },
+      {
+        $set: {
+          state: "CANCELED",
+          reason: "RECIPE_NOT_FOUND",
+          items: items.map(i => ({
+            itemId: i.itemId,
+            itemName: i.itemName,
+            qty: i.qty,
+            totalAmount: 0,
+            makingCost: 0,
+            cancelIngredientDetails: [],
+          })),
+        },
+      }
+    );
 
     return res.status(400).json({
+      saleId: saleRecord._id,
       state: "CANCELED",
-      requestId,
-      failed: validation.failed,
+      reason: "RECIPE_NOT_FOUND",
+    });
+  }
+  console.log("hello", requirementList);
+
+
+  const validation = await validateStock(
+    requirementList,
+    outlet.outletId
+  );
+
+  if (!validation.isValid) {
+    const itemFailureMap = new Map();
+
+    for (const item of items) {
+      const recipe = recipeMap.get(String(item.itemId));
+      if (!recipe) continue;
+
+      for (const ing of recipe.recipeItems) {
+        const fail = validation.failed.find(
+          f =>
+            String(f.ingredientMasterId) ===
+            String(ing.ingredientMasterId)
+        );
+
+        if (fail) {
+          if (!itemFailureMap.has(String(item.itemId))) {
+            itemFailureMap.set(String(item.itemId), []);
+          }
+
+          itemFailureMap.get(String(item.itemId)).push({
+            ingredientMasterId: fail.ingredientMasterId,
+            ingredientMasterName: fail.ingredientMasterName || "Unknown",
+            requiredQty: fail.required,
+            availableStock: fail.available,
+            issue: "INSUFFICIENT_STOCK",
+          });
+        }
+      }
+    }
+
+    await Sale.updateOne(
+      { _id: saleRecord._id },
+      {
+        $set: {
+          state: "CANCELED",
+          reason: "INSUFFICIENT_STOCK",
+          items: items.map(i => ({
+            itemId: i.itemId,
+            itemName: i.itemName,
+            qty: i.qty,
+            totalAmount: 0,
+            makingCost: 0,
+            cancelIngredientDetails:
+              itemFailureMap.get(String(i.itemId)) || [],
+          })),
+        },
+      }
+    );
+
+    return res.status(400).json({
+      saleId: saleRecord._id,
+      state: "CANCELED",
+      reason: "INSUFFICIENT_STOCK",
     });
   }
 
@@ -46,75 +145,69 @@ export const createSale = asyncHandler(async (req, res) => {
   try {
     session.startTransaction();
 
-    for (const reqItem of requirementList) {
-
+    for (const req of requirementList) {
       const ok = await Stock.findOneAndUpdate(
         {
           "outlet.outletId": outlet.outletId,
-          "masterIngredient.ingredientMasterId": reqItem.ingredientMasterId,
-          currentStockInBase: { $gte: reqItem.requiredBaseQty },
+          "masterIngredient.ingredientMasterId": req.ingredientMasterId,
+          currentStockInBase: { $gte: req.requiredBaseQty },
         },
-
         {
-          $inc: {
-            currentStockInBase: -reqItem.requiredBaseQty,
-          },
+          $inc: { currentStockInBase: -req.requiredBaseQty },
         },
-
         { session }
       );
 
-      if (!ok) {
-        throw new ApiError(400, "STOCK_CHANGED");
-      }
+      if (!ok) throw new Error("STOCK_CHANGED");
     }
 
     await session.commitTransaction();
-
-    
-
-
-    
-      
-       orderQueue.add("sale.confirmed", {
-        requestId,
-        tenant,
-        outlet,
-        items,
-        requirementList,
-      });
-
-
-    return res.status(201).json({
+    orderQueue.add("sale.confirmed", {
+      orderId: saleRecord._id,
+      tenant,
+      outlet,
+      items,
+      requirementList,
       state: "CONFIRMED",
-      requestId,
     });
+
 
   } catch (err) {
     await session.abortTransaction();
-    throw err;
 
+    await Sale.updateOne(
+      { _id: saleRecord._id },
+      {
+        $set: {
+          state: "CANCELED",
+          reason: "STOCK_CHANGED",
+        },
+      }
+    );
+
+    throw err;
   } finally {
     session.endSession();
   }
+
+
+  return res.status(201).json({
+    saleId: saleRecord._id,
+    state: "CONFIRMED",
+  });
 });
 
-
-export const getAllSales = asyncHandler(async(req,res)=>{
+export const getAllSales = asyncHandler(async (req, res) => {
   if (req.user.role !== "OUTLET_MANAGER") {
     throw new ApiError(403, "Access denied");
   }
 
-  const tenantContext = req.user.tenant;
-  const outletContext = req.user.outlet;
-
   const { fromDate, toDate } = req.query;
 
   const filter = {
-    "tenant.tenantId": tenantContext.tenantId,
-    "outlet.outletId": outletContext.outletId,
+    "tenant.tenantId": req.user.tenant.tenantId,
+    "outlet.outletId": req.user.outlet.outletId,
   };
-
 
   if (fromDate || toDate) {
     filter.createdAt = {};
@@ -122,10 +215,9 @@ export const getAllSales = asyncHandler(async(req,res)=>{
     if (toDate) filter.createdAt.$lte = new Date(toDate);
   }
 
-  const movements = await Sale.find(filter)
-    .sort({ createdAt: -1 });
+  const sales = await Sale.find(filter).sort({ createdAt: -1 });
 
   return res.status(200).json(
-    new ApiResoponse(200, movements, "Stock movements fetched")
+    new ApiResoponse(200, sales, "Sales fetched")
   );
 });

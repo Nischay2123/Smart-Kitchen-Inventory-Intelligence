@@ -2,7 +2,6 @@ import DataCard from '@/components/data-card/data-card'
 import OrderDetailsModal from '@/components/OrderDetailsModal'
 import SiteHeader from '@/components/site-header'
 import { Button } from '@/components/ui/button'
-import { items } from '@/redux/apis/brand-admin/itemApi'
 import { useGetSaleDetailsQuery } from '@/redux/apis/outlet-manager/saleApi'
 import {useSalesSocket} from '@/sockets/sockets'
 import React, { useCallback, useState ,useEffect} from 'react'
@@ -11,10 +10,10 @@ import { useNavigate } from 'react-router-dom'
 
 const orderColumns = (onView) => [
   {
-    accessorKey: "requestId",
+    accessorKey: "_id",
     header: "Request ID",
     cell: ({ row }) => (
-      <span className="font-medium">{row.original.requestId}</span>
+      <span className="font-medium">{row.original._id}</span>
     ),
   },
 
@@ -94,7 +93,6 @@ export function aggregateCanceledIngredients(items = []) {
 
         existing.requiredQty += ing.requiredQty;
 
-        // ⚠️ available stock should be the minimum seen
         existing.availableStock = Math.min(
           existing.availableStock,
           ing.availableStock
@@ -130,6 +128,8 @@ export const Orders = () => {
   }, [data])
 
   const handleSocketCreate = useCallback((newDoc) => {
+    console.log(newDoc);
+    
     setOrders((prev) => {
       const exists = prev.some((item) => item._id === newDoc._id)
       if (exists) return prev

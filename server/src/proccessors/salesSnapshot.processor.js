@@ -1,205 +1,105 @@
 import Sales from "../models/sale.model.js";
 import MenuItem from "../models/menuItem.model.js";
-import Stock from "../models/stock.model.js";
 import Recipe from "../models/recipes.model.js";
+import Stock from "../models/stock.model.js";
 import { emitEvent } from "../workers/socket.js";
-
-// export const processSalesSnapshot = async (data) => {
-
-//   const {
-//     requestId,
-//     items,
-//     tenant,
-//     outlet,
-//     state = "CONFIRMED",
-//   } = data;
-//   console.log("processSalesSnapshot", requestId);
-
-//   const saleItems = [];
-
-//   for (const i of items) {
-
-
-//     const menu = await MenuItem.findOne({
-//       _id: i.itemId,
-//       "tenant.tenantId": tenant.tenantId,
-//     }).lean();
-
-//     if (!menu) {
-//       console.log("MENU NOT FOUND FOR", i.itemId);
-//       continue;      
-//     }
-
-//     const recipe = await Recipe.findOne({
-//       "tenant.tenantId": tenant.tenantId,
-//       "item.itemId": i.itemId,
-//     }).lean();
-
-//     if (!recipe) {
-//       console.log("not");
-
-//     }
-
-//     let makingCost = 0;
-
-//     for (const ing of recipe.recipeItems) {
-
-//       const stock = await Stock.findOne({
-//         "outlet.outletId": outlet.outletId,
-//         "masterIngredient.ingredientMasterId":
-//           ing.ingredientMasterId,
-//       }).lean();
-
-//       if (!stock) continue;
-
-//       makingCost +=
-//         ing.baseQty * stock.unitCost * i.qty;
-//     }
-
-//     saleItems.push({
-//       itemId: i.itemId,
-//       itemName: menu.itemName,
-//       qty: i.qty,
-//       totalAmount: menu.price * i.qty,
-//       makingCost,
-//     });
-//   }
-
-//   if (saleItems.length === 0) return;
-
-//   const result = await Sales.findOneAndUpdate(
-//     { requestId },
-
-//     {
-//       $setOnInsert: {
-//         requestId,
-//         tenant: {
-//           tenantId: tenant.tenantId,
-//           tenantName: tenant.tenantName,
-//         },
-
-//         outlet: {
-//           outletId: outlet.outletId,
-//           outletName: outlet.outletName,
-//         },
-
-//         items: saleItems,
-
-//         state,
-//       },
-//     },
-
-//     { 
-//       new:true,
-//       upsert: true 
-//     }
-//   );
-
-//   if (!result.lastErrorObject?.upserted) {
-//     const room = `tenant:${tenant.tenantId}:outlet:${outlet.outletId}`;
-//     console.log(result);
-    
-//     emitEvent(room, "SALES_CREATED", result.toObject());  
-//   }
-// };
-
 
 
 export const processSalesSnapshot = async (data) => {
-
   const {
-    requestId,
-    items,
+    orderId,
     tenant,
     outlet,
-    state = "CONFIRMED",
-    failed = [],
+    state,          
+    items,          
   } = data;
 
-  const saleItems = [];
+  const sale = await Sales.findById(orderId);
+  if (!sale) return;
 
-  for (const i of items) {
+  const itemIds = items.map(i => i.itemId);
 
-    const menu = await MenuItem.findOne({
-      _id: i.itemId,
+  const [menus, recipes] = await Promise.all([
+    MenuItem.find({ _id: { $in: itemIds } }).lean(),
+    Recipe.find({
       "tenant.tenantId": tenant.tenantId,
-    }).lean();
+      "item.itemId": { $in: itemIds },
+    }).lean(),
+  ]);
 
-    if (!menu) continue;
-
-    let makingCost = 0;
-    let cancelIngredientDetails = [];
-
-    if (state === "CONFIRMED") {
-
-      const recipe = await Recipe.findOne({
-        "tenant.tenantId": tenant.tenantId,
-        "item.itemId": i.itemId,
-      }).lean();
-
-      if (!recipe) continue;
-
-      for (const ing of recipe.recipeItems) {
-
-        const stock = await Stock.findOne({
-          "outlet.outletId": outlet.outletId,
-          "masterIngredient.ingredientMasterId": ing.ingredientMasterId,
-        }).lean();
-
-        if (!stock) continue;
-
-        makingCost += ing.baseQty * stock.unitCost * i.qty;
-      }
-
-    } else {
-      cancelIngredientDetails = failed.map(f => ({
-        ingredientMasterId: f.ingredientMasterId,
-        ingredientMasterName: f.ingredientMasterName || "Unknown",
-        requiredQty: f.required || 0,
-        availableStock: f.available || 0,
-      }));
-    }
-    console.log(failed);
-    
-
-    saleItems.push({
-      itemId: i.itemId,
-      itemName: menu.itemName,
-      qty: i.qty,
-      totalAmount: state === "CONFIRMED"
-        ? menu.price * i.qty
-        : 0,
-      makingCost: state === "CONFIRMED"
-        ? makingCost
-        : 0,
-      cancelIngredientDetails, 
-    });
-  }
-
-  if (saleItems.length === 0) return;
-
-  const result = await Sales.findOneAndUpdate(
-    { requestId },
-    {
-      $setOnInsert: {
-        requestId,
-        tenant: {
-          tenantId: tenant.tenantId,
-          tenantName: tenant.tenantName,
-        },
-        outlet: {
-          outletId: outlet.outletId,
-          outletName: outlet.outletName,
-        },
-        items: saleItems,
-        state,
-      },
-    },
-    { new: true, upsert: true }
+  const menuMap = new Map(menus.map(m => [String(m._id), m]));
+  const recipeMap = new Map(
+    recipes.map(r => [String(r.item.itemId), r])
   );
 
-  if (!result.lastErrorObject?.upserted) {
-    const room = `tenant:${tenant.tenantId}:outlet:${outlet.outletId}`;
-    emitEvent(room, "SALES_CREATED", result.toObject());
-  }
+  const ingredientIds = [
+    ...new Set(
+      recipes.flatMap(r =>
+        r.recipeItems.map(i => String(i.ingredientMasterId))
+      )
+    ),
+  ];
+
+  const stocks = await Stock.find({
+    "outlet.outletId": outlet.outletId,
+    "masterIngredient.ingredientMasterId": { $in: ingredientIds },
+  }).lean();
+
+  const stockMap = new Map(
+    stocks.map(s => [
+      String(s.masterIngredient.ingredientMasterId),
+      s,
+    ])
+  );
+
+  const finalItems = sale.items.map(item => {
+    if (state !== "CONFIRMED") {
+      return {
+        ...item.toObject(),
+        totalAmount: 0,
+        makingCost: 0,
+      };
+    }
+
+    const menu = menuMap.get(String(item.itemId));
+    const recipe = recipeMap.get(String(item.itemId));
+
+    if (!menu || !recipe) return item.toObject();
+
+    let makingCost = 0;
+
+    for (const ing of recipe.recipeItems) {
+      const stock = stockMap.get(
+        String(ing.ingredientMasterId)
+      );
+      if (!stock) continue;
+
+      makingCost += ing.baseQty * stock.unitCost * item.qty;
+    }
+
+    return {
+      ...item.toObject(),
+      totalAmount: menu.price * item.qty,
+      makingCost,
+    };
+  });
+
+  const saleRecord = await Sales.findOneAndUpdate(
+    { _id: orderId, state: "PENDING" },
+    {
+      $set: {
+        state,
+        items: finalItems,
+      },
+    },
+    {
+      new: true,
+    }
+  ).lean();
+
+
+  const room = `tenant:${tenant.tenantId}:outlet:${outlet.outletId}`;
+  emitEvent(room, "SALES_CREATED", 
+    saleRecord
+  );
 };

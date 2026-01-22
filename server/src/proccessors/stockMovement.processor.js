@@ -6,12 +6,12 @@ import {emitEvent} from "../workers/socket.js"
 export const processStockMovement = async (data) => {
 
   const {
-    requestId,
+    orderId,
     requirementList,
     tenant,
     outlet
   } = data;
-  console.log("processStockMovement",requestId);
+  console.log("processStockMovement",orderId);
   
   for (const r of requirementList) {
 
@@ -27,11 +27,12 @@ export const processStockMovement = async (data) => {
       "outlet.outletId": outlet.outletId,
       "masterIngredient.ingredientMasterId": r.ingredientMasterId,
     }).lean();
-
+    // console.log(ingredient.unit[0].baseUnit);
+    
     const result = await StockMovement.findOneAndUpdate(
 
       {
-        orderId: requestId,
+        orderId: orderId,
         "ingredient.ingredientMasterId": r.ingredientMasterId,
         reason: "ORDER",
       },
@@ -39,7 +40,7 @@ export const processStockMovement = async (data) => {
       {
         $setOnInsert: {
 
-          orderId: requestId,
+          orderId: orderId,
 
           tenant: {
             tenantId: tenant.tenantId,
@@ -58,7 +59,7 @@ export const processStockMovement = async (data) => {
 
           quantity: r.requiredBaseQty,
 
-          unit: ingredient.unit.baseUnit,
+          unit: ingredient.unit[0].baseUnit,
 
           reason: "ORDER",
 

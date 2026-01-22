@@ -52,6 +52,7 @@ export const useSalesSocket = ({
   onError,
 }) => {
   useEffect(() => {
+    
     console.log(tenantId, outletId);
     if (!tenantId || !outletId) return;
     

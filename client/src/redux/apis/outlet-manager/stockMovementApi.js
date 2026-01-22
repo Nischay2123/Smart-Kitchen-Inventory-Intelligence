@@ -17,6 +17,14 @@ export const StockMovement = baseApi.injectEndpoints({
       }),
       providesTags: ["Stocks"],
     }),
+    getSaleStockConsumption: builder.query({
+      query: ({fromDate,toDate}) => ({
+        url: "stockMovements/get_stock_consumption",
+        method: "GET",
+        params: { fromDate, toDate },
+      }),
+      providesTags: ["Stocks"],
+    }),
 
     createStockMovement: builder.mutation({
       query: ({ ingredientMasterId, quantity,reason,purchasePricePerUnit,unitId }) => ({
@@ -27,11 +35,14 @@ export const StockMovement = baseApi.injectEndpoints({
       invalidatesTags: ["Stocks"],
     }),
 
+
+
   }),
 });
 
 export const {
   useGetStockMovementDetailsQuery,
   useCreateStockMovementMutation,
-  useGetSaleStockMovementDetailsQuery
+  useGetSaleStockMovementDetailsQuery,
+  useGetSaleStockConsumptionQuery
 } = StockMovement;
