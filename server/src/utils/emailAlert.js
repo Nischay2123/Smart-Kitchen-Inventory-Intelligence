@@ -28,3 +28,21 @@ export const sendStockAlertEmail = async ({
     `,
   });
 };
+
+export const sendOTPEmail = async ({
+  to,
+  otp
+}) => {
+  console.log(to,otp,process.env.SMTP_USER);
+  
+  await mailer.sendMail({
+    from: `"Stock Alerts" <${process.env.SMTP_USER}>`,
+    to,
+    subject: "Set your password - OTP Verification",
+    html:`
+      <h2>Welcome to the platform</h2>
+      <p>Your OTP is: <b>${otp}</b></p>
+      <p>This OTP is valid for 10 minutes.</p>
+    `,
+  });
+};

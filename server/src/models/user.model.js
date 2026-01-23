@@ -11,7 +11,7 @@ const UserSchema = new Schema(
       type: {
         tenantId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref:"Tenant",
+          ref: "Tenant",
         },
         tenantName: {
           type: String,
@@ -25,7 +25,7 @@ const UserSchema = new Schema(
       type: {
         outletId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref:"Outlet",
+          ref: "Outlet",
         },
         outletName: {
           type: String,
@@ -37,7 +37,6 @@ const UserSchema = new Schema(
 
     userName: {
       type: String,
-      required: true,
       lowercase: true,
       trim: true,
     },
@@ -52,15 +51,27 @@ const UserSchema = new Schema(
 
     password: {
       type: String,
-      required: true,
       select: false,
     },
 
     role: {
       type: String,
       enum: ["SUPER_ADMIN", "BRAND_ADMIN", "OUTLET_MANAGER"],
-      required: true,
     },
+
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    otpHash: String,
+    otpExpiresAt: Date,
+    otpPurpose: {
+      type: String,
+      enum: ["SIGNUP", "FORGOT_PASSWORD"],
+    },
+
+    
   },
   {
     timestamps: true,

@@ -21,7 +21,6 @@ const connectDB = async () => {
 };
 
 connectDB();
-console.log(process.env.SMTP_HOST,process.env.SMTP_PORT,process.env.SMTP_USER,process.env.SMTP_PASS );
 
 const connection = new IORedis(
    { maxRetriesPerRequest: null,}
@@ -31,7 +30,6 @@ export const orderWorker = new Worker(
   "orders",
   async (job) => {
     console.log("🚀 ORDER WORKER STARTED");
-    console.log();
     
     const { name, data } = job;
 

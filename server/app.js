@@ -1,5 +1,7 @@
-import express from "express";
 import env from "dotenv"
+env.config()
+
+import express from "express";
 import connectDB from "./src/utils/db.js";
 import cors from 'cors';
 import cookieParser from 'cookie-parser'
@@ -7,6 +9,8 @@ import morgan from "morgan"
 import apiRoutes from "./src/routes/index.js";
 import http from "http";
 import { initSocket } from "./src/sockets/socket.js";
+import "./src/utils/mailer.js";
+
 
 const port = process.env.PORT ?? 8000
 const corsOptions = {
@@ -23,7 +27,6 @@ const corsOptions = {
 
 
 const app = express();
-env.config()
 connectDB();
 
 

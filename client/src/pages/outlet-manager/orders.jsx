@@ -6,15 +6,14 @@ import { Button } from '@/components/ui/button'
 import { useGetSaleDetailsQuery } from '@/redux/apis/outlet-manager/saleApi'
 import {useSalesSocket} from '@/sockets/sockets'
 import React, { useCallback, useState ,useEffect} from 'react'
-import { useNavigate } from 'react-router-dom'
 
 
 const orderColumns = (onView) => [
   {
-    accessorKey: "_id",
-    header: "Request ID",
+    accessorKey: "createdAt",
+    header: "Time",
     cell: ({ row }) => (
-      <span className="font-medium">{row.original._id}</span>
+      <span className="font-medium">{`${new Date(row.original.createdAt).toLocaleDateString()} - ${new Date(row.original.createdAt).toLocaleTimeString()}`}</span>
     ),
   },
 

@@ -40,17 +40,35 @@ export const outlets = baseApi.injectEndpoints({
     }),
 
     createOutletManager: builder.mutation({
-      query: ({ userName, email, password, outletId}) => ({
-        url: "users/create_outlet_admin",
+      query: ({ userName, email, password}) => ({
+        url: "users/create_outlet_manager",
         method: "POST",
         body: {
           userName,
           email,
           password,
-          outletId,
         },
       }),
       invalidatesTags: ["OutletManagers"],
+    }),
+    sendOtpOutlet: builder.mutation({
+      query: ({ email,outletId }) => ({
+        url: "users/genrate_otp_outlet",
+        method: "POST",
+        body: {
+          email,outletId
+        },
+      }),
+    }),
+    verifyOtpOutlet: builder.mutation({
+      query: ({email,otp }) => ({
+        url: "users/verify_otp_outlet",
+        method: "POST",
+        body: {
+          email,
+          otp
+        },
+      }),
     }),
 
     deleteOutletManager: builder.mutation({
@@ -72,4 +90,6 @@ export const {
   useGetAllOutletManagersQuery,
   useCreateOutletManagerMutation,
   useDeleteOutletManagerMutation,
+  useVerifyOtpOutletMutation,
+  useSendOtpOutletMutation
 } = outlets;

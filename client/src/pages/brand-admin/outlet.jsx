@@ -9,7 +9,7 @@ import {
 import { useLocation, useParams } from 'react-router-dom'
 import { CreateOutletManagerModal } from '@/components/Form/brand-admin-form/create-outlet-manager-form'
 import { outletManagerColumns } from '@/utils/columns/brand-admin'
-import { GridLoader, SkeletonLoader } from '@/components/laoder'
+import {  SkeletonLoader } from '@/components/laoder'
 
 
 
