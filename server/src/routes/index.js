@@ -10,6 +10,7 @@ import Unit from "./baseUnit.routes.js";
 import Stocks from "./stock.routes.js";
 import StockMovements from "./stockMovement.routes.js";
 import Sales from "./sale.routes.js";
+import Analytics from "./analytic.routes.js";
 
 const router = express.Router();
 
@@ -22,7 +23,8 @@ router.use("/ingredient", IngredientMaster);
 router.use("/recipes", Recipe);
 router.use("/stocks", Stocks);
 router.use("/stockMovements", StockMovements);
-router.use("/sales",Sales)
+router.use("/sales",Sales);
+router.use("/analytics",Analytics);
 
 
 export default router;

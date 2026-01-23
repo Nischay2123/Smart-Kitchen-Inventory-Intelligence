@@ -1,3 +1,4 @@
+import CancelIngredientsDialog from '@/components/canceled-ingredient'
 import DataCard from '@/components/data-card/data-card'
 import OrderDetailsModal from '@/components/OrderDetailsModal'
 import SiteHeader from '@/components/site-header'
@@ -72,44 +73,12 @@ const orderColumns = (onView) => [
 ]
 
 
-export function aggregateCanceledIngredients(items = []) {
-  const map = new Map();
-
-  for (const item of items) {
-    if (!Array.isArray(item.cancelIngredientDetails)) continue;
-
-    for (const ing of item.cancelIngredientDetails) {
-      const key = String(ing.ingredientMasterId);
-
-      if (!map.has(key)) {
-        map.set(key, {
-          ingredientMasterId: ing.ingredientMasterId,
-          ingredientMasterName: ing.ingredientMasterName,
-          requiredQty: ing.requiredQty,
-          availableStock: ing.availableStock,
-        });
-      } else {
-        const existing = map.get(key);
-
-        existing.requiredQty += ing.requiredQty;
-
-        existing.availableStock = Math.min(
-          existing.availableStock,
-          ing.availableStock
-        );
-      }
-    }
-  }
-
-  return Array.from(map.values());
-}
 
 
 
 
 
 export const Orders = () => {
-  const navigate = useNavigate()
   const user = JSON.parse(localStorage.getItem("user"))
   const tenantId = user.tenant.tenantId
   const outletId = user.outlet.outletId
@@ -119,6 +88,7 @@ export const Orders = () => {
 
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCanceledModalOpen, setIsCanceledModalOpen] = useState(false)
   const[isCanceled,setISCancled] = useState(false)
 
   useEffect(() => {
@@ -150,13 +120,12 @@ export const Orders = () => {
 
   const handleViewOrder = (order) => {
     if (order.state=="CANCELED") {
-
-      const cancelIngredient= aggregateCanceledIngredients(order.items)
+      setSelectedOrder(order.items)
       setISCancled(true);
-      setSelectedOrder(cancelIngredient)
-      setIsModalOpen(true)
+      setIsCanceledModalOpen(true)
       return
     }
+    setISCancled(false)
     setSelectedOrder(order.items)
     setIsModalOpen(true)
   }
@@ -184,13 +153,17 @@ export const Orders = () => {
         )}
       </div>
 
-      <OrderDetailsModal
+      {isCanceled? 
+      <CancelIngredientsDialog
+       items={selectedOrder}
+       onClose={()=>setIsCanceledModalOpen(false)}
+       open={isCanceledModalOpen} />
+        :<OrderDetailsModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         order={selectedOrder}
         isLoading={isLoading}
-        isCanceled={isCanceled}
-      />
+      />}
     </div>
   )
 }

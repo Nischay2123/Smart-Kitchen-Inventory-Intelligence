@@ -155,7 +155,6 @@ export const createStockMovement = asyncHandler(async (req, res) => {
       stock.currentStockInBase = newQty;
     }
 
-    /* ---------------- Alert State ---------------- */
     if (
       stock.currentStockInBase <=
       ingredient.threshold.criticalInBase
@@ -175,7 +174,6 @@ export const createStockMovement = asyncHandler(async (req, res) => {
     console.log(purchasePricePerUnit);
     
 
-    /* ---------------- Stock Movement ---------------- */
     const movement = await StockMovement.create(
       [
         {
@@ -201,7 +199,6 @@ export const createStockMovement = asyncHandler(async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    /* ---------------- Realtime Emit ---------------- */
     const io = req.app.get("io");
     io.to(
       `tenant:${tenantContext.tenantId}:outlet:${outletContext.outletId}`
@@ -261,6 +258,7 @@ export const getAllStockMovementsForOrders = asyncHandler(async (req, res) => {
     new ApiResoponse(200, movements, "Stock movements fetched")
   );
 });
+
 export const getAllStockMovementsExceptOrders = asyncHandler(async (req, res) => {
   if (req.user.role !== "OUTLET_MANAGER") {
     throw new ApiError(403, "Access denied");
@@ -308,12 +306,7 @@ export const getOrderConsumptionSummary = asyncHandler(async (req, res) => {
   const tenantContext = req.user.tenant;
   const outletContext = req.user.outlet;
 
-  if (!tenantContext?.tenantId || !outletContext?.outletId) {
-    throw new ApiError(
-      400,
-      "User is not associated with tenant or outlet"
-    );
-  }
+ 
 
   const { fromDate, toDate } = req.query;
 
