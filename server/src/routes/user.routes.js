@@ -1,5 +1,5 @@
 import express from "express";
-import {  completeOutletManagerSignup, completeSignup, deleteBrandManager, deleteOutletManager, getAllBrandManagers, getAllOutletManagers, getCurrentUser, login, logout, requestOutletManagerOTP, requestSignupOTP, verifyOutletManagerOTP, verifySignupOTP, } from "../controllers/user.controller.js";
+import {  completeOutletManagerSignup, completeSignup, deleteBrandManager, deleteOutletManager, getAllBrandManagers, getAllOutletManagers, getCurrentUser, login, logout, requestOutletManagerOTP, requestSignupOTP, updateOutletManagerPermissions, verifyOutletManagerOTP, verifySignupOTP, } from "../controllers/user.controller.js";
 import { verifyJwt } from "../middlerwares/auth.middleware.js";
 
 
@@ -23,6 +23,7 @@ router.delete("/delete_outlet_manager/:managerId",verifyJwt,deleteOutletManager)
 router.post("/genrate_otp_outlet",verifyJwt,requestOutletManagerOTP);
 router.post("/verify_otp_outlet",verifyJwt,verifyOutletManagerOTP);
 router.post("/create_outlet_manager",verifyJwt,completeOutletManagerSignup);
+router.post("/permissions_outlet_managers",verifyJwt,updateOutletManagerPermissions);
 
 
 

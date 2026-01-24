@@ -71,7 +71,12 @@ const UserSchema = new Schema(
       enum: ["SIGNUP", "FORGOT_PASSWORD"],
     },
 
-    
+    outletManagerPermissions: {
+      type: Map,
+      of: Boolean,
+      default: {},
+    }
+
   },
   {
     timestamps: true,

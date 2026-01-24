@@ -17,10 +17,6 @@ const hashOTP = (otp) =>
 
 export const requestSignupOTP = asyncHandler(async (req, res) => {
   const { email } = req.body;
-
-
-
-
   const otp = generateOTP();
 
 
@@ -176,75 +172,6 @@ export const deleteBrandManager = asyncHandler(async (req, res) => {
   );
 });
 
-// export const createOutletManager = asyncHandler(async (req, res) => {
-//   if (req.user.role !== "BRAND_ADMIN") {
-//     throw new ApiError(403, "Only BRAND_ADMIN can create an Outlet Manager");
-//   }
-
-//   const { userName, email, password, outletId } = req.body;
-
-//   if (!userName || !email || !password || !outletId) {
-//     throw new ApiError(
-//       400,
-//       "userName, email, password and outletId are required"
-//     );
-//   }
-
-//   const tenantContext = req.user.tenant;
-
-//   if (!tenantContext?.tenantId) {
-//     throw new ApiError(400, "User is not associated with any tenant");
-//   }
-
-//   const outlet = await Outlet.findOne({
-//     _id: outletId,
-//     "tenant.tenantId": tenantContext.tenantId,
-//   });
-
-//   if (!outlet) {
-//     throw new ApiError(
-//       404,
-//       "Outlet not found or does not belong to your tenant"
-//     );
-//   }
-
-//   const existingUser = await User.findOne({ email });
-//   if (existingUser) {
-//     throw new ApiError(409, "User with this email already exists");
-//   }
-
-//   const outletManager = await User.create({
-//     userName,
-//     email,
-//     password,
-//     role: "OUTLET_MANAGER",
-//     tenant: {
-//       tenantId: tenantContext.tenantId,
-//       tenantName: tenantContext.tenantName,
-//     },
-//     outlet: {
-//       outletId: outlet._id,
-//       outletName: outlet.outletName,
-//     },
-//   });
-
-//   return res.status(201).json(
-//     new ApiResoponse(
-//       201,
-//       {
-//         _id: outletManager._id,
-//         userName: outletManager.userName,
-//         email: outletManager.email,
-//         role: outletManager.role,
-//         tenant: outletManager.tenant,
-//         outlet: outletManager.outlet,
-//         createdAt: outletManager.createdAt,
-//       },
-//       "Outlet Manager created successfully"
-//     )
-//   );
-// });
-
 export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
     throw new ApiError(403, "Only BRAND_ADMIN can create Outlet Manager");
@@ -255,10 +182,8 @@ export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
   if (!email || !outletId) {
     throw new ApiError(400, "email and outletId are required");
   }
-  console.log(email,outletId);
   
   const tenantContext = req.user.tenant;
-  console.log(tenantContext);
   
   const outlet = await Outlet.findOne({
     _id: outletId,
@@ -277,7 +202,6 @@ export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
   if (!user) {
     user = await User.create({ email });
   }
-  console.log(user);
   
 
   user.otpHash = hashOTP(otp);
@@ -299,13 +223,13 @@ export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
     message: "OTP sent successfully to Outlet Manager email",
   });
 });
+
 export const verifyOutletManagerOTP = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
 
   const user = await User.findOne({ email }).select(
     "+otpHash +otpExpiresAt +otpPurpose"
   );
-  console.log("generate",user.toObject());
 
   if (!user || user.otpPurpose !== "SIGNUP") {
     throw new ApiError(400, "Invalid request");
@@ -352,12 +276,15 @@ export const completeOutletManagerSignup = asyncHandler(async (req, res) => {
   if (!user.outlet?.outletId) {
     throw new ApiError(400, "Outlet context missing");
   }
-
+  
+  const permission={
+    "RESTOCK":false,
+    "ANALYTICS":false
+  }
   user.userName = userName;
   user.password = password;
   user.role = "OUTLET_MANAGER";
-  user.outlet = user.outlet;
-  user.tempOutlet = undefined;
+  user.outletManagerPermissions=permission
 
   await user.save();
   
@@ -536,3 +463,56 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
     )
   )
 })
+
+
+
+export const updateOutletManagerPermissions = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(
+      403,
+      "Only BRAND_ADMIN can update outlet manager permissions"
+    );
+  }
+
+  const { userId, permissions } = req.body;
+
+  if (!userId || !Array.isArray(permissions)) {
+    throw new ApiError(400, "userId and permissions array are required");
+  }
+
+  const tenantContext = req.user.tenant;
+
+  if (!tenantContext?.tenantId) {
+    throw new ApiError(400, "User not associated with any tenant");
+  }
+
+  const user = await User.findOne({
+    _id: userId,
+    role: "OUTLET_MANAGER",
+    "tenant.tenantId": tenantContext.tenantId,
+  });
+
+  if (!user) {
+    throw new ApiError(
+      404,
+      "Outlet Manager not found or does not belong to your tenant"
+    );
+  }
+
+  user.outletManagerPermissions = permissions;
+
+  await user.save();
+
+  return res.status(200).json(
+    new ApiResoponse(
+      200,
+      {
+        _id: user._id,
+        email: user.email,
+        userName: user.userName,
+        permissions: user.outletManagerPermissions,
+      },
+      "Outlet Manager permissions updated successfully"
+    )
+  );
+});
