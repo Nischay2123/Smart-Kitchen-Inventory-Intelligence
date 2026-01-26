@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, useNavigate } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router-dom";
 
 import { AppSidebar } from "@/components/side-bar/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -15,6 +15,8 @@ import { useLogoutMutation } from "@/redux/apis/userApi";
 
 import { useAuth } from "@/auth/auth";
 import { outletAdminRoutes } from "@/routes/outlet-routes";
+import PermissionDenied from "@/components/permission-denied";
+import NotFound from "@/components/not-found";
 
 
 
@@ -25,41 +27,30 @@ export const OutletAdminApp = () => {
 
 
 
-  const data = {
-    brand: user?.outlet?.outletName || "",
-    user: {
-      name: user?.userName || "",
-      email: user?.email || "",
-      avatar: "/avatars/shadcn.jpg",
-    },
-    liveAnalytics: [
-      {
-        name: "Stocks",
-        url: "/",
-        icon: ListCheck,
-      },
-      {
-        name: "Restock",
-        url: "/restock",
-        icon: Warehouse,
-      },
-      {
-        name: "Orders",
-        url: "/orders",
-        icon: ListOrdered,
-      },
-      {
-        name: "StockMovement",
-        url: "/saleStockMovement",
-        icon: ListOrdered,
-      },
-      {
-        name: "Consumption",
-        url: "/consumption",
-        icon: ListOrdered,
-      },
-    ],
-  };
+const rawMenu = [
+  { name: "Stocks", url: "/", icon: ListCheck,permission: "RESTOCK" },
+  { name: "Restock", url: "/restock", icon: Warehouse, permission: "RESTOCK" },
+  { name: "Orders", url: "/orders", icon: ListOrdered,permission: "ANALYTICS"  },
+  { name: "StockMovement", url: "/saleStockMovement", icon: ListOrdered,permission: "ANALYTICS"  },
+  { name: "Consumption", url: "/consumption", icon: ListOrdered, permission: "ANALYTICS" },
+];
+
+const filteredMenu = rawMenu.filter(
+  (item) =>
+    !item.permission ||
+    user?.outletManagerPermissions?.[item.permission]
+);
+
+const data = {
+  brand: user?.outlet?.outletName || "",
+  user: {
+    name: user?.userName || "",
+    email: user?.email || "",
+    avatar: "/avatars/shadcn.jpg",
+  },
+  liveAnalytics: filteredMenu,
+};
+
 
   const handleLogout = async () => {
     try {
@@ -73,7 +64,12 @@ export const OutletAdminApp = () => {
   return (
     <SidebarProvider>
         <AppSidebar handleLogout={handleLogout} data={data} />
-      <Routes>{renderRoutes(outletAdminRoutes,["OUTLET_MANAGER"])}</Routes>
+      <Routes>
+        {renderRoutes(outletAdminRoutes,["OUTLET_MANAGER"])}
+        <Route path="/403" element={<PermissionDenied />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      
     </SidebarProvider>
   );
 };

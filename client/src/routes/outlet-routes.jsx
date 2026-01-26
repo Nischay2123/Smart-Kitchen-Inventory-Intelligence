@@ -7,22 +7,27 @@ import { Consumption } from "@/pages/outlet-manager/consumption"
 export const outletAdminRoutes = [
   {
     path: "/",
-    element: <Stocks />
+    element: <Stocks />,
+    permissions: ["RESTOCK"]
   },
   {
     path: "/restock",
-    element: <Restocks />
+    element: <Restocks />,
+    permissions: ["RESTOCK"]
   },
   {
     path: "/orders",
-    element: <Orders />
+    element: <Orders />,
+    permissions: ["ANALYTICS"],
   },
   {
     path: "/saleStockMovement",
-    element: <StockMovement />
+    element: <StockMovement />,
+    permissions: ["ANALYTICS"],
   },
   {
     path: "/consumption",
-    element: <Consumption />
+    element: <Consumption />,
+    permissions: ["ANALYTICS"],
   }
 ]

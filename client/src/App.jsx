@@ -4,6 +4,7 @@ import {SuperAdminApp} from "@/apps/super-admin/super-admin-app.jsx";
 import {BrandAdminApp} from "@/apps/brand-admin/brand-admin-app.jsx";
 import {OutletAdminApp} from "@/apps/outlet-admin/outlet-admin-app.jsx";
 import { useAuth } from "./auth/auth";
+import { Navigate } from "react-router-dom";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -20,7 +21,7 @@ switch (user.role) {
   case "OUTLET_MANAGER":
     return <OutletAdminApp />;
   default:
-    return <div>Unauthorized</div>;
+    return <Navigate to="/403" replace />;;
 }
 }
 
