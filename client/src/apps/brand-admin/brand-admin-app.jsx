@@ -61,15 +61,20 @@ export const BrandAdminApp = () => {
         icon: Ruler,
       },
     ],
+    analytics: [
+      {
+        name: "Overview",
+        url: "/overview",
+        icon: Building2Icon,
+      },
+    ],
   };
 
   const handleLogout = async () => {
   try {
-    localStorage.removeItem("user")
     await logoutUser().unwrap();
   } finally {
     setUser(null);      
-    navigate("/", { replace: true });
   }
 };
 

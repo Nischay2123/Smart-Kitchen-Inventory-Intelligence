@@ -25,7 +25,8 @@ export const  AppSidebar=React.memo(({ data,handleLogout,...props })=> {
         <SidebarTrigger />
       </div>
       <SidebarContent>
-        <NavAnalytics projects={data.liveAnalytics} />
+        <NavAnalytics projects={data.liveAnalytics} title={"Operations"} />
+        {data?.analytics && <NavAnalytics projects={data?.analytics} title={"Analytics"} />}
       </SidebarContent>
       <SidebarFooter>
         <NavUser handleLogout={handleLogout} user={data.user} />

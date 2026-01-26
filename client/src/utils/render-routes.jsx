@@ -1,11 +1,6 @@
 import { ProtectedRoute } from "@/auth/protected";
 import { Route } from "react-router-dom"
 
-// export const renderRoutes = (routes) =>
-//   routes.map(({ path, element }, idx) => (
-//     <Route key={idx} path={path} element={element} />
-//   ))
-
 
 export const renderRoutes = (routes, roles) =>
   routes.map(({ path, element }, idx) => (

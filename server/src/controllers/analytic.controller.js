@@ -5,265 +5,466 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js"
 
-export const itemsProfitPerDeployement = asyncHandler(async(req,res)=>{
-    // console.log(req.user.role);
-    
-    if (req.user.role !== "BRAND_ADMIN") {
-        throw new ApiError(400,"Unauthorized Request ,Only Brand Manager can see the details")
-    }
-    const tenantContext = req.user.tenant
-    const {toDate , fromDate , outletId} = req.query;
-    
-    if (!tenantContext) {
-        throw new ApiError(400,"Unauthorized Request")
-    }
-    
-    
-    const outletObjectId = new mongoose.Types.ObjectId(outletId)
-    
-    const date = new Date(fromDate)
-    const nextDate = new Date(toDate )
-    
+export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403, "Unauthorized");
+  }
 
-    const result = await Sale.aggregate([
-        {
-            $match:{
-                "tenant.tenantId":tenantContext.tenantId,
-                "tenant.tenantName":tenantContext.tenantName,
-                createdAt:{
-                    $gte:date,
-                    $lte:nextDate
+  const { fromDate, toDate, outletId } = req.query;
+  const tenant = req.user.tenant;
+
+  const pipeline = [
+    {
+      $match: {
+        "tenant.tenantId": tenant.tenantId,
+        state: "CONFIRMED",
+        createdAt: {
+          $gte: new Date(fromDate),
+          $lte: new Date(toDate),
+        },
+        ...(outletId && {
+          "outlet.outletId": new mongoose.Types.ObjectId(outletId),
+        }),
+      },
+    },
+    { $unwind: "$items" },
+    {
+      $group: {
+        _id: "$items.itemId",
+        itemName: { $first: "$items.itemName" },
+        totalQty: { $sum: "$items.qty" },
+        totalRevenue: { $sum: "$items.totalAmount" },
+        totalMakingCost: { $sum: "$items.makingCost" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        itemId: "$_id",
+        itemName: 1,
+        totalQty: 1,
+        totalRevenue: 1,
+        totalMakingCost: 1,
+        profit: { $subtract: ["$totalRevenue", "$totalMakingCost"] },
+        profitMargin: {
+          $cond: [
+            { $gt: ["$totalRevenue", 0] },
+            {
+              $multiply: [
+                {
+                  $divide: [
+                    { $subtract: ["$totalRevenue", "$totalMakingCost"] },
+                    "$totalRevenue",
+                  ],
                 },
-                "outlet.outletId":outletObjectId,
-                state:"CONFIRMED"
-            }
-        },
-        {
-            $project:{
-                _id:0,
-                items:1,
-                outlet:1
-            }
-        },
-        {
-            $unwind: "$items",
-        },
-        {
-            $group: {
-                _id:   { 
-                    itemId:"$items.itemId",
-                },
-                outlet:{$first:"$outlet"},
-                itemName: { $first: "$items.itemName" },
-                totalQty: { $sum: "$items.qty" },
-                totalRevenue: { $sum: "$items.totalAmount" },
-                totalMakingCost: { $sum: "$items.makingCost" },
+                100,
+              ],
             },
+            0,
+          ],
         },
-        {
-            $project: {
-                _id: 0,
-                itemId: "$_id.itemId",
-                outlet: "$outlet",
-                itemName: 1,
-                totalQty: 1,
-                totalRevenue: 1,
-                totalMakingCost: 1,
-                profit: {
-                    $subtract: ["$totalRevenue", "$totalMakingCost"],
-                },
-            },
-        },
-    ])
+      },
+    },
+  ];
 
-
-    return res.status(200).json(
-        new ApiResoponse(200,result,"successfull")
-    )
-
-})
+  const data = await Sale.aggregate(pipeline);
+  return res.status(200).json(new ApiResoponse(200, data, "success"));
+});
 
 
 
-export const ingredientDetialsPerDeployement = asyncHandler(async(req,res)=>{
-    if (req.user.role !== "BRAND_ADMIN") {
-        throw new ApiError(400,"Unauthorized Request ,Only Brand Manager can see the details")
+export const ingredientUsageAndBurnRate = asyncHandler(async(req,res)=>{
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403,"Unauthorized")
+  }
+
+  const tenant = req.user.tenant
+  const { fromDate, toDate, outletId } = req.query;
+
+  const match = {
+    "tenant.tenantId": tenant.tenantId,
+    reason: "ORDER",
+    createdAt: {
+      $gte: new Date(fromDate),
+      $lte: new Date(toDate)
     }
-    const tenantContext = req.user.tenant
-    const {toDate , fromDate , outletId} = req.query;
-    
-    if (!tenantContext) {
-        throw new ApiError(400,"Unauthorized Request")
-    }
-    
-    
-    const outletObjectId = new mongoose.Types.ObjectId(outletId)
-    
-    const date = new Date(fromDate)
-    const nextDate = new Date(toDate )
+  }
 
-    const result = await StockMovement.aggregate([
-        {
-            $match:{
-                "tenant.tenantId":tenantContext.tenantId,
-                "tenant.tenantName":tenantContext.tenantName,
-                createdAt:{
-                    $gte:date,
-                    $lte:nextDate
-                },
-                "outlet.outletId":outletObjectId,
-                reason:"ORDER"
-            },
-        },
-        {
-            $project:{
-                _id:0,
-                ingredient:1,
-                quantity:1,
-                unit:1,
-                orderId:1
-            }
-        },
-        {
-            $group:{
-                _id:{
-                    ingredient:{
-                        ingredientId:"$ingredient.ingredientMasterId",
-                        ingredientName:"$ingredient.ingredientMasterName"                 
-                    }
-                },
-                totalQty:{$sum:"$quantity"},
-                noOfOrders:{$sum:1},
-                unit:{$first:"$unit"}
-            }
-        },
-        {
-            $project:{
-                _id:0,
-                ingredient:"$_id.ingredient",
-                totalQty:1,
-                unit:1,
-                noOfOrders:1
-            }
+  if (outletId) {
+    match["outlet.outletId"] = new mongoose.Types.ObjectId(outletId)
+  }
+
+  const data = await StockMovement.aggregate([
+    { $match: match },
+
+    {
+      $lookup: {
+        from: "stocks",
+        localField: "stockId",
+        foreignField: "_id",
+        as: "stock"
+      }
+    },
+    { $unwind: "$stock" },
+
+    {
+      $group: {
+        _id: "$ingredient.ingredientMasterId",
+        ingredientName: { $first: "$ingredient.ingredientMasterName" },
+        totalQty: { $sum: "$quantity" },
+        unit: { $first: "$unit" },
+        noOfOrders: { $sum: 1 },
+        totalCost: {
+          $sum: { $multiply: ["$quantity", "$stock.unitCost"] }
         }
-    ])
+      }
+    },
 
-    return res.status(200).json(
-        new ApiResoponse(200,result,"successfull")
-    )
+    {
+      $project: {
+        _id: 0,
+        ingredientId: "$_id",
+        ingredientName: 1,
+        totalQty: 1,
+        unit: 1,
+        noOfOrders: 1,
+        totalCost: 1,
+        avgQtyPerOrder: {
+          $cond:[
+            { $gt:["$noOfOrders",0] },
+            { $round:[ { $divide:["$totalQty","$noOfOrders"] },2 ] },
+            0
+          ]
+        },
+        avgCostPerOrder: {
+          $cond:[
+            { $gt:["$noOfOrders",0] },
+            { $round:[ { $divide:["$totalCost","$noOfOrders"] },2 ] },
+            0
+          ]
+        }
+      }
+    }
+  ])
+
+  return res.status(200).json(
+    new ApiResoponse(200,data,"success")
+  )
 })
 
 export const brandAnalyticsDetialedReport = asyncHandler(async(req,res)=>{
-    if (req.user.role !== "BRAND_ADMIN") {
-        throw new ApiError(400,"Unauthorized Request ,Only Brand Manager can see the details")
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(400,"Unauthorized Request ,Only Brand Manager can see the details")
+  }
+
+  const tenantContext = req.user.tenant
+  const {toDate , fromDate } = req.query;
+
+  if (!tenantContext) {
+    throw new ApiError(400,"Unauthorized Request")
+  }
+
+  const date = new Date(fromDate)
+  const nextDate = new Date(toDate )
+
+  const result = await Sale.aggregate([
+    {
+      $match:{
+        "tenant.tenantId":tenantContext.tenantId,
+        "tenant.tenantName":tenantContext.tenantName,
+        createdAt:{
+          $gte:date,
+          $lte:nextDate
+        },
+      },
+    },
+    {
+      $project:{
+        outlet:1,
+        items:1,
+        state:1
+      }
+    },
+    { $unwind:"$items" },
+    {
+      $project:{
+        outlet:1,
+        sale:"$items.totalAmount",
+        makingCost:"$items.makingCost",
+        state:1
+      }
+    },
+    {
+      $group:{
+        _id:"$_id",
+        makingCost:{
+          $sum:{
+            $cond:[
+              { $eq:["$state","CONFIRMED"] },
+              "$makingCost",
+              0
+            ]
+          }
+        },
+        sale:{
+          $sum:{
+            $cond:[
+              { $eq:["$state","CONFIRMED"] },
+              "$sale",
+              0
+            ]
+          }
+        },
+        outlet:{ $first:"$outlet" },
+        state:{ $first:"$state" }
+      }
+    },
+    {
+      $group:{
+        _id:{
+          outletId:"$outlet.outletId",
+          outletName:"$outlet.outletName",
+        },
+        cogs:{ $sum:"$makingCost" },
+        totalSale:{ $sum:"$sale" },
+        totalOrder:{ $sum:1 },
+        totalBillCanceled:{
+          $sum:{
+            $cond:[
+              { $eq:["$state","CONFIRMED"] },
+              0,
+              1
+            ]
+          }
+        }
+      }
+    },
+
+    /* ---------------- ADDITION START ---------------- */
+
+    {
+      $project:{
+        outlet:"$_id",
+        cogs:1,
+        totalSale:1,
+        totalOrder:1,
+        totalBillCanceled:1,
+        totalProfit:{ $subtract:["$totalSale","$cogs"] },
+        _id:0
+      }
+    },
+
+    {
+      $facet:{
+        outletData:[ { $match:{} } ],
+        brandTotal:[
+          {
+            $group:{
+              _id:null,
+              brandTotalSale:{ $sum:"$totalSale" }
+            }
+          }
+        ]
+      }
+    },
+
+    {
+      $project:{
+        outletData:1,
+        brandTotalSale:{
+          $ifNull:[ { $arrayElemAt:["$brandTotal.brandTotalSale",0] }, 0 ]
+        }
+      }
+    },
+
+    {
+      $unwind:"$outletData"
+    },
+
+    {
+      $project:{
+        outlet:"$outletData.outlet",
+        cogs:"$outletData.cogs",
+        totalSale:"$outletData.totalSale",
+        totalOrder:"$outletData.totalOrder",
+        totalBillCanceled:"$outletData.totalBillCanceled",
+        totalProfit:"$outletData.totalProfit",
+
+        averagePerCover:{
+          $cond:[
+            { $gt:["$outletData.totalOrder",0] },
+            { $round:[ { $divide:["$outletData.totalSale","$outletData.totalOrder"] },2 ] },
+            0
+          ]
+        },
+
+        /* ---------- NEW KPIs ---------- */
+
+        cancelRate:{
+          $cond:[
+            { $gt:["$outletData.totalOrder",0] },
+            {
+              $round:[
+                { 
+                  $multiply:[
+                    { $divide:["$outletData.totalBillCanceled","$outletData.totalOrder"] },
+                    100
+                  ]
+                },
+                2
+              ]
+            },
+            0
+          ]
+        },
+
+        profitMargin:{
+          $cond:[
+            { $gt:["$outletData.totalSale",0] },
+            {
+              $round:[
+                {
+                  $multiply:[
+                    { $divide:["$outletData.totalProfit","$outletData.totalSale"] },
+                    100
+                  ]
+                },
+                2
+              ]
+            },
+            0
+          ]
+        },
+
+        revenueContribution:{
+          $cond:[
+            { $gt:["$brandTotalSale",0] },
+            {
+              $round:[
+                {
+                  $multiply:[
+                    { $divide:["$outletData.totalSale","$brandTotalSale"] },
+                    100
+                  ]
+                },
+                2
+              ]
+            },
+            0
+          ]
+        }
+
+        /* ---------------- END ---------------- */
+
+      }
     }
-    const tenantContext = req.user.tenant
+  ])
+
+  return res.status(200).json(
+    new ApiResoponse(200,result,"successfull")
+  )
+})
+
+export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
+   const tenantContext = req.user.tenant
     const {toDate , fromDate } = req.query;
+    // console.log(tenantContext,toDate,fromDate);
     
     if (!tenantContext) {
         throw new ApiError(400,"Unauthorized Request")
     }
     
-    
-    const date = new Date(fromDate)
-    const nextDate = new Date(toDate )
-
-    const result = await Sale.aggregate([
-        {
-            $match:{
-                "tenant.tenantId":tenantContext.tenantId,
-                "tenant.tenantName":tenantContext.tenantName,
-                createdAt:{
-                    $gte:date,
-                    $lte:nextDate
-                },
+  const data = await Sale.aggregate([
+    {
+      $match: {
+        "tenant.tenantId": tenantContext.tenantId,
+        state: "CONFIRMED",
+        createdAt: { $gte: new Date(fromDate), $lte: new Date(toDate) },
+      },
+    },
+    { $unwind: "$items" },
+    {
+      $group: {
+        _id: "$items.itemId",
+        itemName: { $first: "$items.itemName" },
+        qty: { $sum: "$items.qty" },
+        profit: {
+          $sum: {
+            $subtract: ["$items.totalAmount", "$items.makingCost"],
+          },
+        },
+      },
+    },
+    {
+      $facet: {
+        stats: [
+          {
+            $group: {
+              _id: null,
+              avgQty: { $avg: "$qty" },
+              avgProfit: { $avg: "$profit" },
             },
-        },
-        {
-            $project:{
-                outlet:1,
-                items:1,
-                state:1
-            }
-        },
-        {
-            $unwind:{path:"$items"}
-        },
-        {
-            $project:{
-                outlet:1,
-                sale:"$items.totalAmount",
-                makingCost:"$items.makingCost",
-                state:1,
-                outlet:1,    
-            }
-        },
-        {
-            $group:{
-                _id:"$_id",
-                makingCost:{
-                    $sum:{
-                        $cond:{
-                            if:{$eq:["$state","CONFIRMED"]},
-                            then:"$makingCost",
-                            else:0
-                        }
-                    }
+          },
+        ],
+        items: [{ $project: { _id: 0, itemId: "$_id", itemName: 1, qty: 1, profit: 1 } }],
+      },
+    },
+    {
+      $project: {
+        items: {
+          $map: {
+            input: "$items",
+            as: "i",
+            in: {
+              itemId: "$$i.itemId",
+              itemName: "$$i.itemName",
+              qty: "$$i.qty",
+              profit: "$$i.profit",
+              category: {
+                $switch: {
+                  branches: [
+                    {
+                      case: {
+                        $and: [
+                          { $gte: ["$$i.qty", { $arrayElemAt: ["$stats.avgQty", 0] }] },
+                          { $gte: ["$$i.profit", { $arrayElemAt: ["$stats.avgProfit", 0] }] },
+                        ],
+                      },
+                      then: "STAR",
+                    },
+                    {
+                      case: {
+                        $and: [
+                          { $lt: ["$$i.qty", { $arrayElemAt: ["$stats.avgQty", 0] }] },
+                          { $gte: ["$$i.profit", { $arrayElemAt: ["$stats.avgProfit", 0] }] },
+                        ],
+                      },
+                      then: "PUZZLE",
+                    },
+                    {
+                      case: {
+                        $and: [
+                          { $gte: ["$$i.qty", { $arrayElemAt: ["$stats.avgQty", 0] }] },
+                          { $lt: ["$$i.profit", { $arrayElemAt: ["$stats.avgProfit", 0] }] },
+                        ],
+                      },
+                      then: "PLOWHORSE",
+                    },
+                  ],
+                  default: "DOG",
                 },
-                sale:{
-                    $sum:{
-                        $cond:{
-                            if:{$eq:["$state","CONFIRMED"]},
-                            then:"$sale",
-                            else:0
-                        }
-                    }
-                },
-                outlet:{$first:"$outlet"},
-                state:{$first:"$state"}
-            }
+              },
+            },
+          },
         },
-        {
-            $group:{
-                _id:{
-                    outletId:"$outlet.outletId",
-                    outletName:"$outlet.outletName",
-                },
-                cogs:{$sum:"$makingCost"},
-                totalSale:{$sum:"$sale"},
-                totalOrder:{$sum:1},
-                totalBillCanceled:{
-                    $sum:{
-                        $cond:{
-                            if:{$eq:["$state","CONFIRMED"]},
-                            then:0,
-                            else:1
-                        }
-                    }
-                }
-            }
-        },
-        {
-            $project:{
-                _id:0,
-                outlet:"$_id",
-                cogs:1,
-                totalSale:1,
-                totalOrder:1,
-                totalBillCanceled:1,
-                totalProfit:{$subtract:["$totalSale","$cogs"]},
-                averagePerCover: {
-                    $cond: [
-                        { $gt: ["$totalOrder", 0] },
-                        { $round: [{ $divide: ["$totalSale", "$totalOrder"] }, 2] },
-                        0
-                    ]
-                },
-            }
-        }
-    ])
+      },
+    },
+  ]);
 
-    return res.status(200).json(
-        new ApiResoponse(200,result,"successfull")
-    )
-})
+  return res.status(200).json(new ApiResoponse(200, data[0]?.items || [], "success"));
+});
+
+
+
+
+

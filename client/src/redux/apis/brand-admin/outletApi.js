@@ -79,6 +79,15 @@ export const outlets = baseApi.injectEndpoints({
       invalidatesTags: ["OutletManagers"],
     }),
 
+
+    updatePermission : builder.mutation({
+      query:({userId,permissions})=>({
+        url:`users/permissions_outlet_managers/${userId}`,
+        method:"POST",
+        body:{permissions}
+      }),
+      invalidatesTags:["OutletManagers"]
+    })
   }),
 });
 
@@ -91,5 +100,6 @@ export const {
   useCreateOutletManagerMutation,
   useDeleteOutletManagerMutation,
   useVerifyOtpOutletMutation,
-  useSendOtpOutletMutation
+  useSendOtpOutletMutation,
+  useUpdatePermissionMutation
 } = outlets;

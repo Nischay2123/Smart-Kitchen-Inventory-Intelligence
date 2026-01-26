@@ -464,8 +464,6 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
   )
 })
 
-
-
 export const updateOutletManagerPermissions = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
     throw new ApiError(
@@ -473,46 +471,33 @@ export const updateOutletManagerPermissions = asyncHandler(async (req, res) => {
       "Only BRAND_ADMIN can update outlet manager permissions"
     );
   }
+  const { userId } = req.params
+  const { permissions } = req.body
 
-  const { userId, permissions } = req.body;
-
-  if (!userId || !Array.isArray(permissions)) {
-    throw new ApiError(400, "userId and permissions array are required");
+  if (!permissions || typeof permissions !== "object") {
+    throw new ApiError(400, "Valid permissions object required")
   }
 
-  const tenantContext = req.user.tenant;
-
-  if (!tenantContext?.tenantId) {
-    throw new ApiError(400, "User not associated with any tenant");
-  }
-
-  const user = await User.findOne({
+  const manager = await User.findOne({
     _id: userId,
     role: "OUTLET_MANAGER",
-    "tenant.tenantId": tenantContext.tenantId,
-  });
+  })
 
-  if (!user) {
-    throw new ApiError(
-      404,
-      "Outlet Manager not found or does not belong to your tenant"
-    );
+  if (!manager) {
+    throw new ApiError(404, "Outlet manager not found")
   }
 
-  user.outletManagerPermissions = permissions;
+  for (const [key, value] of Object.entries(permissions)) {
+    manager.outletManagerPermissions.set(key, Boolean(value))
+  }
 
-  await user.save();
+  await manager.save()
 
   return res.status(200).json(
-    new ApiResoponse(
-      200,
-      {
-        _id: user._id,
-        email: user.email,
-        userName: user.userName,
-        permissions: user.outletManagerPermissions,
-      },
-      "Outlet Manager permissions updated successfully"
-    )
-  );
-});
+    new ApiResoponse(200, {
+      outletManagerPermissions: Object.fromEntries(
+        manager.outletManagerPermissions
+      ),
+    }, "Permissions updated successfully")
+  )
+})

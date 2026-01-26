@@ -9,11 +9,12 @@ import React from "react"
 
 export const NavAnalytics= React.memo(function ({
   projects,
+  title=""
 }) {
 
   return (
     <SidebarGroup >
-      {/* <SidebarGroupLabel>Live Analytics</SidebarGroupLabel> */}
+      <SidebarGroupLabel>{title}</SidebarGroupLabel>
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>

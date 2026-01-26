@@ -62,14 +62,12 @@ export const OutletAdminApp = () => {
   };
 
   const handleLogout = async () => {
-  try {
-    localStorage.removeItem("user")
-    await logoutUser().unwrap();
-  } finally {
-    setUser(null);      
-    navigate("/", { replace: true });
-  }
-};
+    try {
+      await logoutUser().unwrap();
+    } finally {
+      setUser(null);      
+    }
+  };
 
 
   return (

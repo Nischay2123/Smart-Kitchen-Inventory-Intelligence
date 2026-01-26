@@ -4,10 +4,16 @@ import SiteHeader from "@/components/site-header";
 import BrandGrid from "@/components/card/grid";
 import { CreateBrandModal } from "@/components/Form/super-admin-form/create-brand-form";
 import { useGetAllTenantsQuery,useDeleteBrandMutation } from "@/redux/apis/super-admin/brandApi";
+import { useLogoutMutation } from "@/redux/apis/userApi";
+import { useAuth } from "@/auth/auth";
 
 const SuperAdmin = () => {
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false);
+  const [logoutUser] = useLogoutMutation();
+  const { user, setUser } = useAuth();
+  
+  
 
   const {
     data,
@@ -32,6 +38,13 @@ const SuperAdmin = () => {
       alert(err?.data?.message || "Failed to delete brand");
     }
   };
+  const handleLogout = async () => {
+    try {
+      await logoutUser().unwrap();
+    } finally {
+      setUser(null);      
+    }
+  };
 
   return (
     <div className="w-full">
@@ -40,6 +53,8 @@ const SuperAdmin = () => {
         description="Manage brands and brand managers"
         actionTooltip="Create New Brand"
         onActionClick={() => setOpen(true)}
+        isLogout={true}
+        onLogOut={handleLogout}
       />
 
       <div className="px-4 lg:p-6">

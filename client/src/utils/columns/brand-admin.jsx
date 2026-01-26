@@ -1,5 +1,7 @@
+import TickModal from "@/components/permission"
 import { Button } from "@/components/ui/button"
 import { ExternalLink, Trash2 } from 'lucide-react'
+import { useState } from "react"
 
 export const outletManagerColumns = (onDelete) => [
   {
@@ -36,6 +38,36 @@ export const outletManagerColumns = (onDelete) => [
         <Trash2 className="h-4 w-4" />
       </Button>
     ),
+  },
+  {
+    id: "permission",
+    header: "Update Permission",
+    cell: ({ row }) => {
+      const [open, setOpen] = useState(false)
+
+      return (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-black hover:bg-black/10"
+            onClick={(e) => {
+              e.stopPropagation()
+              setOpen(true)
+            }}
+          >
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+
+          <TickModal
+            open={open}
+            setOpen={setOpen}
+            initialPermissions={row.original.outletManagerPermissions}
+            outletManagerId={row.original._id}
+          />
+        </>
+      )
+    },
   },
 ]
 

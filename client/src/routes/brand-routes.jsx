@@ -7,6 +7,7 @@ import { Recipe } from "@/pages/brand-admin/recipe"
 import { CreateRecipe } from "@/pages/brand-admin/create-recipe"
 import { Ingredients } from "@/pages/brand-admin/ingredient"
 import { Unit } from "@/pages/brand-admin/unit"
+import { Overview } from "@/pages/brand-admin/analytics/overview"
 
 export const brandAdminRoutes = [
   {
@@ -40,5 +41,9 @@ export const brandAdminRoutes = [
   {
     path: "/units",
     element: <Unit />
+  },
+  {
+    path: "/overview",
+    element: <Overview />
   },
 ]

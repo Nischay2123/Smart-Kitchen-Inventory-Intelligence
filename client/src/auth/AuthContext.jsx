@@ -4,25 +4,29 @@ import { useMeQuery } from "@/redux/apis/userApi";
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(undefined);
-
-  const storedUser = localStorage.getItem("user");
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored) : null;
+  });
 
   const { data, isLoading } = useMeQuery(undefined, {
-    skip: !storedUser,
+    skip: !user,
   });
 
   useEffect(() => {
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      return;
-    }
-
     if (data?.data) {
       setUser(data.data);
       localStorage.setItem("user", JSON.stringify(data.data));
     }
-  }, [data, storedUser]);
+  }, [data]);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    } else {
+      localStorage.removeItem("user");
+    }
+  }, [user]);
 
   return (
     <AuthContext.Provider

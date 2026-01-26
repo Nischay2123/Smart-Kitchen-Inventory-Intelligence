@@ -13,11 +13,14 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, XCircle } from "lucide-react";
 import { useState } from "react";
 
 export function LoginForm({
   handleLogin,
+  loading,
+  error,
+  clearError,
   className,
   ...props
 }) {
@@ -51,7 +54,10 @@ export function LoginForm({
                   placeholder="m@example.com"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    error && clearError();
+                  }}
                 />
               </Field>
 
@@ -73,7 +79,10 @@ export function LoginForm({
                     required
                     className="pr-10"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      error && clearError();
+                    }}
                   />
 
                   <Button
@@ -92,9 +101,20 @@ export function LoginForm({
                 </div>
               </Field>
 
+              {error && (
+                <div className="flex items-center gap-2 text-sm text-red-600">
+                  <XCircle className="h-4 w-4" />
+                  {error} : Wrong Email or Password
+                </div>
+              )}
+
               <Field>
-                <Button type="submit">
-                  Login
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? "Logging in..." : "Login"}
                 </Button>
               </Field>
             </FieldGroup>
