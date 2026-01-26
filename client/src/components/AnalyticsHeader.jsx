@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RefreshCcw, Circle } from "lucide-react";
 
@@ -24,24 +24,31 @@ import {
   setOutletId,
   setIsLive,
 } from "@/redux/reducers/brand-admin/dashboardFilters";
+import { useGetAllOutletsQuery } from "@/redux/apis/brand-admin/outletApi";
 
 const AnalyticsHeader = ({
   headerTitle = "Dashboard Overview",
   description = "Real-time aggregated analytics",
-  outlets = [],
   onRefresh,
+  isOutlet=true
 }) => {
   const dispatch = useDispatch();
+  const {data,isLoading,error} = useGetAllOutletsQuery();
 
   const { dateRange, outletId, isLive } = useSelector(
     (state) => state.dashboardFilters
   );
 
+  useEffect(() => {
+    if (!outletId && data?.data?.length) {
+      dispatch(setOutletId(data.data[0]._id));
+    } 
+  }, [data, outletId, dispatch]);
+
   return (
-    <div className="w-full border-b bg-white">
+    <div className="w-full ">
       <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-4 py-4 lg:px-6">
         
-        {/* Left Section */}
         <div className="flex flex-col">
           <h1 className="text-xl font-semibold leading-tight lg:text-2xl">
             {headerTitle}
@@ -57,26 +64,33 @@ const AnalyticsHeader = ({
           {/* Date Picker */}
           <DashboardDateRangePicker
             value={dateRange}
-            onChange={(range) => dispatch(setDateRange(range))}
+            onChange={(range) =>{ 
+              
+              dispatch(setDateRange(range))
+            }}
             className="flex-row"
           />
 
           {/* Outlet Selector */}
-          <Select
-            value={outletId ?? ""}
+          {
+            isOutlet
+            && 
+            <Select
+            value={outletId}
             onValueChange={(id) => dispatch(setOutletId(id))}
           >
             <SelectTrigger className="w-50 h-9.5">
               <SelectValue placeholder="Select outlet" />
             </SelectTrigger>
             <SelectContent>
-              {outlets.map((o) => (
+              {data?.data.map((o) => (
                 <SelectItem key={o._id} value={o._id}>
-                  {o.name}
+                  {o.outletName}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          }
 
           {/* Refresh */}
           <TooltipProvider>
@@ -98,7 +112,7 @@ const AnalyticsHeader = ({
           </TooltipProvider>
 
           {/* Live Indicator */}
-          <div
+          {/* <div
             onClick={() => dispatch(setIsLive(!isLive))}
             className="flex items-center gap-2 px-3 h-9.5 border rounded-full text-sm cursor-pointer hover:bg-muted transition"
           >
@@ -112,7 +126,7 @@ const AnalyticsHeader = ({
             <span className="text-muted-foreground">
               {isLive ? "Live" : "Paused"}
             </span>
-          </div>
+          </div> */}
         </div>
       </header>
     </div>

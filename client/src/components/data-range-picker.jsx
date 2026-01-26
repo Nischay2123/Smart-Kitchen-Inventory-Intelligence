@@ -1,4 +1,6 @@
+import { setDateRange } from "@/redux/reducers/brand-admin/dashboardFilters";
 import React from "react";
+import { useDispatch } from "react-redux";
 
 const formatDate = (date) => {
   return date.toISOString().split("T")[0];
@@ -20,14 +22,24 @@ const DashboardDateRangePicker = ({
   onChange,
   className = "",
 }) => {
-  const range = value || getDefaultRange();
-
+  const dispatch = useDispatch()
+  React.useEffect(() => {
+    if (!value?.from || !value?.to) {
+      const defaultRange = getDefaultRange();
+      onChange?.(defaultRange);  
+      dispatch(setDateRange(defaultRange)); 
+    }
+  }, []);
+  let range;
+  if(!value?.from)range = getDefaultRange();
+  else range =value
+  
   const handleChange = (key, val) => {
     const next = { ...range, [key]: val };
 
     // safety: avoid invalid ranges
     if (new Date(next.from) > new Date(next.to)) return;
-
+    
     onChange(next);
   };
 

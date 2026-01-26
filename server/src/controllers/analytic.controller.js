@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Sale from "../models/sale.model.js"
 import StockMovement from "../models/stockMovement.model.js"
+import Outlet from "../models/outlet.model.js"
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js"
@@ -159,7 +160,8 @@ export const brandAnalyticsDetialedReport = asyncHandler(async(req,res)=>{
 
   const tenantContext = req.user.tenant
   const {toDate , fromDate } = req.query;
-
+  console.log(toDate,fromDate);
+  
   if (!tenantContext) {
     throw new ApiError(400,"Unauthorized Request")
   }
@@ -227,7 +229,15 @@ export const brandAnalyticsDetialedReport = asyncHandler(async(req,res)=>{
         },
         cogs:{ $sum:"$makingCost" },
         totalSale:{ $sum:"$sale" },
-        totalOrder:{ $sum:1 },
+        totalOrder:{
+          $sum:{
+            $cond:[
+              { $eq:["$state","CONFIRMED"] },
+              1,
+              0
+            ]
+          }
+        },
         totalBillCanceled:{
           $sum:{
             $cond:[
@@ -366,6 +376,10 @@ export const brandAnalyticsDetialedReport = asyncHandler(async(req,res)=>{
 })
 
 export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(400,"Unauthorized Request ,Only Brand Manager can see the details")
+  }
+
    const tenantContext = req.user.tenant
     const {toDate , fromDate } = req.query;
     // console.log(tenantContext,toDate,fromDate);
@@ -465,6 +479,20 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
 });
 
 
+export const getOutlets= asyncHandler(async(req,res)=>{
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(400,"Unauthorized Request ,Only Brand Manager can see the details")
+  }
+  const tenantContext = req.user.tenant;
+  const outlets = await Outlet.find({
+    "tenant.tenantId": tenantContext.tenantId
+  }).select("tenant outletName")
 
+  if (!outlets) {
+    throw new ApiError(200,[],`No Outlet found for the Brand: ${tenantContext.tenantName}`)
+  }
 
-
+  return res.status(200).json(
+    new ApiResoponse(200,outlets,"Oulets Fetched Successfully")
+  )
+})

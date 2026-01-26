@@ -1,49 +1,102 @@
-import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react"
-
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 
 
-const SectionCard = ({ item }) => {
+import React from "react";
+
+export const SectionCard = ({ item }) => {
+  const {
+    title,
+    description,
+    value,
+    formatter,
+    icon: Icon,
+  } = item;
+
+  const displayValue =
+    value === null || value === undefined
+      ? "--"
+      : formatter
+      ? formatter(value)
+      : value;
+
   return (
-    <Card className="@container/card py-2 bg-white w-full flex-row items-center justify-between gap-1">
-      
-      <div className="flex-2 flex flex-col gap-4 ">
-      <CardHeader className={" text-gray-500"}>
-        {item.name}
-      </CardHeader>
-      <CardContent className={""}>
-          <CardTitle className={"text-2xl"}>
-              {Number(item.today).toFixed(2)}
-          </CardTitle>
-      </CardContent>
-      <CardFooter className="flex-col items-start gap-1.5 text-sm ">
-        <CardDescription>
-          <div className="flex flex-col text-[0.65rem]">
-              <div className="flex justify-between gap-2 text-black">
-                {
-                  item.change>0 ? 
-                  <span className="flex items-center text-green-700"><IconTrendingUp className="w-4 h-4 text-green-700"/> {item.change}</span>:
-                  <span className="flex items-center text-red-700"><IconTrendingDown className="w-4 h-4 text-red-700"/> {item.change}</span>
-                  
-                }
-                From last week same day
-              </div>
-              <div className="flex flex-justify-between gap-2 text-gray-500">
-                Progress compared to <span className="text-black">{Number(item.prev).toFixed(2)}</span>
-              </div>
+    <Card className="w-full bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between px-5 py-4">
+        
+        {/* Left Content */}
+        <div className="flex flex-col gap-1.5">
+          <CardHeader className="p-0">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              {title}
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            <div className="text-2xl font-semibold text-gray-900 tracking-tight">
+              {displayValue}
+            </div>
+          </CardContent>
+
+          <CardDescription className="text-xs text-gray-500 leading-snug">
+            {description}
+          </CardDescription>
+        </div>
+
+        {/* Right Icon */}
+        {Icon && (
+          <div className="h-11 w-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+            <Icon className="h-5 w-5 text-gray-500" />
           </div>
-        </CardDescription>
-      </CardFooter>
+        )}
       </div>
     </Card>
-  )
-}
+  );
+};
 
-export default SectionCard
+
+
+export const SecondaryStatCard = ({
+  title,
+  description,
+  value,
+  formatter,
+  icon: Icon,
+  progress,
+  colorClass,
+}) => {
+  const displayValue =
+    value === null || value === undefined
+      ? "--"
+      : formatter
+      ? formatter(value)
+      : value;
+
+  return (
+    <div className="rounded-lg p-4 flex flex-col justify-between bg-white border border-gray-100 shadow-sm relative overflow-hidden w-full max-w-xs">
+      
+      {/* Left accent bar */}
+      <div className={`absolute left-0 top-0 h-full w-1 ${colorClass}`} />
+
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+        {Icon && <Icon className="w-5 h-5 text-gray-400" />}
+      </div>
+
+      <div className="text-xl font-semibold text-gray-900 mb-1">
+        {displayValue}
+      </div>
+
+      <p className="text-xs text-gray-500 mb-3">
+        {description}
+      </p>
+
+    </div>
+  );
+};
+

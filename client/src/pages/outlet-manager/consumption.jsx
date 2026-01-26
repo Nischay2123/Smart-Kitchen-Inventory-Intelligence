@@ -30,7 +30,7 @@ export const Consumption = () => {
     useGetSaleStockConsumptionQuery({
       fromDate: dateRange?.from,
       toDate: dateRange?.to,
-    });
+    },{skip:!dateRange});
   React.useEffect(() => {
     if (data?.data) {
       dispatch(setStocks(data.data));
