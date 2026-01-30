@@ -141,4 +141,19 @@ const SalesSchema = new Schema(
   }
 );
 
+
+
+
+SalesSchema.index({
+  "tenant.tenantId": 1,
+  "outlet.outletId": 1,
+  createdAt: -1,
+});
+
+SalesSchema.index({
+  "tenant.tenantId": 1,
+  createdAt: -1,
+});
+
+
 export default model("Sales", SalesSchema);

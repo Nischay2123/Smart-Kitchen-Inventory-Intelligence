@@ -9,7 +9,6 @@ import morgan from "morgan"
 import apiRoutes from "./src/routes/index.js";
 import http from "http";
 import { initSocket } from "./src/sockets/socket.js";
-import "./src/utils/mailer.js";
 
 
 const port = process.env.PORT ?? 8000

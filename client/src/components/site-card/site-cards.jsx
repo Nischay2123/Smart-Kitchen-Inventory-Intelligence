@@ -57,6 +57,8 @@ export const AnalyticsCards = ({ data }) => {
 
 
 export const SecondaryMetrics = ({ data }) => {
+  console.log(data);
+  
   const cardsConfig = [
     {
       title: "COGS",
@@ -69,7 +71,7 @@ export const SecondaryMetrics = ({ data }) => {
     {
       title: "Average Per Cover",
       description: "Average revenue per customer cover",
-      value: data?.averagePerCover,
+      value: data?.averagePerOrder,
       icon: BarChart2,
       formatter: (v) => `₹${v.toFixed(2)}`,
       colorClass: "bg-green-200 text-green-700",

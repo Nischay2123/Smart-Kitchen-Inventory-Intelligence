@@ -67,7 +67,6 @@ export const SecondaryStatCard = ({
   value,
   formatter,
   icon: Icon,
-  progress,
   colorClass,
 }) => {
   const displayValue =

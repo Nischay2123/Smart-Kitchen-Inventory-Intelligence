@@ -6,222 +6,561 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-export const createStockMovement = asyncHandler(async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+// export const createStockMovement = asyncHandler(async (req, res) => {
+//   const session = await mongoose.startSession();
+//   session.startTransaction();
 
-  try {
-    const {
-      ingredientMasterId,
-      quantity,
-      reason,
-      purchasePricePerUnit,
-      unitId,
-    } = req.body;
-    console.log({
-      ingredientMasterId,
-      quantity,
-      reason,
-      purchasePricePerUnit,
-      unitId,
-    });
+//   try {
+//     const {
+//       ingredientMasterId,
+//       quantity,
+//       reason,
+//       purchasePricePerUnit,
+//       unitId,
+//     } = req.body;
+//     console.log({
+//       ingredientMasterId,
+//       quantity,
+//       reason,
+//       purchasePricePerUnit,
+//       unitId,
+//     });
     
-    if (
-      !ingredientMasterId ||
-      !unitId ||
-      typeof quantity !== "number" ||
-      quantity <= 0 ||
-      !reason
-    ) {
-      throw new ApiError(
-        400,
-        "ingredientMasterId, unitId, quantity (>0) and reason are required"
-      );
-    }
+//     if (
+//       !ingredientMasterId ||
+//       !unitId ||
+//       typeof quantity !== "number" ||
+//       quantity <= 0 ||
+//       !reason
+//     ) {
+//       throw new ApiError(
+//         400,
+//         "ingredientMasterId, unitId, quantity (>0) and reason are required"
+//       );
+//     }
 
-    const VALID_REASONS = [
-      "PURCHASE",
-      "POSITIVE_ADJUSTMENT",
-      "NEGATIVE_ADJUSTMENT",
-    ];
+//     const VALID_REASONS = [
+//       "PURCHASE",
+//       "POSITIVE_ADJUSTMENT",
+//       "NEGATIVE_ADJUSTMENT",
+//     ];
 
-    if (!VALID_REASONS.includes(reason)) {
-      throw new ApiError(400, "Invalid reason");
-    }
+//     if (!VALID_REASONS.includes(reason)) {
+//       throw new ApiError(400, "Invalid reason");
+//     }
 
-    if (reason === "PURCHASE" && !purchasePricePerUnit) {
-      throw new ApiError(
-        400,
-        "purchasePricePerUnit is required for PURCHASE"
-      );
-    }
+//     if (reason === "PURCHASE" && !purchasePricePerUnit) {
+//       throw new ApiError(
+//         400,
+//         "purchasePricePerUnit is required for PURCHASE"
+//       );
+//     }
 
-    const tenantContext = req.user.tenant;
-    const outletContext = req.user.outlet;
+//     const tenantContext = req.user.tenant;
+//     const outletContext = req.user.outlet;
 
-    if (!tenantContext?.tenantId || !outletContext?.outletId) {
-      throw new ApiError(400, "User not linked to tenant or outlet");
-    }
+//     if (!tenantContext?.tenantId || !outletContext?.outletId) {
+//       throw new ApiError(400, "User not linked to tenant or outlet");
+//     }
 
-    /* ---------------- Ingredient Validation ---------------- */
-    const ingredient = await IngredientMaster.findOne({
-      _id: ingredientMasterId,
-      "tenant.tenantId": tenantContext.tenantId,
-    }).session(session);
+//     /* ---------------- Ingredient Validation ---------------- */
+//     const ingredient = await IngredientMaster.findOne({
+//       _id: ingredientMasterId,
+//       "tenant.tenantId": tenantContext.tenantId,
+//     }).session(session);
 
-    if (!ingredient) {
-      throw new ApiError(404, "Ingredient not found");
-    }
+//     if (!ingredient) {
+//       throw new ApiError(404, "Ingredient not found");
+//     }
 
-    /* ---------------- Unit Validation ---------------- */
-    console.log(ingredient);
+//     /* ---------------- Unit Validation ---------------- */
+//     console.log(ingredient);
     
-    const unit = ingredient.unit.find(
-      (u) => u.unitId.toString() === unitId
+//     const unit = ingredient.unit.find(
+//       (u) => u.unitId.toString() === unitId
+//     );
+
+//     if (!unit) {
+//       throw new ApiError(400, "Invalid unit for this ingredient");
+//     }
+
+//     const conversionRate = unit.conversionRate;
+//     const quantityInBase = quantity * conversionRate;
+
+//     /* ---------------- Signed Quantity ---------------- */
+//     const POSITIVE_REASONS = ["PURCHASE", "POSITIVE_ADJUSTMENT"];
+//     const signedQtyInBase = POSITIVE_REASONS.includes(reason)
+//       ? quantityInBase
+//       : -quantityInBase;
+
+//     /* ---------------- Fetch / Init Stock ---------------- */
+//     let stock = await Stock.findOne({
+//       "tenant.tenantId": tenantContext.tenantId,
+//       "outlet.outletId": outletContext.outletId,
+//       "masterIngredient.ingredientMasterId": ingredient._id,
+//     }).session(session);
+
+//     if (!stock) {
+//       if (signedQtyInBase < 0) {
+//         throw new ApiError(
+//           400,
+//           "Cannot deduct stock before initialization"
+//         );
+//       }
+
+//       const unitCostInBase =
+//         reason === "PURCHASE"
+//           ? purchasePricePerUnit / conversionRate
+//           : 0;
+
+//       stock = await Stock.create(
+//         [
+//           {
+//             tenant: tenantContext,
+//             outlet: outletContext,
+//             masterIngredient: {
+//               ingredientMasterId: ingredient._id,
+//               ingredientMasterName: ingredient.name,
+//             },
+//             baseUnit: unit.baseUnit,
+//             currentStockInBase: quantityInBase,
+//             unitCost: unitCostInBase,
+//             alertState: "OK",
+//           },
+//         ],
+//         { session }
+//       );
+
+//       stock = stock[0];
+//     } else {
+//       const newQty =
+//         stock.currentStockInBase + signedQtyInBase;
+
+//       if (newQty < 0) {
+//         throw new ApiError(400, "Stock cannot go below zero");
+//       }
+
+//       if (reason === "PURCHASE") {
+//         const oldValue =
+//           stock.currentStockInBase * stock.unitCost;
+
+//         const newValue =
+//           quantityInBase *
+//           (purchasePricePerUnit / conversionRate);
+
+//         stock.unitCost =
+//           (oldValue + newValue) / newQty;
+//       }
+
+//       stock.currentStockInBase = newQty;
+//     }
+
+//     if (
+//       stock.currentStockInBase <=
+//       ingredient.threshold.criticalInBase
+//     ) {
+//       stock.alertState = "CRITICAL";
+//     } else if (
+//       stock.currentStockInBase <=
+//       ingredient.threshold.lowInBase
+//     ) {
+//       stock.alertState = "LOW";
+//     } else {
+//       stock.alertState = "OK";
+//     }
+
+//     await stock.save({ session });
+
+//     console.log(purchasePricePerUnit);
+    
+
+//     const movement = await StockMovement.create(
+//       [
+//         {
+//           tenant: tenantContext,
+//           outlet: outletContext,
+//           ingredient: {
+//             ingredientMasterId: ingredient._id,
+//             ingredientMasterName: ingredient.name,
+//           },
+//           quantity,
+//           unit: unit.unitName,               
+//           reason,
+//           stockId: stock._id,
+//           purchasePriceInUnit:
+//             reason === "PURCHASE"
+//               ? purchasePricePerUnit
+//               : undefined,
+//         },
+//       ],
+//       { session }
+//     );
+
+//     await session.commitTransaction();
+//     session.endSession();
+
+//     const io = req.app.get("io");
+//     io.to(
+//       `tenant:${tenantContext.tenantId}:outlet:${outletContext.outletId}`
+//     ).emit("stock_updated", {
+//       ingredientId: ingredient._id,
+//       currentStockInBase: stock.currentStockInBase,
+//       alertState: stock.alertState,
+//     });
+
+//     return res.status(201).json(
+//       new ApiResoponse(
+//         201,
+//         { stock, movement: movement[0] },
+//         "Stock movement created successfully"
+//       )
+//     );
+//   } catch (error) {
+//     await session.abortTransaction(); 
+//     session.endSession();
+//     throw error;
+//   }
+// });
+
+
+const validatePayload = (req) => {
+  const {
+    ingredientMasterId,
+    quantity,
+    reason,
+    purchasePricePerUnit,
+    unitId,
+  } = req.body;
+  // console.log("validatePayload start");
+  
+  if (
+    !ingredientMasterId ||
+    !unitId ||
+    typeof quantity !== "number" ||
+    quantity <= 0 ||
+    !reason
+  ) {
+    throw new ApiError(
+      400,
+      "ingredientMasterId, unitId, quantity (>0) and reason are required"
     );
+  }
 
-    if (!unit) {
-      throw new ApiError(400, "Invalid unit for this ingredient");
-    }
+  const VALID_REASONS = [
+    "PURCHASE",
+    "POSITIVE_ADJUSTMENT",
+    "NEGATIVE_ADJUSTMENT",
+  ];
 
-    const conversionRate = unit.conversionRate;
-    const quantityInBase = quantity * conversionRate;
+  if (!VALID_REASONS.includes(reason)) {
+    throw new ApiError(400, "Invalid reason");
+  }
 
-    /* ---------------- Signed Quantity ---------------- */
-    const POSITIVE_REASONS = ["PURCHASE", "POSITIVE_ADJUSTMENT"];
-    const signedQtyInBase = POSITIVE_REASONS.includes(reason)
-      ? quantityInBase
-      : -quantityInBase;
+  if (reason === "PURCHASE" && !purchasePricePerUnit) {
+    throw new ApiError(
+      400,
+      "purchasePricePerUnit is required for PURCHASE"
+    );
+  }
+  // console.log("validatePayload end");
 
-    /* ---------------- Fetch / Init Stock ---------------- */
-    let stock = await Stock.findOne({
-      "tenant.tenantId": tenantContext.tenantId,
-      "outlet.outletId": outletContext.outletId,
-      "masterIngredient.ingredientMasterId": ingredient._id,
-    }).session(session);
+  return {
+    ingredientMasterId,
+    quantity,
+    reason,
+    purchasePricePerUnit,
+    unitId,
+  };
+};
 
-    if (!stock) {
-      if (signedQtyInBase < 0) {
-        throw new ApiError(
-          400,
-          "Cannot deduct stock before initialization"
-        );
-      }
+const validateContext = (req) => {
+  const tenant = req.user.tenant;
+  const outlet = req.user.outlet;
+  // console.log("validatePayload start");
 
-      const unitCostInBase =
-        reason === "PURCHASE"
-          ? purchasePricePerUnit / conversionRate
-          : 0;
+  if (!tenant?.tenantId || !outlet?.outletId) {
+    throw new ApiError(400, "User not linked to tenant or outlet");
+  }
+  // console.log("validatePayload start");
 
-      stock = await Stock.create(
-        [
-          {
-            tenant: tenantContext,
-            outlet: outletContext,
-            masterIngredient: {
-              ingredientMasterId: ingredient._id,
-              ingredientMasterName: ingredient.name,
-            },
-            baseUnit: unit.baseUnit,
-            currentStockInBase: quantityInBase,
-            unitCost: unitCostInBase,
-            alertState: "OK",
-          },
-        ],
-        { session }
+  return { tenant, outlet };
+};
+
+const validateIngredient = async ({
+  ingredientMasterId,
+  tenantId,
+  session,
+}) => {
+  const ingredient = await IngredientMaster.findOne({
+    _id: ingredientMasterId,
+    "tenant.tenantId": tenantId,
+  }).session(session);
+  // console.log("validatePayload start");
+
+  if (!ingredient) {
+    throw new ApiError(404, "Ingredient not found");
+  }
+
+  // console.log("validatePayload start");
+
+  return ingredient;
+};
+
+const validateUnit = (ingredient, unitId) => {
+  const unit = ingredient.unit.find(
+    (u) => u.unitId.toString() === unitId
+  );
+
+  if (!unit) {
+    throw new ApiError(400, "Invalid unit for this ingredient");
+  }
+  // console.log("validatePayload start");
+
+  return unit;
+};
+
+const calculateQuantities = ({ quantity, unit, reason }) => {
+  // console.log("start");
+  
+  const conversionRate = unit.conversionRate;
+  const quantityInBase = quantity * conversionRate;
+
+  const POSITIVE_REASONS = [
+    "PURCHASE",
+    "POSITIVE_ADJUSTMENT",
+  ];
+
+  const signedQtyInBase = POSITIVE_REASONS.includes(
+    reason
+  )
+    ? quantityInBase
+    : -quantityInBase;
+  // console.log("validatePayload start");
+
+  return {
+    conversionRate,
+    quantityInBase,
+    signedQtyInBase,
+  };
+};
+
+const upsertStock = async ({
+  ingredient,
+  context,
+  payload,
+  calc,
+  session,
+  unit,  
+}) => {
+  let stock = await Stock.findOne({
+    "tenant.tenantId": context.tenant.tenantId,
+    "outlet.outletId": context.outlet.outletId,
+    "masterIngredient.ingredientMasterId":
+      ingredient._id,
+  }).session(session);
+
+  if (!stock) {
+    if (calc.signedQtyInBase < 0) {
+      throw new ApiError(
+        400,
+        "Cannot deduct stock before initialization"
       );
-
-      stock = stock[0];
-    } else {
-      const newQty =
-        stock.currentStockInBase + signedQtyInBase;
-
-      if (newQty < 0) {
-        throw new ApiError(400, "Stock cannot go below zero");
-      }
-
-      if (reason === "PURCHASE") {
-        const oldValue =
-          stock.currentStockInBase * stock.unitCost;
-
-        const newValue =
-          quantityInBase *
-          (purchasePricePerUnit / conversionRate);
-
-        stock.unitCost =
-          (oldValue + newValue) / newQty;
-      }
-
-      stock.currentStockInBase = newQty;
     }
-
-    if (
-      stock.currentStockInBase <=
-      ingredient.threshold.criticalInBase
-    ) {
-      stock.alertState = "CRITICAL";
-    } else if (
-      stock.currentStockInBase <=
-      ingredient.threshold.lowInBase
-    ) {
-      stock.alertState = "LOW";
-    } else {
-      stock.alertState = "OK";
-    }
-
-    await stock.save({ session });
-
-    console.log(purchasePricePerUnit);
     
+    const unitCostInBase =
+    payload.reason === "PURCHASE"
+    ? payload.purchasePricePerUnit /
+    calc.conversionRate
+    : 0;
 
-    const movement = await StockMovement.create(
+    const [created] = await Stock.create(
       [
         {
-          tenant: tenantContext,
-          outlet: outletContext,
-          ingredient: {
-            ingredientMasterId: ingredient._id,
-            ingredientMasterName: ingredient.name,
+          tenant: context.tenant,
+          outlet: context.outlet,
+          masterIngredient: {
+            ingredientMasterId:
+              ingredient._id,
+            ingredientMasterName:
+              ingredient.name,
           },
-          quantity,
-          unit: unit.unitName,               
-          reason,
+          baseUnit: unit.baseUnit,
+          currentStockInBase:
+            calc.quantityInBase,
+          unitCost: unitCostInBase,
+          alertState: "OK",
+        },
+      ],
+      { session }
+    );
+
+    stock = created;
+  } else {
+    const newQty =
+      stock.currentStockInBase +
+      calc.signedQtyInBase;
+
+    if (newQty < 0) {
+      throw new ApiError(
+        400,
+        "Stock cannot go below zero"
+      );
+    }
+
+    if (payload.reason === "PURCHASE") {
+      const oldValue =
+        stock.currentStockInBase *
+        stock.unitCost;
+
+      const newValue =
+        calc.quantityInBase *
+        (payload.purchasePricePerUnit /
+          calc.conversionRate);
+
+      stock.unitCost =
+        (oldValue + newValue) / newQty;
+    }
+
+    stock.currentStockInBase = newQty;
+  }
+  // console.log("validatePayload start");
+
+  applyAlertState(stock, ingredient);
+
+  await stock.save({ session });
+
+  return stock;
+};
+
+const applyAlertState = (stock, ingredient) => {
+  if (
+    stock.currentStockInBase <=
+    ingredient.threshold.criticalInBase
+  ) {
+    stock.alertState = "CRITICAL";
+  } else if (
+    stock.currentStockInBase <=
+    ingredient.threshold.lowInBase
+  ) {
+    stock.alertState = "LOW";
+  } else {
+    stock.alertState = "OK";
+  }
+};
+
+const createStockMovementFunction = async ({
+  ingredient,
+  unit,
+  payload,
+  context,
+  stock,
+  session,
+}) => {
+  const [movement] =
+    await StockMovement.create(
+      [
+        {
+          tenant: context.tenant,
+          outlet: context.outlet,
+          ingredient: {
+            ingredientMasterId:
+              ingredient._id,
+            ingredientMasterName:
+              ingredient.name,
+          },
+          quantity: payload.quantity,
+          unit: unit.unitName,
+          reason: payload.reason,
           stockId: stock._id,
           purchasePriceInUnit:
-            reason === "PURCHASE"
-              ? purchasePricePerUnit
+            payload.reason === "PURCHASE"
+              ? payload.purchasePricePerUnit
               : undefined,
         },
       ],
       { session }
     );
 
-    await session.commitTransaction();
-    session.endSession();
+  return movement;
+};
 
-    const io = req.app.get("io");
-    io.to(
-      `tenant:${tenantContext.tenantId}:outlet:${outletContext.outletId}`
-    ).emit("stock_updated", {
-      ingredientId: ingredient._id,
-      currentStockInBase: stock.currentStockInBase,
-      alertState: stock.alertState,
+const emitStockSocket = (
+  req,
+  context,
+  ingredient,
+  stock
+) => {
+  const io = req.app.get("io");
+
+  io.to(
+    `tenant:${context.tenant.tenantId}:outlet:${context.outlet.outletId}`
+  ).emit("stock_updated", {
+    ingredientId: ingredient._id,
+    currentStockInBase:
+      stock.currentStockInBase,
+    alertState: stock.alertState,
+  });
+};
+
+export const createStockMovement = asyncHandler(async (req, res) => {
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const payload = validatePayload(req);
+    const context = validateContext(req);
+
+    const ingredient = await validateIngredient({
+      ingredientMasterId: payload.ingredientMasterId,
+      tenantId: context.tenant.tenantId,
+      session,
     });
+
+    const unit = validateUnit(ingredient, payload.unitId);
+
+    const calc = calculateQuantities({
+      quantity: payload.quantity,
+      unit,
+      reason: payload.reason,
+    });
+
+    const stock = await upsertStock({
+      ingredient,
+      context,
+      payload,
+      calc,
+      session,
+      unit
+    });
+
+    const movement = await createStockMovementFunction({
+      ingredient,
+      unit,
+      payload,
+      context,
+      stock,
+      session,
+    });
+
+    await session.commitTransaction();
+
+    emitStockSocket(req, context, ingredient, stock);
 
     return res.status(201).json(
       new ApiResoponse(
         201,
-        { stock, movement: movement[0] },
+        { stock, movement },
         "Stock movement created successfully"
       )
     );
-  } catch (error) {
-    await session.abortTransaction(); 
+  } catch (err) {
+    await session.abortTransaction();
+    throw err;
+  } finally {
     session.endSession();
-    throw error;
   }
 });
-
 
 
 

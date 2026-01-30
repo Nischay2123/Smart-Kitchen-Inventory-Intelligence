@@ -33,7 +33,7 @@ export function DataTable({
   columns,
   pageSize = 10,
   searchable = false,
-  pagination= false,
+  pagination= true,
   onRowClick = ()=>{},
   rowSelection,
   onRowSelectionChange,
@@ -68,119 +68,127 @@ export function DataTable({
   })
 
   return (
-    <div className="flex flex-col space-y-4 h-full">
+    <div className="flex flex-col space-y-3 h-full">
 
-      {/* Search */}
-      {searchable && (
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon">
-            <Search className="h-4 w-4" />
-          </Button>
+  {/* Search */}
+  {searchable && (
+    <div className="flex items-center gap-2">
+      <Input
+        placeholder="Search..."
+        value={globalFilter ?? ""}
+        onChange={(e) => setGlobalFilter(e.target.value)}
+        className="max-w-sm h-9 bg-white border-muted focus-visible:ring-1 focus-visible:ring-primary"
+      />
+    </div>
+  )}
 
-          <Input
-            placeholder="Search..."
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
-      )}
+  {/* Table */}
+  <div className="rounded-xl border border-muted bg-white flex-1 overflow-hidden shadow-sm">
+    <div className="h-full overflow-auto">
 
-      {/* Table */}
-      <div className="rounded-md border flex-1 overflow-auto bg-white">
-        <Table>
-          <TableHeader className={"bg-gray-300"}>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder ? null : (
-                      <Button
-                        variant="ghost"
-                        onClick={header.column.getToggleSortingHandler()}
-                        className="h-8 px-2 flex items-center gap-1"
-                      >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        <ArrowUpDown className="h-3 w-3 opacity-50" />
-                      </Button>
+      <Table>
+        <TableHeader className="bg-muted/40 border-b">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id} className="hover:bg-transparent">
+              {headerGroup.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  className="h-11 px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                  {header.isPlaceholder ? null : (
+                    <Button
+                      variant="ghost"
+                      onClick={header.column.getToggleSortingHandler()}
+                      className="h-8 px-1 flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                      <ArrowUpDown className="h-3 w-3 opacity-50" />
+                    </Button>
+                  )}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+
+        <TableBody>
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                onClick={() =>
+                  onRowClick
+                    ? onRowClick(row.original)
+                    : row.toggleSelected()
+                }
+                className={`
+                  cursor-pointer transition-colors
+                  hover:bg-muted/50
+                  ${row.original?._id === selectedRowId ? "bg-primary/5" : ""}
+                `}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    className="px-3 py-2 text-sm text-foreground"
+                  >
+                    {flexRender(
+                      cell.column.columnDef.cell,
+                      cell.getContext()
                     )}
-                  </TableHead>
+                  </TableCell>
                 ))}
               </TableRow>
-            ))}
-          </TableHeader>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-32 text-center text-muted-foreground"
+              >
+                No results found
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
 
-          <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  onClick={() =>
-                    onRowClick
-                      ? onRowClick(row.original)
-                      : row.toggleSelected()
-                  }
-                  className={`
-                    cursor-pointer
-                    ${row.original?._id === selectedRowId ? "bg-muted" : ""}
-                  `}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      { pagination &&
-        <div className="flex items-center justify-between text-sm">
-          <span>
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
-          </span>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!table.getCanPreviousPage()}
-              onClick={() => table.previousPage()}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!table.getCanNextPage()}
-              onClick={() => table.nextPage()}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      }
     </div>
+  </div>
+
+  {/* Pagination */}
+  {pagination && (
+    <div className="flex items-center justify-between pt-2 border-t text-sm text-muted-foreground">
+      <span>
+        Page {table.getState().pagination.pageIndex + 1} of{" "}
+        {table.getPageCount()}
+      </span>
+
+      <div className="flex gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={!table.getCanPreviousPage()}
+          onClick={() => table.previousPage()}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={!table.getCanNextPage()}
+          onClick={() => table.nextPage()}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )}
+</div>
+
   )
 }

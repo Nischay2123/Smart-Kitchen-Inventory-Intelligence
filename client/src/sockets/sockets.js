@@ -14,7 +14,7 @@ export const useStockSocket = ({ tenantId, outletId, onUpdate }) => {
 
     socket.on("stock_updated", onUpdate);
 
-    return () => {
+    return () => { 
       socket.off("stock_updated", onUpdate);
       socket.off("stock_alert");
     };

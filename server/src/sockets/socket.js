@@ -1,16 +1,40 @@
 import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
+
+const parser = cookieParser();
 
 let io;
 
 export const initSocket = (httpServer, corsOptions) => {
   io = new Server(httpServer, {
-    cors: corsOptions
+    cors: corsOptions,
   });
+  
+  io.use((socket, next) => {
+  try {
+    parser(socket.request, {}, () => {});
+
+    const { accessToken } = socket.request.cookies || {};
+
+    if (!accessToken) {
+      return next(new Error("Unauthorized"));
+    }
+    
+    const payload = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
+
+    socket.user = payload;
+    next();
+  } catch (err) {
+    console.log("Socket auth error:", err.message);
+    next(new Error("Unauthorized"));
+  }
+});
+
 
   io.on("connection", (socket) => {
     console.log("🔌 Socket connected:", socket.id);
 
-    // Join outlet room
     socket.on("join_outlet", ({ tenantId, outletId }) => {
       if (!tenantId || !outletId) return;
 

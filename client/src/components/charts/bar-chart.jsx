@@ -24,7 +24,6 @@ export default function TabSalesBarChart({
     yKey,
     onBarClick
 }) {
-    console.log(data);
     
 
     const [hoverIndex, setHoverIndex] = useState(null)
@@ -107,7 +106,7 @@ export default function TabSalesBarChart({
                                 {data.map((_, index) => (
                                     <Cell
                                         key={index}
-                                        fill={hoverIndex === index ? "var(--chart-6)" : "var(--chart-1)"}
+                                        fill={hoverIndex === index ? "var(--chart-2)" : "var(--chart-1)"}
                                         onMouseEnter={() => setHoverIndex(index)}
                                     />
                                 ))}

@@ -1,5 +1,4 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 import DataCard from "@/components/data-card/data-card";
@@ -87,7 +86,6 @@ const ingredientColumn = (setOpen, setSelectedIngredient) => [
 
 
 export const Stocks = () => {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useAuth();
 
@@ -138,6 +136,7 @@ export const Stocks = () => {
             data={ingredientStocks ?? []}
             titleWhenEmpty="No ingredients found"
             descriptionWhenEmpty="We couldn’t find any ingredients here."
+            pagination={true}
           />
         )}
       </div>

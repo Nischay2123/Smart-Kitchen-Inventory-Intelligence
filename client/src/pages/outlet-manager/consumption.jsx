@@ -31,11 +31,12 @@ export const Consumption = () => {
       fromDate: dateRange?.from,
       toDate: dateRange?.to,
     },{skip:!dateRange});
-  React.useEffect(() => {
-    if (data?.data) {
-      dispatch(setStocks(data.data));
-    }
-  }, [data, dispatch]);
+
+    React.useEffect(() => {
+      if (data?.data) {
+        dispatch(setStocks(data.data));
+      }
+    }, [data, dispatch]);
 
   useStockSocket({
     tenantId: user?.tenant?.tenantId,
@@ -48,8 +49,8 @@ export const Consumption = () => {
   return (
     <div className="w-full bg-gray-50 min-h-screen">
       <SiteHeader
-        headerTitle="Stocks"
-        description="Available stock for the ingredients in this outlet"
+        headerTitle="Consumption"
+        description="Consumption of the ingredients in this outlet for the selected time frame"
         isTooltip={false}
         isRefetch={true}
         onRefetch={refetch}
@@ -73,6 +74,7 @@ export const Consumption = () => {
             data={data?.data ?? []}
             titleWhenEmpty="No ingredients found"
             descriptionWhenEmpty="We couldn’t find any ingredients here."
+            pagination={true}
           />
         )}
       </div>

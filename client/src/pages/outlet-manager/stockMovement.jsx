@@ -4,6 +4,8 @@ import { useGetSaleStockMovementDetailsQuery } from '@/redux/apis/outlet-manager
 import { useStockMovementSocket } from '@/sockets/sockets'
 import React, { useCallback, useState ,useEffect} from 'react'
 import { useNavigate } from 'react-router-dom'
+import DashboardDateRangePicker from "@/components/data-range-picker";
+
 
 
 const ingredientColumn = (navigate) => [
@@ -54,14 +56,20 @@ export const StockMovement = () => {
   const user = JSON.parse(localStorage.getItem("user"))
   const tenantId = user.tenant.tenantId
   const outletId = user.outlet.outletId
+  const [dateRange, setDateRange] = React.useState(null);
+  
 
   const {
     data,
     isLoading,
     refetch,
-  } = useGetSaleStockMovementDetailsQuery()
+  } = useGetSaleStockMovementDetailsQuery({
+      fromDate: dateRange?.from,
+      toDate: dateRange?.to,
+    },{skip:!dateRange})
 
   const [stockMovements, setStockMovements] = useState([])
+  
   
   useEffect(() => {
     if (data?.data) {
@@ -97,6 +105,12 @@ export const StockMovement = () => {
         headerTitle="Stock Movements"
         description="stock movements of the ingredients"
         isTooltip={false}
+      />
+
+      <DashboardDateRangePicker
+        value={dateRange}
+        onChange={setDateRange}
+        className="px-4 lg:px-6 mt-4"
       />
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">

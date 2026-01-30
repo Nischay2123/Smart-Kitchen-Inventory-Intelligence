@@ -1,46 +1,40 @@
 import StockMovement from "../models/stockMovement.model.js";
 import IngredientMaster from "../models/ingredientMaster.model.js";
 import Stock from "../models/stock.model.js";
-import {emitEvent} from "../workers/socket.js"
+import { emitEvent } from "../workers/socket.js";
 
 export const processStockMovement = async (data) => {
+  const { orderId, requirementList, tenant, outlet } = data;
 
-  const {
-    orderId,
-    requirementList,
-    tenant,
-    outlet
-  } = data;
-  console.log("processStockMovement",orderId);
-  
+  console.log("processStockMovement", orderId);
+
   for (const r of requirementList) {
-
-    const ingredient = await IngredientMaster.findById(
-      r.ingredientMasterId
-    ).lean();
+    const ingredient = await IngredientMaster
+      .findById(r.ingredientMasterId)
+      .select("name unit")
+      .lean();
 
     if (!ingredient) {
       throw new Error("INGREDIENT_NOT_FOUND");
     }
 
-    const stock = await Stock.findOne({
-      "outlet.outletId": outlet.outletId,
-      "masterIngredient.ingredientMasterId": r.ingredientMasterId,
-    }).lean();
-    // console.log(ingredient.unit[0].baseUnit);
-    
-    const result = await StockMovement.findOneAndUpdate(
+    const stock = await Stock
+      .findOne({
+        "outlet.outletId": outlet.outletId,
+        "masterIngredient.ingredientMasterId": r.ingredientMasterId,
+      })
+      .select("_id unitCost")
+      .lean();
 
+    const result = await StockMovement.findOneAndUpdate(
       {
-        orderId: orderId,
+        orderId,
         "ingredient.ingredientMasterId": r.ingredientMasterId,
         reason: "ORDER",
       },
-
       {
         $setOnInsert: {
-
-          orderId: orderId,
+          orderId,
 
           tenant: {
             tenantId: tenant.tenantId,
@@ -58,27 +52,24 @@ export const processStockMovement = async (data) => {
           },
 
           quantity: r.requiredBaseQty,
-
           unit: ingredient.unit[0].baseUnit,
-
           reason: "ORDER",
 
-          stockId: stock?._id || null,
+          stockId: stock?._id ?? null,
+
+          unitCost: stock?.unitCost ?? 0,
         },
       },
-      { 
-        new:true,
+      {
+        new: true,
         upsert: true,
+        rawResult: true,
       }
     );
-    // console.log(result);
-    
-    if (!result.lastErrorObject?.upserted) {
-      const room = `tenant:${tenant.tenantId}:outlet:${outlet.outletId}`;
-      console.log("Worker");
-      
-      emitEvent(room, "STOCK_MOVEMENT_CREATED", result.toObject());  
-    }
 
+    if (result.lastErrorObject?.upserted) {
+      const room = `tenant:${tenant.tenantId}:outlet:${outlet.outletId}`;
+      emitEvent(room, "STOCK_MOVEMENT_CREATED", result.value);
+    }
   }
 };

@@ -4,6 +4,6 @@ import { createSale, getAllSales } from "../controllers/sale.controller.js";
 const router = express.Router();
 
 router.get("/get_sales",verifyJwt, getAllSales);
-router.post("/",verifyJwt,createSale)
+router.post("/",createSale)
 
 export default router;

@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes, useNavigate } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router-dom";
 
 import { AppSidebar } from "@/components/side-bar/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -18,6 +18,8 @@ import {
 import { useLogoutMutation } from "@/redux/apis/userApi";
 
 import { useAuth } from "@/auth/auth";
+import PermissionDenied from "@/components/permission-denied";
+import NotFound from "@/components/not-found";
 
 
 
@@ -88,7 +90,11 @@ export const BrandAdminApp = () => {
   return (
     <SidebarProvider>
         <AppSidebar handleLogout={handleLogout} data={data} />
-      <Routes>{renderRoutes(brandAdminRoutes,["BRAND_ADMIN"])}</Routes>
+      <Routes>{
+        renderRoutes(brandAdminRoutes,["BRAND_ADMIN"])}
+        <Route path="/403" element={<PermissionDenied />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </SidebarProvider>
   );
 };

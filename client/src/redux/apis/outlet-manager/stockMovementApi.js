@@ -4,16 +4,18 @@ export const StockMovement = baseApi.injectEndpoints({
   endpoints: (builder) => ({
 
     getStockMovementDetails: builder.query({
-      query: () => ({
+      query: ({fromDate,toDate}) => ({
         url: "stockMovements/get_stock_movements",
         method: "GET",
+        params: { fromDate, toDate },
       }),
       providesTags: ["Stocks"],
     }),
     getSaleStockMovementDetails: builder.query({
-      query: () => ({
+      query: ({fromDate,toDate}) => ({
         url: "stockMovements/get_orders_stock_movements",
         method: "GET",
+        params: { fromDate, toDate },
       }),
       providesTags: ["Stocks"],
     }),

@@ -16,36 +16,42 @@ const DataCard = ({
   descriptionWhenEmpty
 }) => {
   return (
-    <div className="flex-1 min-w-0 flex flex-col border rounded-2xl gap-3 p-3 h-auto lg:min-h-150 bg-gray-100">
+    <section className="flex-1 min-w-0 flex flex-col rounded-xl bg-white border border-border/40 shadow-sm overflow-hidden">
 
-      <div className="flex flex-col items-start gap-0.5">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        <span className="text-xs text-muted-foreground">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-border/40 bg-slate-50/60">
+        <h2 className="text-sm font-semibold text-foreground leading-tight">
+          {title}
+        </h2>
+        <p className="text-xs text-muted-foreground">
           {description}
-        </span>
+        </p>
       </div>
 
-      <div className="flex-1 min-h-0">
-        {
-          data.length==0?
-          <Empty
-          title={titleWhenEmpty}
-          descpription={descriptionWhenEmpty}/>:
+      {/* Body */}
+      <div className="flex-1 min-h-0 p-4 bg-white">
+        {data.length === 0 ? (
+          <div className="h-full flex items-center justify-center">
+            <Empty
+              title={titleWhenEmpty}
+              descpription={descriptionWhenEmpty}
+            />
+          </div>
+        ) : (
           <DataTable
-          searchable={searchable}
-          pagination={pagination}
-          columns={columns}
-          data={data}
-          onRowClick={onRowClick}
-          selectedRowId={selectedRowId}
-          rowSelection={rowSelection}
-          onRowSelectionChange={onRowSelectionChange}
+            searchable={searchable}
+            pagination={pagination}
+            columns={columns}
+            data={data}
+            onRowClick={onRowClick}
+            selectedRowId={selectedRowId}
+            rowSelection={rowSelection}
+            onRowSelectionChange={onRowSelectionChange}
           />
-        }
-        
+        )}
       </div>
 
-    </div>
+    </section>
   )
 }
 

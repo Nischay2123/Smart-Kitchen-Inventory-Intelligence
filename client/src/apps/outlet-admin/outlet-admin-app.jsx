@@ -6,8 +6,10 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { renderRoutes } from "@/utils/render-routes";
 
 import {
+  GlassWater,
   ListCheck,
   ListOrdered,
+  TrendingUpDown,
   Warehouse,
 } from "lucide-react";
 
@@ -31,8 +33,8 @@ const rawMenu = [
   { name: "Stocks", url: "/", icon: ListCheck,permission: "RESTOCK" },
   { name: "Restock", url: "/restock", icon: Warehouse, permission: "RESTOCK" },
   { name: "Orders", url: "/orders", icon: ListOrdered,permission: "ANALYTICS"  },
-  { name: "StockMovement", url: "/saleStockMovement", icon: ListOrdered,permission: "ANALYTICS"  },
-  { name: "Consumption", url: "/consumption", icon: ListOrdered, permission: "ANALYTICS" },
+  { name: "StockMovement", url: "/saleStockMovement", icon: TrendingUpDown,permission: "ANALYTICS"  },
+  { name: "Consumption", url: "/consumption", icon: GlassWater, permission: "ANALYTICS" },
 ];
 
 const filteredMenu = rawMenu.filter(
@@ -40,6 +42,16 @@ const filteredMenu = rawMenu.filter(
     !item.permission ||
     user?.outletManagerPermissions?.[item.permission]
 );
+
+const data = {
+  brand: user?.outlet?.outletName || "",
+  user: {
+    name: user?.userName || "",
+    email: user?.email || "",
+    avatar: "/avatars/shadcn.jpg",
+  },
+  liveAnalytics: filteredMenu,
+};
 
 const data = {
   brand: user?.outlet?.outletName || "",

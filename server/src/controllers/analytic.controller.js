@@ -5,6 +5,7 @@ import Outlet from "../models/outlet.model.js"
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js"
+import TenantDailySnapshot from "../models/tenantDailySnapshot.model.js";
 
 export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
@@ -72,41 +73,29 @@ export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResoponse(200, data, "success"));
 });
 
-
-
-export const ingredientUsageAndBurnRate = asyncHandler(async(req,res)=>{
+export const ingredientUsageAndBurnRate = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
-    throw new ApiError(403,"Unauthorized")
+    throw new ApiError(403, "Unauthorized");
   }
 
-  const tenant = req.user.tenant
+  const tenant = req.user.tenant;
   const { fromDate, toDate, outletId } = req.query;
 
   const match = {
     "tenant.tenantId": tenant.tenantId,
-    reason: "ORDER",
     createdAt: {
       $gte: new Date(fromDate),
-      $lte: new Date(toDate)
-    }
-  }
+      $lte: new Date(toDate),
+    },
+    reason: "ORDER",
+  };
 
   if (outletId) {
-    match["outlet.outletId"] = new mongoose.Types.ObjectId(outletId)
+    match["outlet.outletId"] = new mongoose.Types.ObjectId(outletId);
   }
 
   const data = await StockMovement.aggregate([
     { $match: match },
-
-    {
-      $lookup: {
-        from: "stocks",
-        localField: "stockId",
-        foreignField: "_id",
-        as: "stock"
-      }
-    },
-    { $unwind: "$stock" },
 
     {
       $group: {
@@ -116,9 +105,9 @@ export const ingredientUsageAndBurnRate = asyncHandler(async(req,res)=>{
         unit: { $first: "$unit" },
         noOfOrders: { $sum: 1 },
         totalCost: {
-          $sum: { $multiply: ["$quantity", "$stock.unitCost"] }
-        }
-      }
+          $sum: { $multiply: ["$quantity", "$unitCost"] },
+        },
+      },
     },
 
     {
@@ -129,149 +118,470 @@ export const ingredientUsageAndBurnRate = asyncHandler(async(req,res)=>{
         totalQty: 1,
         unit: 1,
         noOfOrders: 1,
-        totalCost: 1,
+        totalCost: { $round: ["$totalCost", 2] },
+
         avgQtyPerOrder: {
-          $cond:[
-            { $gt:["$noOfOrders",0] },
-            { $round:[ { $divide:["$totalQty","$noOfOrders"] },2 ] },
-            0
-          ]
+          $cond: [
+            { $gt: ["$noOfOrders", 0] },
+            { $round: [{ $divide: ["$totalQty", "$noOfOrders"] }, 2] },
+            0,
+          ],
         },
+
         avgCostPerOrder: {
-          $cond:[
-            { $gt:["$noOfOrders",0] },
-            { $round:[ { $divide:["$totalCost","$noOfOrders"] },2 ] },
-            0
-          ]
-        }
-      }
-    }
-  ])
-
-  return res.status(200).json(
-    new ApiResoponse(200,data,"success")
-  )
-})
-
-export const brandAnalyticsDetialedReport = asyncHandler(async(req,res)=>{
-  if (req.user.role !== "BRAND_ADMIN") {
-    throw new ApiError(400,"Unauthorized Request ,Only Brand Manager can see the details")
-  }
-
-  const tenantContext = req.user.tenant
-  const {toDate , fromDate } = req.query;
-  console.log(toDate,fromDate);
-  
-  if (!tenantContext) {
-    throw new ApiError(400,"Unauthorized Request")
-  }
-
-  const date = new Date(fromDate)
-  const nextDate = new Date(toDate )
-
-  const result = await Sale.aggregate([
-    {
-      $match:{
-        "tenant.tenantId":tenantContext.tenantId,
-        "tenant.tenantName":tenantContext.tenantName,
-        createdAt:{
-          $gte:date,
-          $lte:nextDate
+          $cond: [
+            { $gt: ["$noOfOrders", 0] },
+            { $round: [{ $divide: ["$totalCost", "$noOfOrders"] }, 2] },
+            0,
+          ],
         },
       },
     },
+
+    { $sort: { totalCost: -1 } },
+  ]);
+
+  return res.status(200).json(
+    new ApiResoponse(200, data, "success")
+  );
+});
+
+// export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
+//   if (req.user.role !== "BRAND_ADMIN") {
+//     throw new ApiError(400, "Unauthorized Request ,Only Brand Manager can see the details")
+//   }
+
+//   const tenantContext = req.user.tenant
+//   const { toDate, fromDate } = req.query;
+//   console.log(toDate, fromDate);
+
+//   if (!tenantContext) {
+//     throw new ApiError(400, "Unauthorized Request")
+//   }
+
+//   const date = new Date(fromDate)
+//   const nextDate = new Date(toDate)
+
+//   const result = await Sale.aggregate([
+//     {
+//       $match: {
+//         "tenant.tenantId": tenantContext.tenantId,
+//         // "tenant.tenantName": tenantContext.tenantName,
+//         createdAt: {
+//           $gte: date,
+//           $lte: nextDate
+//         },
+//       },
+//     },
+//     {
+//       $project: {
+//         outlet: 1,
+//         items: 1,
+//         state: 1
+//       }
+//     },
+//     { $unwind: "$items" },
+//     {
+//       $project: {
+//         outlet: 1,
+//         sale: "$items.totalAmount",
+//         makingCost: "$items.makingCost",
+//         state: 1
+//       }
+//     },
+//     {
+//       $group: {
+//         _id: "$_id",
+//         makingCost: {
+//           $sum: {
+//             $cond: [
+//               { $eq: ["$state", "CONFIRMED"] },
+//               "$makingCost",
+//               0
+//             ]
+//           }
+//         },
+//         sale: {
+//           $sum: {
+//             $cond: [
+//               { $eq: ["$state", "CONFIRMED"] },
+//               "$sale",
+//               0
+//             ]
+//           }
+//         },
+//         outlet: { $first: "$outlet" },
+//         state: { $first: "$state" }
+//       }
+//     },
+//     {
+//       $group: {
+//         _id: {
+//           outletId: "$outlet.outletId",
+//           outletName: "$outlet.outletName",
+//         },
+//         cogs: { $sum: "$makingCost" },
+//         totalSale: { $sum: "$sale" },
+//         totalConfirmOrder: {
+//           $sum: {
+//             $cond: [
+//               { $eq: ["$state", "CONFIRMED"] },
+//               1,
+//               0
+//             ]
+//           }
+//         },
+//         totalBillCanceled: {
+//           $sum: {
+//             $cond: [
+//               { $eq: ["$state", "CANCELED"] },
+//               1,
+//               0
+//             ]
+//           }
+//         }
+//       }
+//     },
+
+
+//     {
+//       $project: {
+//         outlet: "$_id",
+//         cogs: 1,
+//         totalSale: 1,
+//         totalConfirmOrder: 1,
+//         totalBillCanceled: 1,
+//         totalProfit: { $subtract: ["$totalSale", "$cogs"] },
+//         _id: 0
+//       }
+//     },
+
+//     {
+//       $facet: {
+//         outletData: [{ $match: {} }],
+//         brandTotal: [
+//           {
+//             $group: {
+//               _id: null,
+//               brandTotalSale: { $sum: "$totalSale" }
+//             }
+//           }
+//         ]
+//       }
+//     },
+
+//     {
+//       $project: {
+//         outletData: 1,
+//         brandTotalSale: {
+//           $ifNull: [{ $arrayElemAt: ["$brandTotal.brandTotalSale", 0] }, 0]
+//         }
+//       }
+//     },
+
+//     {
+//       $unwind: "$outletData"
+//     },
+
+//     {
+//       $project: {
+//         outlet: "$outletData.outlet",
+//         cogs: "$outletData.cogs",
+//         totalSale: "$outletData.totalSale",
+//         totalOrder: "$outletData.totalConfirmOrder",
+//         totalBillCanceled: "$outletData.totalBillCanceled",
+//         totalProfit: "$outletData.totalProfit",
+
+//         averagePerOrder: {
+//           $cond: [
+//             { $gt: ["$outletData.totalConfirmOrder", 0] },
+//             { $round: [{ $divide: ["$outletData.totalSale", "$outletData.totalConfirmOrder"] }, 2] },
+//             0
+//           ]
+//         },
+
+//         cancelRate: {
+//           $cond: [
+//             { $gt: ["$outletData.totalConfirmOrder", 0] },
+//             {
+//               $round: [
+//                 {
+//                   $multiply: [
+//                     { $divide: ["$outletData.totalBillCanceled",{ $sum : ["$outletData.totalConfirmOrder","$outletData.totalBillCanceled"]}] },
+//                     100
+//                   ]
+//                 },
+//                 2
+//               ]
+//             },
+//             0
+//           ]
+//         },
+
+//         profitMargin: {
+//           $cond: [
+//             { $gt: ["$outletData.totalSale", 0] },
+//             {
+//               $round: [
+//                 {
+//                   $multiply: [
+//                     { $divide: ["$outletData.totalProfit", "$outletData.totalSale"] },
+//                     100
+//                   ]
+//                 },
+//                 2
+//               ]
+//             },
+//             0
+//           ]
+//         },
+
+//         revenueContribution: {
+//           $cond: [
+//             { $gt: ["$brandTotalSale", 0] },
+//             {
+//               $round: [
+//                 {
+//                   $multiply: [
+//                     { $divide: ["$outletData.totalSale", "$brandTotalSale"] },
+//                     100
+//                   ]
+//                 },
+//                 2
+//               ]
+//             },
+//             0
+//           ]
+//         }
+
+
+//       }
+//     }
+//   ])
+
+//   return res.status(200).json(
+//     new ApiResoponse(200, result, "successfull")
+//   )
+// })
+
+export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403, "Unauthorized Request");
+  }
+
+  const tenantContext = req.user.tenant;
+  const { fromDate, toDate } = req.query;
+
+  if (!tenantContext) {
+    throw new ApiError(403, "Unauthorized Request");
+  }
+
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+
+  // Normalize range
+  const snapshotStart = new Date(from.setUTCHours(0, 0, 0, 0));
+  const snapshotEnd = new Date(to.setUTCHours(23, 59, 59, 999));
+
+  // Today's live data start
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const pipeline = [
+
+    /* ---------- SNAPSHOT DATA ---------- */
+
     {
-      $project:{
-        outlet:1,
-        items:1,
-        state:1
+      $match: {
+        tenantId: tenantContext.tenantId,
+        date: { $gte: snapshotStart, $lte: snapshotEnd }
       }
     },
-    { $unwind:"$items" },
+
     {
-      $project:{
-        outlet:1,
-        sale:"$items.totalAmount",
-        makingCost:"$items.makingCost",
-        state:1
+      $project: {
+        outletId: 1,
+        outletName: 1,
+        totalSale: 1,
+        confirmedOrders: 1,
+        canceledOrders: 1,
+        cogs: 1
       }
     },
+
+    /* ---------- UNION LIVE DATA ---------- */
+
     {
-      $group:{
-        _id:"$_id",
-        makingCost:{
-          $sum:{
-            $cond:[
-              { $eq:["$state","CONFIRMED"] },
-              "$makingCost",
-              0
-            ]
+      $unionWith: {
+        coll: "sales",
+        pipeline: [
+
+          {
+            $match: {
+              "tenant.tenantId": tenantContext.tenantId,
+              createdAt: { $gte: todayStart }
+            }
+          },
+
+          { $project: { outlet: 1, items: 1, state: 1 } },
+          { $unwind: "$items" },
+
+          {
+            $project: {
+              outlet: 1,
+              sale: "$items.totalAmount",
+              makingCost: "$items.makingCost",
+              state: 1
+            }
+          },
+
+          {
+            $group: {
+              _id: "$_id",
+              sale: {
+                $sum: {
+                  $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0]
+                }
+              },
+              makingCost: {
+                $sum: {
+                  $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$makingCost", 0]
+                }
+              },
+              outlet: { $first: "$outlet" },
+              state: { $first: "$state" }
+            }
+          },
+
+          {
+            $group: {
+              _id: {
+                outletId: "$outlet.outletId",
+                outletName: "$outlet.outletName"
+              },
+              totalSale: { $sum: "$sale" },
+              cogs: { $sum: "$makingCost" },
+              confirmedOrders: {
+                $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0] }
+              },
+              canceledOrders: {
+                $sum: { $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0] }
+              }
+            }
+          },
+
+          {
+            $project: {
+              _id: 0,
+              outletId: "$_id.outletId",
+              outletName: "$_id.outletName",
+              totalSale: 1,
+              confirmedOrders: 1,
+              canceledOrders: 1,
+              cogs: 1
+            }
           }
-        },
-        sale:{
-          $sum:{
-            $cond:[
-              { $eq:["$state","CONFIRMED"] },
-              "$sale",
-              0
-            ]
-          }
-        },
-        outlet:{ $first:"$outlet" },
-        state:{ $first:"$state" }
+        ]
       }
     },
+
+    /* ---------- MERGE SNAPSHOT + LIVE ---------- */
+
     {
-      $group:{
-        _id:{
-          outletId:"$outlet.outletId",
-          outletName:"$outlet.outletName",
+      $group: {
+        _id: {
+          outletId: "$outletId",
+          outletName: "$outletName"
         },
-        cogs:{ $sum:"$makingCost" },
-        totalSale:{ $sum:"$sale" },
-        totalOrder:{
-          $sum:{
-            $cond:[
-              { $eq:["$state","CONFIRMED"] },
-              1,
-              0
-            ]
-          }
+        totalSale: { $sum: "$totalSale" },
+        confirmedOrders: { $sum: "$confirmedOrders" },
+        canceledOrders: { $sum: "$canceledOrders" },
+        cogs: { $sum: "$cogs" }
+      }
+    },
+
+    /* ---------- COMPUTE PER OUTLET KPIs ---------- */
+
+    {
+      $project: {
+        outlet: {
+          outletId: "$_id.outletId",
+          outletName: "$_id.outletName"
         },
-        totalBillCanceled:{
-          $sum:{
-            $cond:[
-              { $eq:["$state","CONFIRMED"] },
-              0,
-              1
-            ]
-          }
+
+        cogs: 1,
+        totalSale: 1,
+        totalOrder: "$confirmedOrders",
+        totalBillCanceled: "$canceledOrders",
+
+        totalProfit: { $subtract: ["$totalSale", "$cogs"] },
+
+        averagePerOrder: {
+          $cond: [
+            { $gt: ["$confirmedOrders", 0] },
+            { $round: [{ $divide: ["$totalSale", "$confirmedOrders"] }, 2] },
+            0
+          ]
+        },
+
+        cancelRate: {
+          $cond: [
+            { $gt: [{ $add: ["$confirmedOrders", "$canceledOrders"] }, 0] },
+            {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        "$canceledOrders",
+                        { $add: ["$confirmedOrders", "$canceledOrders"] }
+                      ]
+                    },
+                    100
+                  ]
+                },
+                2
+              ]
+            },
+            0
+          ]
+        },
+
+        profitMargin: {
+          $cond: [
+            { $gt: ["$totalSale", 0] },
+            {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        { $subtract: ["$totalSale", "$cogs"] },
+                        "$totalSale"
+                      ]
+                    },
+                    100
+                  ]
+                },
+                2
+              ]
+            },
+            0
+          ]
         }
       }
     },
 
-    /* ---------------- ADDITION START ---------------- */
+    /* ---------- BRAND TOTAL ---------- */
 
     {
-      $project:{
-        outlet:"$_id",
-        cogs:1,
-        totalSale:1,
-        totalOrder:1,
-        totalBillCanceled:1,
-        totalProfit:{ $subtract:["$totalSale","$cogs"] },
-        _id:0
-      }
-    },
-
-    {
-      $facet:{
-        outletData:[ { $match:{} } ],
-        brandTotal:[
+      $facet: {
+        outletData: [{ $match: {} }],
+        brandTotal: [
           {
-            $group:{
-              _id:null,
-              brandTotalSale:{ $sum:"$totalSale" }
+            $group: {
+              _id: null,
+              brandTotalSale: { $sum: "$totalSale" }
             }
           }
         ]
@@ -279,81 +589,40 @@ export const brandAnalyticsDetialedReport = asyncHandler(async(req,res)=>{
     },
 
     {
-      $project:{
-        outletData:1,
-        brandTotalSale:{
-          $ifNull:[ { $arrayElemAt:["$brandTotal.brandTotalSale",0] }, 0 ]
+      $project: {
+        outletData: 1,
+        brandTotalSale: {
+          $ifNull: [{ $arrayElemAt: ["$brandTotal.brandTotalSale", 0] }, 0]
         }
       }
     },
 
     {
-      $unwind:"$outletData"
+      $unwind: "$outletData"
     },
 
+    /* ---------- FINAL SHAPE MATCHING OLD API ---------- */
+
     {
-      $project:{
-        outlet:"$outletData.outlet",
-        cogs:"$outletData.cogs",
-        totalSale:"$outletData.totalSale",
-        totalOrder:"$outletData.totalOrder",
-        totalBillCanceled:"$outletData.totalBillCanceled",
-        totalProfit:"$outletData.totalProfit",
+      $project: {
+        outlet: "$outletData.outlet",
+        cogs: "$outletData.cogs",
+        totalSale: "$outletData.totalSale",
+        totalOrder: "$outletData.totalOrder",
+        totalBillCanceled: "$outletData.totalBillCanceled",
+        totalProfit: "$outletData.totalProfit",
+        averagePerOrder: "$outletData.averagePerOrder",
+        cancelRate: "$outletData.cancelRate",
+        profitMargin: "$outletData.profitMargin",
 
-        averagePerCover:{
-          $cond:[
-            { $gt:["$outletData.totalOrder",0] },
-            { $round:[ { $divide:["$outletData.totalSale","$outletData.totalOrder"] },2 ] },
-            0
-          ]
-        },
-
-        /* ---------- NEW KPIs ---------- */
-
-        cancelRate:{
-          $cond:[
-            { $gt:["$outletData.totalOrder",0] },
+        revenueContribution: {
+          $cond: [
+            { $gt: ["$brandTotalSale", 0] },
             {
-              $round:[
-                { 
-                  $multiply:[
-                    { $divide:["$outletData.totalBillCanceled","$outletData.totalOrder"] },
-                    100
-                  ]
-                },
-                2
-              ]
-            },
-            0
-          ]
-        },
-
-        profitMargin:{
-          $cond:[
-            { $gt:["$outletData.totalSale",0] },
-            {
-              $round:[
+              $round: [
                 {
-                  $multiply:[
-                    { $divide:["$outletData.totalProfit","$outletData.totalSale"] },
-                    100
-                  ]
-                },
-                2
-              ]
-            },
-            0
-          ]
-        },
-
-        revenueContribution:{
-          $cond:[
-            { $gt:["$brandTotalSale",0] },
-            {
-              $round:[
-                {
-                  $multiply:[
-                    { $divide:["$outletData.totalSale","$brandTotalSale"] },
+                  $multiply: [
+                    { $divide: ["$outletData.totalSale", "$brandTotalSale"] },
                     100
                   ]
                 },
@@ -363,37 +632,37 @@ export const brandAnalyticsDetialedReport = asyncHandler(async(req,res)=>{
             0
           ]
         }
-
-        /* ---------------- END ---------------- */
-
       }
     }
-  ])
+  ];
+
+  const result = await TenantDailySnapshot.aggregate(pipeline);
 
   return res.status(200).json(
-    new ApiResoponse(200,result,"successfull")
-  )
-})
+    new ApiResoponse(200, result, "successfull")
+  );
+});
+
 
 export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
-    throw new ApiError(400,"Unauthorized Request ,Only Brand Manager can see the details")
+    throw new ApiError(400, "Unauthorized Request ,Only Brand Manager can see the details")
   }
 
-   const tenantContext = req.user.tenant
-    const {toDate , fromDate } = req.query;
-    // console.log(tenantContext,toDate,fromDate);
-    
-    if (!tenantContext) {
-        throw new ApiError(400,"Unauthorized Request")
-    }
-    
+  const tenantContext = req.user.tenant
+  const { toDate, fromDate } = req.query;
+  // console.log(tenantContext,toDate,fromDate);
+
+  if (!tenantContext) {
+    throw new ApiError(400, "Unauthorized Request")
+  }
+
   const data = await Sale.aggregate([
     {
       $match: {
         "tenant.tenantId": tenantContext.tenantId,
-        state: "CONFIRMED",
         createdAt: { $gte: new Date(fromDate), $lte: new Date(toDate) },
+        state: "CONFIRMED",
       },
     },
     { $unwind: "$items" },
@@ -478,10 +747,9 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResoponse(200, data[0]?.items || [], "success"));
 });
 
-
-export const getOutlets= asyncHandler(async(req,res)=>{
+export const getOutlets = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
-    throw new ApiError(400,"Unauthorized Request ,Only Brand Manager can see the details")
+    throw new ApiError(400, "Unauthorized Request ,Only Brand Manager can see the details")
   }
   const tenantContext = req.user.tenant;
   const outlets = await Outlet.find({
@@ -489,10 +757,10 @@ export const getOutlets= asyncHandler(async(req,res)=>{
   }).select("tenant outletName")
 
   if (!outlets) {
-    throw new ApiError(200,[],`No Outlet found for the Brand: ${tenantContext.tenantName}`)
+    throw new ApiError(200, [], `No Outlet found for the Brand: ${tenantContext.tenantName}`)
   }
 
   return res.status(200).json(
-    new ApiResoponse(200,outlets,"Oulets Fetched Successfully")
+    new ApiResoponse(200, outlets, "Oulets Fetched Successfully")
   )
 })

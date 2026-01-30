@@ -85,11 +85,32 @@ const StockMovementSchema = new Schema(
       type: Number,
       default: null,
       min:0
+    },
+
+    unitCost :{
+      type:Number,
+      min:0,
+      default:0
     }
   },
   {
     timestamps: { createdAt: true, updatedAt: false },
   }
 );
+
+StockMovementSchema.index({
+  "tenant.tenantId": 1,
+  "outlet.outletId": 1,
+  "reason":1,
+  createdAt: -1,
+});
+
+
+StockMovementSchema.index({
+  "tenant.tenantId": 1,
+  "reason":1,
+  createdAt: -1,
+});
+
 
 export default model("StockMovement", StockMovementSchema);
