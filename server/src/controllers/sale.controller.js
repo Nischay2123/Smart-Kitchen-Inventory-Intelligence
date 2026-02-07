@@ -343,52 +343,116 @@ const cancelSaleAndRespond = async ({
 //   }
 // };
 
+// const deductStockWithTransaction = async ({
+//   requirementList,
+//   outlet,
+//   saleId,
+// }) => {
+//   const session = await mongoose.startSession();
+
+//   try {
+//      const bulkOps = requirementList.map(req => ({
+//       updateOne: {
+//         filter: {
+//           "outlet.outletId": outlet.outletId,
+//           "masterIngredient.ingredientMasterId":
+//             req.ingredientMasterId,
+//           currentStockInBase: { $gte: req.requiredBaseQty },
+//         },
+//         update: {
+//           $inc: { currentStockInBase: -req.requiredBaseQty },
+//         },
+//       },
+//     }));
+//     session.startTransaction();
+
+//     const result = await Stock.bulkWrite(bulkOps, { session });
+
+//     if (result.matchedCount !== requirementList.length) {
+//       throw new Error("STOCK_CHANGED");
+//     }
+
+//     await session.commitTransaction();
+//   } catch (err) {
+//     await session.abortTransaction();
+
+//     await Sale.updateOne(
+//       { _id: saleId },
+//       {
+//         $set: {
+//           state: "CANCELED",
+//           reason: "STOCK_CHANGED",
+//         },
+//       }
+//     );
+
+//     throw err;
+//   } finally {
+//     session.endSession();
+//   }
+// };
+
+
+const MAX_RETRIES = 5;
+
 const deductStockWithTransaction = async ({
   requirementList,
   outlet,
   saleId,
 }) => {
-  const session = await mongoose.startSession();
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const session = await mongoose.startSession();
 
-  try {
-     const bulkOps = requirementList.map(req => ({
-      updateOne: {
-        filter: {
-          "outlet.outletId": outlet.outletId,
-          "masterIngredient.ingredientMasterId":
-            req.ingredientMasterId,
-          currentStockInBase: { $gte: req.requiredBaseQty },
+    try {
+      session.startTransaction();
+
+      const bulkOps = requirementList.map(req => ({
+        updateOne: {
+          filter: {
+            "outlet.outletId": outlet.outletId,
+            "masterIngredient.ingredientMasterId":
+              req.ingredientMasterId,
+            currentStockInBase: { $gte: req.requiredBaseQty },
+          },
+          update: {
+            $inc: { currentStockInBase: -req.requiredBaseQty },
+          },
         },
-        update: {
-          $inc: { currentStockInBase: -req.requiredBaseQty },
-        },
-      },
-    }));
-    session.startTransaction();
+      }));
 
-    const result = await Stock.bulkWrite(bulkOps, { session });
+      const result = await Stock.bulkWrite(bulkOps, { session });
 
-    if (result.matchedCount !== requirementList.length) {
-      throw new Error("STOCK_CHANGED");
-    }
-
-    await session.commitTransaction();
-  } catch (err) {
-    await session.abortTransaction();
-
-    await Sale.updateOne(
-      { _id: saleId },
-      {
-        $set: {
-          state: "CANCELED",
-          reason: "STOCK_CHANGED",
-        },
+      if (result.matchedCount !== requirementList.length) {
+        throw new Error("STOCK_CHANGED");
       }
-    );
 
-    throw err;
-  } finally {
-    session.endSession();
+      await session.commitTransaction();
+      session.endSession();
+      return; // success
+    } catch (err) {
+      await session.abortTransaction();
+      session.endSession();
+
+      const isWriteConflict =
+        err.message?.includes("Write conflict");
+
+      if (isWriteConflict && attempt < MAX_RETRIES) {
+        console.log(`Retrying stock deduction (${attempt})`);
+        continue; // retry
+      }
+
+      await Sale.updateOne(
+        { _id: saleId },
+        {
+          $set: {
+            state: "CANCELED",
+            reason: "STOCK_CHANGED",
+          },
+        }
+      );
+
+      throw err;
+    }
   }
 };
 

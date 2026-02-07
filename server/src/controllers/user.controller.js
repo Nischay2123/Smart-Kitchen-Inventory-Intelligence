@@ -431,6 +431,7 @@ export const login = asyncHandler(async (req, res) => {
           role: user.role,
           tenant: user.tenant,
           outlet: user.outlet,
+          outletManagerPermissions:user.outletManagerPermissions
         },
       },
       "Login successful"

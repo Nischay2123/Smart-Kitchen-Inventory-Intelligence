@@ -28,51 +28,62 @@ export const OutletAdminApp = () => {
 
 
 
-const rawMenu = [
-  { name: "Stocks", url: "/", icon: ListCheck,permission: "RESTOCK" },
-  { name: "Restock", url: "/restock", icon: Warehouse, permission: "RESTOCK" },
-  { name: "Orders", url: "/orders", icon: ListOrdered,permission: "ANALYTICS"  },
-  { name: "StockMovement", url: "/saleStockMovement", icon: TrendingUpDown,permission: "ANALYTICS"  },
-  { name: "Consumption", url: "/consumption", icon: GlassWater, permission: "ANALYTICS" },
-];
+  const rawMenu = [
+    { name: "Stocks", url: "/", icon: ListCheck, permission: "RESTOCK" },
+    { name: "Restock", url: "/restock", icon: Warehouse, permission: "RESTOCK" },
+    { name: "Order Details", url: "/orders", icon: ListOrdered, permission: "ANALYTICS" },
+    { name: "StockMovement", url: "/saleStockMovement", icon: TrendingUpDown, permission: "ANALYTICS" },
+    { name: "Consumption", url: "/consumption", icon: GlassWater, permission: "ANALYTICS" },
+  ];
 
-const filteredMenu = rawMenu.filter(
-  (item) =>
-    !item.permission ||
-    user?.outletManagerPermissions?.[item.permission]
-);
+  const filteredMenu = rawMenu.filter(
+    (item) =>
+      !item.permission ||
+      user?.outletManagerPermissions?.[item.permission]
+  );
 
 
-const data = {
-  brand: user?.outlet?.outletName || "",
-  user: {
-    name: user?.userName || "",
-    email: user?.email || "",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  liveAnalytics: filteredMenu,
-};
+  const data = {
+    brand: user?.outlet?.outletName || "",
+    user: {
+      name: user?.userName || "",
+      email: user?.email || "",
+      avatar: "/avatars/shadcn.jpg",
+    },
+    liveAnalytics: filteredMenu,
+  };
 
 
   const handleLogout = async () => {
     try {
       await logoutUser().unwrap();
     } finally {
-      setUser(null);      
+      setUser(null);
     }
-  };
+  };  
+  console.log(user);
+  
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
 
 
   return (
     <SidebarProvider>
-        <AppSidebar handleLogout={handleLogout} data={data} />
-      <Routes>
-        {renderRoutes(outletAdminRoutes,["OUTLET_MANAGER"])}
-        <Route path="/403" element={<PermissionDenied />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      
-    </SidebarProvider>
+  <>
+    <AppSidebar handleLogout={handleLogout} data={data} />
+    <Routes>
+      {renderRoutes(outletAdminRoutes, ["OUTLET_MANAGER"])}
+      <Route path="/403" element={<PermissionDenied />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </>
+</SidebarProvider>
+
   );
 };
 

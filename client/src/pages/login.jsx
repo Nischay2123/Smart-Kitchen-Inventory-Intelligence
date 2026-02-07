@@ -3,8 +3,10 @@ import { useAuth } from "@/auth/auth";
 import { LoginForm } from "@/components/login/login-form";
 import WelcomeHeader from "@/components/login/welcome-card";
 import { useLoginMutation } from "@/redux/apis/userApi";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
+  const Navigate = useNavigate()
   const [loginApi] = useLoginMutation();
   const { setUser } = useAuth();
 
@@ -18,9 +20,11 @@ const Login = () => {
     try {
       const res = await loginApi({ email, password }).unwrap();
       const user = res?.data?.user;
-
+      console.log(user);
+      
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);
+      Navigate("/")
     } catch (err) {
       setError(
         err?.data?.message ||
