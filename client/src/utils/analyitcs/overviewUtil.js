@@ -1,41 +1,128 @@
 export const aggregateData = (dataArray) => {
   if (!Array.isArray(dataArray) || dataArray.length === 0) return null;
 
-  const aggregated = {
+  let totals = {
     cogs: 0,
     totalSale: 0,
-    totalOrder: 0,
-    totalBillCanceled: 0,
-    totalProfit: 0,
-    totaAveragePerOrder: 0,
-    totalCancelRate: 0,
-    totalProfitMargin: 0,
-    totalRevenueContribution: 0,
+    confirmedOrders: 0,
+    canceledOrders: 0,
   };
 
-  dataArray.forEach(item => {
-    aggregated.cogs += item.cogs || 0;
-    aggregated.totalSale += item.totalSale || 0;
-    aggregated.totalOrder += item.totalOrder || 0;
-    aggregated.totalBillCanceled += item.totalBillCanceled || 0;
-    aggregated.totalProfit += item.totalProfit || 0;
-    aggregated.totaAveragePerOrder += item.averagePerOrder || 0;
-    aggregated.totalCancelRate += item.cancelRate || 0;
-    aggregated.totalProfitMargin += item.profitMargin || 0;
-    aggregated.totalRevenueContribution += item.revenueContribution || 0;
+  dataArray.forEach((item) => {
+    totals.cogs += item.cogs || 0;
+    totals.totalSale += item.totalSale || 0;
+    totals.confirmedOrders += item.confirmedOrders || 0;
+    totals.canceledOrders += item.canceledOrders || 0;
   });
 
-  const n = dataArray.length;
+  const totalOrders =
+    totals.confirmedOrders + totals.canceledOrders;
+
+  const totalProfit = totals.totalSale - totals.cogs;
 
   return {
-    cogs: aggregated.cogs,
-    totalSale: aggregated.totalSale,
-    totalOrder: aggregated.totalOrder,
-    totalBillCanceled: aggregated.totalBillCanceled,
-    totalProfit: aggregated.totalProfit,
-    averagePerOrder: aggregated.totaAveragePerOrder / n,
-    cancelRate: aggregated.totalCancelRate / n,
-    profitMargin: aggregated.totalProfitMargin / n,
-    revenueContribution: aggregated.totalRevenueContribution / n,
+    cogs: totals.cogs,
+    totalSale: totals.totalSale,
+    totalOrder: totals.confirmedOrders,
+    totalBillCanceled: totals.canceledOrders,
+    totalProfit,
+
+    averagePerOrder:
+      totals.confirmedOrders > 0
+        ? totals.totalSale / totals.confirmedOrders
+        : 0,
+
+    cancelRate:
+      totalOrders > 0
+        ? (totals.canceledOrders / totalOrders) * 100
+        : 0,
+
+    profitMargin:
+      totals.totalSale > 0
+        ? (totalProfit / totals.totalSale) * 100
+        : 0,
+
+    revenueContribution: 100,
   };
+};
+
+
+
+
+export const chunkArray = (arr, size = 250) => {
+  const res = [];
+  for (let i = 0; i < arr.length; i += size) {
+    res.push(arr.slice(i, i + size));
+  }
+  return res;
+};
+
+
+
+export const mergeAnalytics = (snapshot = [], live = []) => {
+  const map = new Map();
+
+  const insert = (row) => {
+    const id = row.outletId.toString();
+
+    if (!map.has(id)) {
+      map.set(id, {
+        outletId: row.outletId,
+        outletName: row.outletName,
+        totalSale: 0,
+        confirmedOrders: 0,
+        canceledOrders: 0,
+        cogs: 0,
+      });
+    }
+
+    const prev = map.get(id);
+
+    prev.totalSale += row.totalSale || 0;
+    prev.confirmedOrders += row.confirmedOrders || 0;
+    prev.canceledOrders += row.canceledOrders || 0;
+    prev.cogs += row.cogs || 0;
+  };
+
+  snapshot.forEach(insert);
+  live.forEach(insert);
+
+  const result = Array.from(map.values());
+
+  // compute KPIs
+  const brandSale = result.reduce(
+    (sum, r) => sum + r.totalSale,
+    0
+  );
+
+  result.forEach((r) => {
+    const totalOrders =
+      r.confirmedOrders + r.canceledOrders;
+
+    const profit = r.totalSale - r.cogs;
+
+    r.totalProfit = profit;
+
+    r.averagePerOrder =
+      r.confirmedOrders > 0
+        ? r.totalSale / r.confirmedOrders
+        : 0;
+
+    r.cancelRate =
+      totalOrders > 0
+        ? (r.canceledOrders / totalOrders) * 100
+        : 0;
+
+    r.profitMargin =
+      r.totalSale > 0
+        ? (profit / r.totalSale) * 100
+        : 0;
+
+    r.revenueContribution =
+      brandSale > 0
+        ? (r.totalSale / brandSale) * 100
+        : 0;
+  });
+
+  return result;
 };

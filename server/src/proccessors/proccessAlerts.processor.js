@@ -6,13 +6,13 @@ import { getOutletManagersEmails } from "../services/outletManagers.service.js";
 import { sendStockAlertEmail } from "../utils/emailAlert.js";
 
 export const processAlerts = async ({ outlet, tenant, requirementList }) => {
-    // console.log(requirementList);
-    
+  const alertItems = [];
+
   for (const req of requirementList) {
     const stock = await Stock.findOne({
       "outlet.outletId": outlet.outletId,
       "masterIngredient.ingredientMasterId": req.ingredientMasterId,
-    });
+    }).lean();
 
     if (!stock) continue;
 
@@ -21,8 +21,7 @@ export const processAlerts = async ({ outlet, tenant, requirementList }) => {
     ).lean();
 
     if (!ingredient) continue;
-    // console.log(ingredient);
-    
+
     const { lowInBase, criticalInBase } = ingredient.threshold;
 
     const newState = resolveAlertState({
@@ -30,29 +29,41 @@ export const processAlerts = async ({ outlet, tenant, requirementList }) => {
       lowInBase,
       criticalInBase,
     });
-    console.log(newState);
-    
+
     if (stock.alertState === newState) continue;
 
-    const emails = await getOutletManagersEmails(
-      tenant.tenantId,
-      outlet.outletId
-    );
-    // console.log({newState,emails});
-    
-    if (emails.length > 0) {
-      await sendStockAlertEmail({
-        to: emails,
-        ingredientName: stock.masterIngredient.ingredientMasterName,
-        currentStock: stock.currentStockInBase,
-        baseUnit: stock.baseUnit,
-        alertState: newState,
-      });
-    }
-
-    await Stock.updateOne(
-      { _id: stock._id },
-      { $set: { alertState: newState } }
-    );
+    alertItems.push({
+      ingredientName: stock.masterIngredient.ingredientMasterName,
+      currentStock: stock.currentStockInBase,
+      baseUnit: stock.baseUnit,
+      lowInBase,
+      criticalInBase,
+      alertState: newState,
+      stockId: stock._id,
+    });
   }
+
+  if (!alertItems.length) return;
+
+  const emails = await getOutletManagersEmails(
+    tenant.tenantId,
+    outlet.outletId
+  );
+
+  if (emails.length > 0) {
+    await sendStockAlertEmail({
+      to: emails,
+      outletName: outlet.name,
+      alerts: alertItems,
+    });
+  }
+
+  await Stock.bulkWrite(
+    alertItems.map((item) => ({
+      updateOne: {
+        filter: { _id: item.stockId },
+        update: { $set: { alertState: item.alertState } },
+      },
+    }))
+  );
 };

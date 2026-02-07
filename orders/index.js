@@ -14,10 +14,10 @@ const tenant = {
 ========================= */
 const outlets = [
   { outletId: "696a2158448eaa44cbb20e3e", outletName: "IndusFlavour NSP" },
-  { outletId: "697750a866bf3e3f6b5c2df6", outletName: "IndusFlavour CP" },
-  { outletId: "6977bc4ece1177f4a76c4cbb", outletName: "IndusFlavour Saket" },
-  { outletId: "6977bc78ce1177f4a76c4cbf", outletName: "IndusFlavour Gurgaon" },
-  { outletId: "6977bc8bce1177f4a76c4cc1", outletName: "IndusFlavour Noida" }
+  // { outletId: "697750a866bf3e3f6b5c2df6", outletName: "IndusFlavour CP" },
+  // { outletId: "6977bc4ece1177f4a76c4cbb", outletName: "IndusFlavour Saket" },
+  // { outletId: "6977bc78ce1177f4a76c4cbf", outletName: "IndusFlavour Gurgaon" },
+  // { outletId: "6977bc8bce1177f4a76c4cc1", outletName: "IndusFlavour Noida" }
 ];
 
 /* =========================
@@ -51,14 +51,32 @@ const randomInt = (min, max) =>
 ========================= */
 const buildRandomOrderItems = () => {
   const shuffled = [...items].sort(() => 0.5 - Math.random());
-  const count = randomInt(1, items.length);
+
+  const count = randomInt(1, 4); // ✅ max 4 items
 
   return shuffled.slice(0, count).map(item => ({
     itemId: item.itemId,
     itemName: item.itemName,
-    qty: randomInt(1, 5)
+    qty: randomInt(1, 3) 
   }));
 };
+
+const randomPastDate = () => {
+  const start = new Date();
+  start.setMonth(start.getMonth() - 1); // ✅ last 1 month only
+
+  return new Date(
+    start.getTime() +
+      Math.random() * (Date.now() - start.getTime())
+  );
+};
+
+const oneDayBefore = () => {
+  const date = new Date();
+  date.setDate(date.getDate() - 7);
+  return date;
+};
+
 
 /* =========================
    SEND ORDER
@@ -70,7 +88,8 @@ const sendOrder = (outlet) => {
       outletName: outlet.outletName
     },
     tenant,
-    items: buildRandomOrderItems()
+    items: buildRandomOrderItems(),
+    createdAt: oneDayBefore()
   };
 
   return axios.post(API_URL, payload);
@@ -93,11 +112,13 @@ const sendParallelOrders = async () => {
 /* =========================
    MULTIPLE BATCHES
 ========================= */
-const BATCHES = 5;
+const BATCHES = 10;
 
-(async () => {
+  (async () => {
   for (let i = 1; i <= BATCHES; i++) {
     console.log(`\n🔥 Batch ${i}`);
     await sendParallelOrders();
   }
 })();
+
+

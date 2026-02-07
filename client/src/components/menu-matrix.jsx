@@ -31,7 +31,7 @@ const CustomTooltip = ({ active, payload }) => {
     <div className="rounded-lg border bg-white px-3 py-2 shadow text-xs space-y-1">
       <div className="font-semibold">{d.itemName}</div>
       <div>Qty: {d.qty}</div>
-      <div>Profit: ₹{d.profit}</div>
+      <div>Profit: ₹{d.profit.toFixed(2)}</div>
       <div className="font-medium">
         Category: <span style={{ color: COLORS[d.category] }}>{d.category}</span>
       </div>

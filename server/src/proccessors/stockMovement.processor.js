@@ -4,10 +4,11 @@ import Stock from "../models/stock.model.js";
 import { emitEvent } from "../workers/socket.js";
 
 export const processStockMovement = async (data) => {
-  const { orderId, requirementList, tenant, outlet } = data;
+  const { orderId, requirementList, tenant, outlet, createdAt,} = data;
 
   console.log("processStockMovement", orderId);
-
+  console.log(createdAt);
+  
   for (const r of requirementList) {
     const ingredient = await IngredientMaster
       .findById(r.ingredientMasterId)
@@ -58,12 +59,15 @@ export const processStockMovement = async (data) => {
           stockId: stock?._id ?? null,
 
           unitCost: stock?.unitCost ?? 0,
+
+          createdAt: createdAt || new Date(),
         },
       },
       {
         new: true,
         upsert: true,
         rawResult: true,
+        timestamps: false,
       }
     );
 

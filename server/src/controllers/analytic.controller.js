@@ -146,223 +146,6 @@ export const ingredientUsageAndBurnRate = asyncHandler(async (req, res) => {
   );
 });
 
-// export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
-//   if (req.user.role !== "BRAND_ADMIN") {
-//     throw new ApiError(400, "Unauthorized Request ,Only Brand Manager can see the details")
-//   }
-
-//   const tenantContext = req.user.tenant
-//   const { toDate, fromDate } = req.query;
-//   console.log(toDate, fromDate);
-
-//   if (!tenantContext) {
-//     throw new ApiError(400, "Unauthorized Request")
-//   }
-
-//   const date = new Date(fromDate)
-//   const nextDate = new Date(toDate)
-
-//   const result = await Sale.aggregate([
-//     {
-//       $match: {
-//         "tenant.tenantId": tenantContext.tenantId,
-//         // "tenant.tenantName": tenantContext.tenantName,
-//         createdAt: {
-//           $gte: date,
-//           $lte: nextDate
-//         },
-//       },
-//     },
-//     {
-//       $project: {
-//         outlet: 1,
-//         items: 1,
-//         state: 1
-//       }
-//     },
-//     { $unwind: "$items" },
-//     {
-//       $project: {
-//         outlet: 1,
-//         sale: "$items.totalAmount",
-//         makingCost: "$items.makingCost",
-//         state: 1
-//       }
-//     },
-//     {
-//       $group: {
-//         _id: "$_id",
-//         makingCost: {
-//           $sum: {
-//             $cond: [
-//               { $eq: ["$state", "CONFIRMED"] },
-//               "$makingCost",
-//               0
-//             ]
-//           }
-//         },
-//         sale: {
-//           $sum: {
-//             $cond: [
-//               { $eq: ["$state", "CONFIRMED"] },
-//               "$sale",
-//               0
-//             ]
-//           }
-//         },
-//         outlet: { $first: "$outlet" },
-//         state: { $first: "$state" }
-//       }
-//     },
-//     {
-//       $group: {
-//         _id: {
-//           outletId: "$outlet.outletId",
-//           outletName: "$outlet.outletName",
-//         },
-//         cogs: { $sum: "$makingCost" },
-//         totalSale: { $sum: "$sale" },
-//         totalConfirmOrder: {
-//           $sum: {
-//             $cond: [
-//               { $eq: ["$state", "CONFIRMED"] },
-//               1,
-//               0
-//             ]
-//           }
-//         },
-//         totalBillCanceled: {
-//           $sum: {
-//             $cond: [
-//               { $eq: ["$state", "CANCELED"] },
-//               1,
-//               0
-//             ]
-//           }
-//         }
-//       }
-//     },
-
-
-//     {
-//       $project: {
-//         outlet: "$_id",
-//         cogs: 1,
-//         totalSale: 1,
-//         totalConfirmOrder: 1,
-//         totalBillCanceled: 1,
-//         totalProfit: { $subtract: ["$totalSale", "$cogs"] },
-//         _id: 0
-//       }
-//     },
-
-//     {
-//       $facet: {
-//         outletData: [{ $match: {} }],
-//         brandTotal: [
-//           {
-//             $group: {
-//               _id: null,
-//               brandTotalSale: { $sum: "$totalSale" }
-//             }
-//           }
-//         ]
-//       }
-//     },
-
-//     {
-//       $project: {
-//         outletData: 1,
-//         brandTotalSale: {
-//           $ifNull: [{ $arrayElemAt: ["$brandTotal.brandTotalSale", 0] }, 0]
-//         }
-//       }
-//     },
-
-//     {
-//       $unwind: "$outletData"
-//     },
-
-//     {
-//       $project: {
-//         outlet: "$outletData.outlet",
-//         cogs: "$outletData.cogs",
-//         totalSale: "$outletData.totalSale",
-//         totalOrder: "$outletData.totalConfirmOrder",
-//         totalBillCanceled: "$outletData.totalBillCanceled",
-//         totalProfit: "$outletData.totalProfit",
-
-//         averagePerOrder: {
-//           $cond: [
-//             { $gt: ["$outletData.totalConfirmOrder", 0] },
-//             { $round: [{ $divide: ["$outletData.totalSale", "$outletData.totalConfirmOrder"] }, 2] },
-//             0
-//           ]
-//         },
-
-//         cancelRate: {
-//           $cond: [
-//             { $gt: ["$outletData.totalConfirmOrder", 0] },
-//             {
-//               $round: [
-//                 {
-//                   $multiply: [
-//                     { $divide: ["$outletData.totalBillCanceled",{ $sum : ["$outletData.totalConfirmOrder","$outletData.totalBillCanceled"]}] },
-//                     100
-//                   ]
-//                 },
-//                 2
-//               ]
-//             },
-//             0
-//           ]
-//         },
-
-//         profitMargin: {
-//           $cond: [
-//             { $gt: ["$outletData.totalSale", 0] },
-//             {
-//               $round: [
-//                 {
-//                   $multiply: [
-//                     { $divide: ["$outletData.totalProfit", "$outletData.totalSale"] },
-//                     100
-//                   ]
-//                 },
-//                 2
-//               ]
-//             },
-//             0
-//           ]
-//         },
-
-//         revenueContribution: {
-//           $cond: [
-//             { $gt: ["$brandTotalSale", 0] },
-//             {
-//               $round: [
-//                 {
-//                   $multiply: [
-//                     { $divide: ["$outletData.totalSale", "$brandTotalSale"] },
-//                     100
-//                   ]
-//                 },
-//                 2
-//               ]
-//             },
-//             0
-//           ]
-//         }
-
-
-//       }
-//     }
-//   ])
-
-//   return res.status(200).json(
-//     new ApiResoponse(200, result, "successfull")
-//   )
-// })
 
 export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
@@ -379,17 +162,14 @@ export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
   const from = new Date(fromDate);
   const to = new Date(toDate);
 
-  // Normalize range
   const snapshotStart = new Date(from.setUTCHours(0, 0, 0, 0));
   const snapshotEnd = new Date(to.setUTCHours(23, 59, 59, 999));
 
-  // Today's live data start
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
 
   const pipeline = [
 
-    /* ---------- SNAPSHOT DATA ---------- */
 
     {
       $match: {
@@ -409,7 +189,6 @@ export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
       }
     },
 
-    /* ---------- UNION LIVE DATA ---------- */
 
     {
       $unionWith: {
@@ -485,7 +264,6 @@ export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
       }
     },
 
-    /* ---------- MERGE SNAPSHOT + LIVE ---------- */
 
     {
       $group: {
@@ -500,7 +278,6 @@ export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
       }
     },
 
-    /* ---------- COMPUTE PER OUTLET KPIs ---------- */
 
     {
       $project: {
@@ -572,7 +349,6 @@ export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
       }
     },
 
-    /* ---------- BRAND TOTAL ---------- */
 
     {
       $facet: {
@@ -601,7 +377,6 @@ export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
       $unwind: "$outletData"
     },
 
-    /* ---------- FINAL SHAPE MATCHING OLD API ---------- */
 
     {
       $project: {
@@ -640,6 +415,137 @@ export const brandAnalyticsDetialedReport = asyncHandler(async (req, res) => {
 
   return res.status(200).json(
     new ApiResoponse(200, result, "successfull")
+  );
+});
+
+export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403, "Unauthorized Request");
+  }
+
+  const tenantContext = req.user.tenant;
+  const { fromDate, toDate } = req.query;
+
+  if (!tenantContext) {
+    throw new ApiError(403, "Unauthorized Request");
+  }
+  const { outletIds } = req.body;
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+
+  const snapshotStart = new Date(from.setUTCHours(0, 0, 0, 0));
+  const snapshotEnd = new Date(to.setUTCHours(23, 59, 59, 999));
+  const outletObjectIds = outletIds.map((i)=> new mongoose.Types.ObjectId(i))
+
+
+  const pipeline = [
+    {
+      $match: {
+        tenantId: tenantContext.tenantId,
+        outletId: { $in: outletObjectIds },
+        date: { $gte: snapshotStart, $lte: snapshotEnd }
+      }
+    },
+    {
+      $group: {
+        _id:{outletId: "$outletId",
+        outletName: "$outletName"},
+        totalSale: { $sum: "$totalSale" },
+        confirmedOrders: { $sum: "$confirmedOrders" },
+        canceledOrders: { $sum: "$canceledOrders" },
+        cogs: { $sum: "$cogs" }
+      }
+    },
+    {
+      $project: {
+        _id:0,
+        outletId: "$_id.outletId",
+        outletName: "$_id.outletName",
+        totalSale: 1,
+        confirmedOrders: 1,
+        canceledOrders: 1,
+        cogs: 1
+      }
+    },
+  ];
+
+  const result = await TenantDailySnapshot.aggregate(pipeline);
+  // const result = await TenantDailySnapshot.find({});
+
+  return res.status(200).json(
+    new ApiResoponse(200, result, "Snapshot analytics fetched successfully")
+  );
+});
+
+export const brandAnalyticsLiveReport = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403, "Unauthorized Request");
+  }
+
+  const tenantContext = req.user.tenant;
+
+  if (!tenantContext) {
+    throw new ApiError(403, "Unauthorized Request");
+  }
+  const { outletIds } = req.body;
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+  const outletObjectIds = outletIds.map((i)=> new mongoose.Types.ObjectId(i))
+  const pipeline = [
+    {
+      $match: {
+        "tenant.tenantId": tenantContext.tenantId,
+        "outlet.outletId": { $in: outletObjectIds },
+        createdAt: { $gte: todayStart }
+      }
+    },
+    { $unwind: "$items" },
+    {
+      $group: {
+        _id: "$_id",
+        outlet: { $first: "$outlet" },
+        state: { $first: "$state" },
+        sale: { $sum: "$items.totalAmount" },
+        cogs: { $sum: "$items.makingCost" }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          outletId: "$outlet.outletId",
+          outletName: "$outlet.outletName"
+        },
+        totalSale: {
+          $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0] }
+        },
+        cogs: {
+          $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$cogs", 0] }
+        },
+        confirmedOrders: {
+          $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0] }
+        },
+        canceledOrders: {
+          $sum: { $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0] }
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        outletId: "$_id.outletId",
+        outletName: "$_id.outletName",
+        totalSale: 1,
+        confirmedOrders: 1,
+        canceledOrders: 1,
+        cogs: 1
+      }
+    },
+  ];
+
+  const result = await Sale.aggregate(pipeline);
+
+  return res.status(200).json(
+    new ApiResoponse(200, result, "Live analytics fetched successfully")
   );
 });
 

@@ -14,22 +14,46 @@ export const Analytics = baseApi.injectEndpoints({
       query: ({ from, to }) => ({
         url: "analytics/get_deployment_data",
         method: "GET",
-        params:{fromDate:from,toDate:to},
+        params: { fromDate: from, toDate: to },
+      }),
+    }),
+    getLiveDeploymentData: builder.query({
+      query: ({ from, to, outletIds }) => ({
+        url: "analytics/get_deployment_data",
+        method: "GET",
+        params: { fromDate: from, toDate: to },
+        body: { outletIds }
+      }),
+    }),
+    getSnapshotDeploymentData: builder.mutation({
+      query: ({ outletIds, from, to }) => ({
+        url: "analytics/get_deployment_data",
+        method: "POST",
+        params: { fromDate: from, toDate: to },
+        body: { outletIds },
       }),
     }),
 
+    getLiveDeploymentData: builder.mutation({
+      query: ({ outletIds }) => ({
+        url: "analytics/get_deployment_data_live",
+        method: "POST",
+        body: { outletIds },
+      }),
+    }),
+
+    getMenuItemData: builder.query({
+      query: ({ from, to, outletId }) => ({
+        url: "analytics/get_profit_data",
+        method: "GET",
+        params: { fromDate: from, toDate: to, outletId },
+      }),
+    }),
     getMenuMatrixData: builder.query({
       query: ({ from, to }) => ({
         url: "analytics/get_menu_matrix",
         method: "GET",
         params:{fromDate:from,toDate:to},
-      }),
-    }),
-    getMenuItemData: builder.query({
-      query: ({ from, to ,outletId}) => ({
-        url: "analytics/get_profit_data",
-        method: "GET",
-        params:{fromDate:from,toDate:to,outletId},
       }),
     }),
 
@@ -41,5 +65,7 @@ export const {
   useGetAllOutletsQuery,
   useGetDeploymentDataQuery,
   useGetMenuMatrixDataQuery,
-  useGetMenuItemDataQuery
+  useGetMenuItemDataQuery,
+  useGetLiveDeploymentDataMutation,
+  useGetSnapshotDeploymentDataMutation
 } = Analytics;

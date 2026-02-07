@@ -32,7 +32,7 @@ export function DataTable({
   data,
   columns,
   pageSize = 10,
-  searchable = false,
+  searchable = true,
   pagination= true,
   onRowClick = ()=>{},
   rowSelection,

@@ -15,6 +15,7 @@ import Analytics from "./analytic.routes.js";
 import Outlet from "../models/outlet.model.js";
 import Tenant from "../models/tenant.model.js";
 import MenuItem from "../models/menuItem.model.js";
+import { runDailySnapshotJob } from "../crons/dailySnapshot.cron.js";
 
 const router = express.Router();
 
@@ -29,6 +30,9 @@ router.use("/stocks", Stocks);
 router.use("/stockMovements", StockMovements);
 router.use("/sales",Sales);
 router.use("/analytics",Analytics);
+
+
+router.post("/genrate_sanpshot",runDailySnapshotJob)
 
 
 router.get("/get_all_tenants",async(req,res)=>{

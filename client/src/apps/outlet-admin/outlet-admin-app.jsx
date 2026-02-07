@@ -23,7 +23,6 @@ import NotFound from "@/components/not-found";
 
 
 export const OutletAdminApp = () => {
-  const navigate = useNavigate();
   const [logoutUser] = useLogoutMutation();
   const { user, setUser } = useAuth();
 
@@ -43,15 +42,6 @@ const filteredMenu = rawMenu.filter(
     user?.outletManagerPermissions?.[item.permission]
 );
 
-const data = {
-  brand: user?.outlet?.outletName || "",
-  user: {
-    name: user?.userName || "",
-    email: user?.email || "",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  liveAnalytics: filteredMenu,
-};
 
 const data = {
   brand: user?.outlet?.outletName || "",
@@ -85,3 +75,5 @@ const data = {
     </SidebarProvider>
   );
 };
+
+

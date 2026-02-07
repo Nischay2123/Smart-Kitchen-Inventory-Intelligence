@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import mongoose from "mongoose";
-import { Tenant } from "../models/tenant.model.js";
-import { Sale } from "../models/sale.model.js";
+import Tenant  from "../models/tenant.model.js";
+import Sale  from "../models/sale.model.js";
 import  TenantDailySnapshot  from "../models/tenantDailySnapshot.model.js";
 
 const startOfDay = (d) => {
@@ -16,9 +16,16 @@ const endOfDay = (d) => {
   return date;
 };
 
-const getYesterdayRange = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
+const getYesterdayRange = (date) => {
+  let d ;
+  if(date){
+    d = new Date(date) ;
+    d.setDate(d.getDate() );
+  }
+  else{
+    d= new Date()
+    d.setDate(d.getDate() - 1);
+  } 
   return {
     start: startOfDay(d),
     end: endOfDay(d),
@@ -31,51 +38,71 @@ const buildPipeline = (tenantId, start, end) => [
     $match: {
       "tenant.tenantId": tenantId,
       createdAt: { $gte: start, $lte: end }
+      // use orderDate here if available
     }
   },
+
+  // 1️⃣ explode items
   { $unwind: "$items" },
+
+  // 2️⃣ regroup to ONE document per SALE
   {
     $group: {
-      _id: {
-        outletId: "$outlet.outletId",
-        outletName: "$outlet.outletName",
-        state: "$state"
-      },
+      _id: "$_id", // saleId
+      outletId: { $first: "$outlet.outletId" },
+      outletName: { $first: "$outlet.outletName" },
+      state: { $first: "$state" },
+
       sale: { $sum: "$items.totalAmount" },
-      makingCost: { $sum: "$items.makingCost" },
-      count: { $sum: 1 }
+      makingCost: { $sum: "$items.makingCost" }
     }
   },
+
+  // 3️⃣ now group by outlet
   {
     $group: {
       _id: {
-        outletId: "$_id.outletId",
-        outletName: "$_id.outletName"
+        outletId: "$outletId",
+        outletName: "$outletName"
       },
+
       totalSale: {
-        $sum: { $cond: [{ $eq: ["$_id.state", "CONFIRMED"] }, "$sale", 0] }
+        $sum: {
+          $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0]
+        }
       },
+
       cogs: {
-        $sum: { $cond: [{ $eq: ["$_id.state", "CONFIRMED"] }, "$makingCost", 0] }
+        $sum: {
+          $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$makingCost", 0]
+        }
       },
+
       confirmedOrders: {
-        $sum: { $cond: [{ $eq: ["$_id.state", "CONFIRMED"] }, "$count", 0] }
+        $sum: {
+          $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0]
+        }
       },
+
       canceledOrders: {
-        $sum: { $cond: [{ $eq: ["$_id.state", "CANCELED"] }, "$count", 0] }
+        $sum: {
+          $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0]
+        }
       }
     }
   }
 ];
 
-const runDailySnapshotJob = async () => {
-  const session = await mongoose.startSession();
 
+export const runDailySnapshotJob = async (req,res) => {
+  const session = await mongoose.startSession();
+  const {date}= req.body
   try {
     session.startTransaction();
 
-    const { start, end, day } = getYesterdayRange();
-
+    const { start, end, day } = getYesterdayRange(date);
+    console.log({ start, end, day });
+    
     const tenants = await Tenant.find({ }).lean();
 
     for (const tenant of tenants) {
@@ -113,9 +140,15 @@ const runDailySnapshotJob = async () => {
 
     await session.commitTransaction();
     console.log(" Daily snapshot cron completed");
+    return res.status(200).json({
+      message:"success"
+    })
   } catch (err) {
     await session.abortTransaction();
     console.error(" Daily snapshot cron failed", err);
+    return res.status(401).json({
+      error:err
+    })
   } finally {
     session.endSession();
   }

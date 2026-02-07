@@ -142,6 +142,8 @@ export const Orders = () => {
         headerTitle="Orders"
         description="All outlet orders"
         isTooltip={false}
+        isRefetch={true}
+        onRefetch={refetch}
       />
       <DashboardDateRangePicker
         value={dateRange}

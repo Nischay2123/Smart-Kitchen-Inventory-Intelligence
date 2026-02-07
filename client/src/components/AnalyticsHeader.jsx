@@ -33,7 +33,9 @@ const AnalyticsHeader = ({
   isOutlet=true
 }) => {
   const dispatch = useDispatch();
-  const {data,isLoading,error} = useGetAllOutletsQuery();
+  const {data,isLoading,error} = useGetAllOutletsQuery(undefined, {
+    skip: !isOutlet,
+  });
 
   const { dateRange, outletId, isLive } = useSelector(
     (state) => state.dashboardFilters

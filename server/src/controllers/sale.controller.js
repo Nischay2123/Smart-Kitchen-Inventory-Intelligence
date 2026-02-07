@@ -8,6 +8,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import Stock from "../models/stock.model.js";
 import Sale from "../models/sale.model.js";
 import Recipe from "../models/recipes.model.js";
+import QueueFail from "../models/queueFail.model.js";
 
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
@@ -198,11 +199,12 @@ import { orderQueue } from "../queues/order.queue.js";
 // });
 
 
-const createPendingSale = async ({ tenant, outlet, items }) => {
+const createPendingSale = async ({ tenant, outlet, items,createdAt}) => {
   return Sale.create({
     tenant,
     outlet,
     state: "PENDING",
+    createdAt: createdAt || new Date(),
     items: items.map(i => ({
       itemId: i.itemId,
       itemName: i.itemName,
@@ -296,6 +298,51 @@ const cancelSaleAndRespond = async ({
 };
 
 
+// const deductStockWithTransaction = async ({
+//   requirementList,
+//   outlet,
+//   saleId,
+// }) => {
+//   const session = await mongoose.startSession();
+
+//   try {
+//     session.startTransaction();
+
+//     for (const req of requirementList) {
+//       const ok = await Stock.findOneAndUpdate(
+//         {
+//           "outlet.outletId": outlet.outletId,
+//           "masterIngredient.ingredientMasterId":
+//             req.ingredientMasterId,
+//           currentStockInBase: { $gte: req.requiredBaseQty },
+//         },
+//         { $inc: { currentStockInBase: -req.requiredBaseQty } },
+//         { session }
+//       );
+
+//       if (!ok) throw new Error("STOCK_CHANGED");
+//     }
+
+//     await session.commitTransaction();
+//   } catch (err) {
+//     await session.abortTransaction();
+
+//     await Sale.updateOne(
+//       { _id: saleId },
+//       {
+//         $set: {
+//           state: "CANCELED",
+//           reason: "STOCK_CHANGED",
+//         },
+//       }
+//     );
+
+//     throw err;
+//   } finally {
+//     session.endSession();
+//   }
+// };
+
 const deductStockWithTransaction = async ({
   requirementList,
   outlet,
@@ -304,21 +351,25 @@ const deductStockWithTransaction = async ({
   const session = await mongoose.startSession();
 
   try {
-    session.startTransaction();
-
-    for (const req of requirementList) {
-      const ok = await Stock.findOneAndUpdate(
-        {
+     const bulkOps = requirementList.map(req => ({
+      updateOne: {
+        filter: {
           "outlet.outletId": outlet.outletId,
           "masterIngredient.ingredientMasterId":
             req.ingredientMasterId,
           currentStockInBase: { $gte: req.requiredBaseQty },
         },
-        { $inc: { currentStockInBase: -req.requiredBaseQty } },
-        { session }
-      );
+        update: {
+          $inc: { currentStockInBase: -req.requiredBaseQty },
+        },
+      },
+    }));
+    session.startTransaction();
 
-      if (!ok) throw new Error("STOCK_CHANGED");
+    const result = await Stock.bulkWrite(bulkOps, { session });
+
+    if (result.matchedCount !== requirementList.length) {
+      throw new Error("STOCK_CHANGED");
     }
 
     await session.commitTransaction();
@@ -341,13 +392,12 @@ const deductStockWithTransaction = async ({
   }
 };
 
-
 export const createSale = asyncHandler(async (req, res) => {
-  const { items,tenant, outlet } = req.body;
+  const { items,tenant, outlet,createdAt } = req.body;
   // const tenant = req.user.tenant;
   // const outlet = req.user.outlet;
 
-  const saleRecord = await createPendingSale({ tenant, outlet, items });
+  const saleRecord = await createPendingSale({ tenant, outlet, items ,createdAt});
 
   const recipeMap = await loadRecipeMap({ tenant, items });
 
@@ -387,15 +437,34 @@ export const createSale = asyncHandler(async (req, res) => {
     saleId: saleRecord._id,
   });
 
-  orderQueue.add("sale.confirmed", {
-    orderId: saleRecord._id,
-    tenant,
-    outlet,
-    items,
-    requirementList,
-    state: "CONFIRMED",
-  });
-
+  // console.log(saleRecord.createdAt);
+  
+  try {
+    await orderQueue.add("sale.confirmed", {
+      orderId: saleRecord._id,
+      tenant,
+      outlet,
+      items,
+      requirementList,
+      state: "CONFIRMED",
+      createdAt: saleRecord.createdAt,
+    });
+  } catch (err) {
+    await QueueFail.create({
+      eventType: "sale.confirmed",
+      payload: {
+        orderId: saleRecord._id,
+        tenant,
+        outlet,
+        items,
+        requirementList,
+        state: "CONFIRMED",
+        createdAt: saleRecord.createdAt,
+        nextRetryAt: new Date(Date.now() + 60 * 60 * 1000)
+      },
+      lastError: err.message,
+    });
+  }
   return res.status(201).json({
     saleId: saleRecord._id,
     state: "CONFIRMED",

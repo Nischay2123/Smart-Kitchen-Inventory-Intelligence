@@ -1,41 +1,110 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
+
 import AnalyticsHeader from "@/components/AnalyticsHeader";
 import TabSalesBarChart from "@/components/charts/bar-chart";
 import DataCard from "@/components/data-card/data-card";
-import { AnalyticsCards, SecondaryMetrics } from "@/components/site-card/site-cards";
-import { useGetDeploymentDataQuery } from "@/redux/apis/brand-admin/analyticsApi";
-import { aggregateData } from "@/utils/analyitcs/overviewUtil";
+import {
+  AnalyticsCards,
+  SecondaryMetrics,
+} from "@/components/site-card/site-cards";
+
+import {
+  useGetLiveDeploymentDataMutation,
+  useGetSnapshotDeploymentDataMutation,
+} from "@/redux/apis/brand-admin/analyticsApi";
+
+import {
+  aggregateData,
+  chunkArray,
+  mergeAnalytics,
+} from "@/utils/analyitcs/overviewUtil";
+
+import { useGetAllOutletsQuery } from "@/redux/apis/brand-admin/outletApi";
 
 const outletColumns = [
   {
-    accessorKey: "outlet.outletName",
+    accessorKey: "outletName",
     header: "Outlet",
   },
   {
     accessorKey: "totalSale",
     header: "Total Sale",
     cell: ({ row }) => (
-      <span className="text-muted-foreground">₹{row.original.totalSale}</span>
+      <span className="text-muted-foreground">
+        ₹{row.original.totalSale}
+      </span>
     ),
   },
   {
     accessorKey: "revenueContribution",
     header: "Revenue Contribution",
     cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.revenueContribution}%</span>
+      <span className="text-muted-foreground">
+        {row.original.revenueContribution}%
+      </span>
     ),
   },
 ];
 
 export const Overview = () => {
-  const { from, to } = useSelector((state) => state.dashboardFilters.dateRange);
-  const { data, isLoading, isError, refetch } = useGetDeploymentDataQuery(
-    { from, to },
-    { skip: !from || !to }
+  const { from, to } = useSelector(
+    (state) => state.dashboardFilters.dateRange
   );
 
-  const aggregated = aggregateData(data?.data);
+  const { data: outlets } = useGetAllOutletsQuery();
+
+  const [snapshotApi] = useGetSnapshotDeploymentDataMutation();
+  const [liveApi] = useGetLiveDeploymentDataMutation();
+
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!outlets?.data || !from || !to) return;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+
+        const outletIds = outlets.data.map((o) => o._id);
+        const batches = chunkArray(outletIds, 250);
+
+        let finalResult = [];
+
+        for (const batch of batches) {
+          const snapshot = await snapshotApi({
+            outletIds: batch,
+            from,
+            to,
+          }).unwrap();
+
+          const live = await liveApi({
+            outletIds: batch,
+          }).unwrap();
+          console.log(live);
+          
+          const merged = mergeAnalytics(
+            snapshot.data,
+            live.data
+          );
+          // console.log(merged);
+          
+          finalResult = finalResult.concat(merged);
+        }
+        console.log("ghjk",finalResult);
+        
+        setData(finalResult);
+      } catch (err) {
+        console.error("Analytics loading failed", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [outlets, from, to]);
+  const aggregated = aggregateData(data);
 
   const [focusedDeployment, setFocusedDeployment] = useState(null);
 
@@ -43,12 +112,12 @@ export const Overview = () => {
 
   const handleRowClick = (row) => {
     setFocusedDeployment((prev) =>
-      prev?.outlet?.outletId === row.outlet.outletId ? null : row
+      prev?.outletId === row.outletId ? null : row
     );
   };
 
   const headerText = focusedDeployment
-    ? `Showing data for outlet: ${focusedDeployment.outlet.outletName}`
+    ? `Showing data for outlet: ${focusedDeployment.outletName}`
     : "Showing aggregated data across all outlets";
 
   return (
@@ -56,7 +125,7 @@ export const Overview = () => {
       <AnalyticsHeader
         headerTitle="Sales Analytics"
         description="Live performance insights across all outlets"
-        onRefresh={refetch}
+        onRefresh={() => window.location.reload()}
         isOutlet={false}
       />
 
@@ -75,19 +144,19 @@ export const Overview = () => {
           <TabSalesBarChart
             title="Top Outlets"
             description="Top performing deployments as per sales"
-            data={data?.data ?? []}
-            xKey="outlet.outletName"
+            data={data ?? []}
+            xKey="outletName"
             yKey="totalSale"
             onBarClick={() => {}}
-            loading={isLoading}
+            loading={loading}
           />
 
           <DataCard
             description="Per outlet sales and contribution"
             title={"Outlet Data"}
-            data={data?.data ?? []}
+            data={data ?? []}
             columns={outletColumns}
-            loading={isLoading}
+            loading={loading}
             onRowClick={handleRowClick}
           />
         </div>

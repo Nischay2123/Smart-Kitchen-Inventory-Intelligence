@@ -1,18 +1,21 @@
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
+import mongoose from "mongoose";
+
 import { processStockMovement } from "../proccessors/stockMovement.processor.js";
 import { processSalesSnapshot } from "../proccessors/salesSnapshot.processor.js";
-import { ApiError } from "../utils/apiError.js";
-import mongoose from "mongoose";
 import { processAlerts } from "../proccessors/proccessAlerts.processor.js";
+import { ApiError } from "../utils/apiError.js";
 
 
+/* ---------------- Mongo Connection ---------------- */
 
 const connectDB = async () => {
   try {
-    await mongoose.connect("mongodb+srv://nischaysharma04:Nischay123@cluster0.vbcoq8e.mongodb.net/SKII",{
-      serverSelectionTimeoutMS: 3000,
-    });
+    await mongoose.connect(
+      "mongodb+srv://nischaysharma04:Nischay123@cluster0.vbcoq8e.mongodb.net/SKII",
+      { serverSelectionTimeoutMS: 3000 }
+    );
     console.log("MongoDB connected successfully");
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);
@@ -22,20 +25,32 @@ const connectDB = async () => {
 
 connectDB();
 
-const connection = new IORedis(
-   { maxRetriesPerRequest: null,}
-);
+
+/* ---------------- Redis Singleton ---------------- */
+
+const connection = new IORedis({
+  maxRetriesPerRequest: null,
+});
+
+connection.on("connect", () => {
+  console.log("REDIS CONNECTED");
+});
+
+connection.on("error", (err) => {
+  console.error("REDIS ERROR:", err);
+});
+
+
+/* ---------------- Worker ---------------- */
 
 export const orderWorker = new Worker(
   "orders",
   async (job) => {
-    console.log("🚀 ORDER WORKER STARTED");
-    
+    console.log("🚀 ORDER WORKER STARTED:", job.name);
+
     const { name, data } = job;
 
-    
     switch (name) {
-
       case "sale.confirmed":
         await processStockMovement(data);
         await processSalesSnapshot(data);
@@ -47,15 +62,9 @@ export const orderWorker = new Worker(
         break;
 
       default:
-        throw new ApiError(404,"UNKNOWN_JOB_TYPE");
+        throw new ApiError(404, "UNKNOWN_JOB_TYPE");
     }
-    connection.on("connect", () => {
-    console.log("REDIS CONNECTED");
-});
-
-
   },
-  
   { connection }
 );
 
