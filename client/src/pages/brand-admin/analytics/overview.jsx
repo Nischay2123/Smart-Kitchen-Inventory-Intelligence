@@ -60,10 +60,7 @@ export const Overview = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!outlets?.data || !from || !to) return;
-
-    const load = async () => {
+  const load = async () => {
       try {
         setLoading(true);
 
@@ -92,7 +89,7 @@ export const Overview = () => {
           
           finalResult = finalResult.concat(merged);
         }
-        console.log("ghjk",finalResult);
+        // console.log("ghjk",finalResult);
         
         setData(finalResult);
       } catch (err) {
@@ -102,13 +99,23 @@ export const Overview = () => {
       }
     };
 
+  useEffect(() => {
+    if (!outlets?.data || !from || !to) return;
+
     load();
   }, [outlets, from, to]);
   const aggregated = aggregateData(data);
 
   const [focusedDeployment, setFocusedDeployment] = useState(null);
+  
+  const displayedData = focusedDeployment
+    ? {
+        ...focusedDeployment,
+        totalOrder: focusedDeployment.confirmedOrders,
+        totalBillCanceled: focusedDeployment.canceledOrders,
+      }
+    : aggregated;
 
-  const displayedData = focusedDeployment ?? aggregated;
 
   const handleRowClick = (row) => {
     setFocusedDeployment((prev) =>
@@ -125,7 +132,7 @@ export const Overview = () => {
       <AnalyticsHeader
         headerTitle="Sales Analytics"
         description="Live performance insights across all outlets"
-        onRefresh={() => window.location.reload()}
+        onRefresh={load}
         isOutlet={false}
       />
 

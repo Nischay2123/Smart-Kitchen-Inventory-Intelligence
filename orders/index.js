@@ -24,12 +24,24 @@ const outlets = [
 /* =========================
    ITEMS
 ========================= */
+// const items = [
+//   { itemId: "6969d0fb0bb5db2d4a3932a8", itemName: "Latte" },
+//   { itemId: "696a2181448eaa44cbb20e56", itemName: "Cold Coffee" },
+//   { itemId: "696a42eaf3dc0ee373dd3f92", itemName: "Dal Makhni" },
+//   { itemId: "6977bf41ce1177f4a76c4cdd", itemName: "Veg Burger" },
+//   { itemId: "6977bf41ce1177f4a76c4ce0", itemName: "Rice" }
+// ];
+
 const items = [
-  { itemId: "6969d0fb0bb5db2d4a3932a8", itemName: "Latte" },
-  { itemId: "696a2181448eaa44cbb20e56", itemName: "Cold Coffee" },
-  { itemId: "696a42eaf3dc0ee373dd3f92", itemName: "Dal Makhni" },
-  { itemId: "6977bf41ce1177f4a76c4cdd", itemName: "Veg Burger" },
-  { itemId: "6977bf41ce1177f4a76c4ce0", itemName: "Rice" }
+  { itemId: "696a2181448eaa44cbb20e56", itemName: "Large Cold Coffee" },
+  { itemId: "6977bf41ce1177f4a76c4cda", itemName: "Butter Chicken" },
+  { itemId: "6977bf41ce1177f4a76c4cdb", itemName: "Paneer Butter Masala" },
+  { itemId: "6977bf41ce1177f4a76c4cde", itemName: "Chicken Burger" },
+  { itemId: "6977bf41ce1177f4a76c4cdf", itemName: "Garlic Naan" },
+  { itemId: "6977bf41ce1177f4a76c4ce3", itemName: "Cheese Omelette" },
+  { itemId: "697b88912241fd3a9b4cbcb9", itemName: "Pizza" },
+  { itemId: "697b88ad2241fd3a9b4cbcca", itemName: "Hakka Noodles" },
+  { itemId: "697b88c52241fd3a9b4cbcdb", itemName: "Pasta" }
 ];
 
 const randomInt = (min, max) =>
@@ -59,20 +71,24 @@ const getDateDaysAgo = daysAgo => {
 };
 
 const sendOrder = async (outlet, createdAt) => {
-  await axios.post(API_URL, {
-    outlet,
-    tenant,
-    items: buildOrderItems(),
-    createdAt
-  });
+  try {
+    await axios.post(API_URL, {
+      outlet,
+      tenant,
+      items: buildOrderItems(),
+      createdAt
+    });
+  } catch (error) {
+    console.log("Order failed, continuing...");
+  }
 };
 
 /* ---------- outlet simulation ---------- */
 
 const simulateOutlet = async outlet => {
   const DAYS = 7;
-  const ORDERS_PER_DAY = 20;
-  const START_OFFSET = 15;
+  const ORDERS_PER_DAY = 10;
+  const START_OFFSET = 8;
 
   console.log(`🏬 Outlet start: ${outlet.outletName}`);
 

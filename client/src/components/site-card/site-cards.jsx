@@ -21,7 +21,7 @@ export const AnalyticsCards = ({ data }) => {
     description: "Net earnings after deducting all costs",
     value: data?.totalProfit,
     icon: Receipt,
-    formatter: (v) => `₹${v.toFixed(2)}`,
+    formatter: (v) => `₹${v.toLocaleString()}`,
   },
   {
     title: "Total Orders",
@@ -65,7 +65,7 @@ export const SecondaryMetrics = ({ data }) => {
       description: "Cost of Goods Sold, direct costs",
       value: data?.cogs,
       icon: DollarSign,
-      formatter: (v) => `₹${v.toFixed(2)}`,
+      formatter: (v) => `₹${v.toLocaleString()}`,
       colorClass: "bg-orange-200 text-orange-700",
     },
     {
@@ -73,7 +73,7 @@ export const SecondaryMetrics = ({ data }) => {
       description: "Average revenue per customer cover",
       value: data?.averagePerOrder,
       icon: BarChart2,
-      formatter: (v) => `₹${v.toFixed(2)}`,
+      formatter: (v) => `₹${v.toLocaleString()}`,
       colorClass: "bg-green-200 text-green-700",
     },
     {

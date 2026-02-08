@@ -8,7 +8,6 @@ import { processAlerts } from "../proccessors/proccessAlerts.processor.js";
 import { ApiError } from "../utils/apiError.js";
 
 
-/* ---------------- Mongo Connection ---------------- */
 
 const connectDB = async () => {
   try {
@@ -26,7 +25,6 @@ const connectDB = async () => {
 connectDB();
 
 
-/* ---------------- Redis Singleton ---------------- */
 
 const connection = new IORedis({
   maxRetriesPerRequest: null,
@@ -41,12 +39,11 @@ connection.on("error", (err) => {
 });
 
 
-/* ---------------- Worker ---------------- */
 
 export const orderWorker = new Worker(
   "orders",
   async (job) => {
-    console.log("🚀 ORDER WORKER STARTED:", job.name);
+    console.log(`🚀 Worker ${process.pid} started ${job.name}`);
 
     const { name, data } = job;
 
@@ -65,7 +62,10 @@ export const orderWorker = new Worker(
         throw new ApiError(404, "UNKNOWN_JOB_TYPE");
     }
   },
-  { connection }
+  { 
+    connection ,
+    concurrency: 5,
+  }
 );
 
 orderWorker.on("failed", (job, err) => {

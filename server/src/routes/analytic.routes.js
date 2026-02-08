@@ -1,6 +1,6 @@
 import express from "express";
 import { verifyJwt } from "../middlerwares/auth.middleware.js";
-import { itemsProfitPerDeployement ,brandAnalyticsDetialedReport, menuEngineeringMatrix, ingredientUsageAndBurnRate, getOutlets, brandAnalyticsSnapshotReport, brandAnalyticsLiveReport} from "../controllers/analytic.controller.js";
+import { itemsProfitPerDeployement , menuEngineeringMatrix, ingredientUsageAndBurnRate, getOutlets, brandAnalyticsSnapshotReport, brandAnalyticsLiveReport} from "../controllers/analytic.controller.js";
 
 
 
