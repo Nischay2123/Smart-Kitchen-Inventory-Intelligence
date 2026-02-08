@@ -61,7 +61,7 @@ export const OutletAdminApp = () => {
       setUser(null);
     }
   };  
-  console.log(user);
+  // console.log(user);
   
   if (!user) {
     return (

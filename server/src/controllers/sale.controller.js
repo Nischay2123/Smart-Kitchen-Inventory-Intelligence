@@ -15,190 +15,6 @@ import { ApiResoponse } from "../utils/apiResponse.js";
 
 import { orderQueue } from "../queues/order.queue.js";
 
-// export const createSale = asyncHandler(async (req, res) => {
-//   const { items } = req.body;
-//   const tenant = req.user.tenant;
-//   const outlet = req.user.outlet;
-
-
-//   const saleRecord = await Sale.create({
-//     tenant,
-//     outlet,
-//     state: "PENDING",
-//     items: items.map(i => ({
-//       itemId: i.itemId,
-//       itemName: i.itemName,
-//       qty: i.qty,
-//       totalAmount: 0,
-//       makingCost: 0,
-//       cancelIngredientDetails: [],
-//     })),
-//   });
-
-
-//   const itemIds = items.map(i => i.itemId);
-
-//   const recipes = await Recipe.find({
-//     "tenant.tenantId": tenant.tenantId,
-//     "item.itemId": { $in: itemIds },
-//   }).lean()
-//     ;
-//   console.log(recipes);
-
-//   const recipeMap = new Map(
-//     recipes.map(r => [String(r.item.itemId), r])
-//   );
-
-//   const { requirementList, recipeErrors } =
-//     await buildStockRequirement(items, recipeMap);
-
-//   if (recipeErrors.length > 0) {
-//     await Sale.updateOne(
-//       { _id: saleRecord._id },
-//       {
-//         $set: {
-//           state: "CANCELED",
-//           reason: "RECIPE_NOT_FOUND",
-//           items: items.map(i => ({
-//             itemId: i.itemId,
-//             itemName: i.itemName,
-//             qty: i.qty,
-//             totalAmount: 0,
-//             makingCost: 0,
-//             cancelIngredientDetails: [],
-//           })),
-//         },
-//       }
-//     );
-
-//     return res.status(400).json({
-//       saleId: saleRecord._id,
-//       state: "CANCELED",
-//       reason: "RECIPE_NOT_FOUND",
-//     });
-//   }
-//   console.log("hello", requirementList);
-
-
-//   const validation = await validateStock(
-//     requirementList,
-//     outlet.outletId
-//   );
-
-//   if (!validation.isValid) {
-//     const itemFailureMap = new Map();
-
-//     for (const item of items) {
-//       const recipe = recipeMap.get(String(item.itemId));
-//       if (!recipe) continue;
-
-//       for (const ing of recipe.recipeItems) {
-//         const fail = validation.failed.find(
-//           f =>
-//             String(f.ingredientMasterId) ===
-//             String(ing.ingredientMasterId)
-//         );
-
-//         if (fail) {
-//           if (!itemFailureMap.has(String(item.itemId))) {
-//             itemFailureMap.set(String(item.itemId), []);
-//           }
-
-//           itemFailureMap.get(String(item.itemId)).push({
-//             ingredientMasterId: fail.ingredientMasterId,
-//             ingredientMasterName: fail.ingredientMasterName || "Unknown",
-//             requiredQty: fail.required,
-//             availableStock: fail.available,
-//             issue: "INSUFFICIENT_STOCK",
-//           });
-//         }
-//       }
-//     }
-
-//     await Sale.updateOne(
-//       { _id: saleRecord._id },
-//       {
-//         $set: {
-//           state: "CANCELED",
-//           reason: "INSUFFICIENT_STOCK",
-//           items: items.map(i => ({
-//             itemId: i.itemId,
-//             itemName: i.itemName,
-//             qty: i.qty,
-//             totalAmount: 0,
-//             makingCost: 0,
-//             cancelIngredientDetails:
-//               itemFailureMap.get(String(i.itemId)) || [],
-//           })),
-//         },
-//       }
-//     );
-
-//     return res.status(400).json({
-//       saleId: saleRecord._id,
-//       state: "CANCELED",
-//       reason: "INSUFFICIENT_STOCK",
-//     });
-//   }
-
-//   const session = await mongoose.startSession();
-
-//   try {
-//     session.startTransaction();
-
-//     for (const req of requirementList) {
-//       const ok = await Stock.findOneAndUpdate(
-//         {
-//           "outlet.outletId": outlet.outletId,
-//           "masterIngredient.ingredientMasterId": req.ingredientMasterId,
-//           currentStockInBase: { $gte: req.requiredBaseQty },
-//         },
-//         {
-//           $inc: { currentStockInBase: -req.requiredBaseQty },
-//         },
-//         { session }
-//       );
-
-//       if (!ok) throw new Error("STOCK_CHANGED");
-//     }
-
-//     await session.commitTransaction();
-//     orderQueue.add("sale.confirmed", {
-//       orderId: saleRecord._id,
-//       tenant,
-//       outlet,
-//       items,
-//       requirementList,
-//       state: "CONFIRMED",
-//     });
-
-
-//   } catch (err) {
-//     await session.abortTransaction();
-
-//     await Sale.updateOne(
-//       { _id: saleRecord._id },
-//       {
-//         $set: {
-//           state: "CANCELED",
-//           reason: "STOCK_CHANGED",
-//         },
-//       }
-//     );
-
-//     throw err;
-//   } finally {
-//     session.endSession();
-//   }
-
-
-//   return res.status(201).json({
-//     saleId: saleRecord._id,
-//     state: "CONFIRMED",
-//   });
-// });
-
-
 const createPendingSale = async ({ tenant, outlet, items,createdAt}) => {
   return Sale.create({
     tenant,
@@ -297,102 +113,6 @@ const cancelSaleAndRespond = async ({
   });
 };
 
-
-// const deductStockWithTransaction = async ({
-//   requirementList,
-//   outlet,
-//   saleId,
-// }) => {
-//   const session = await mongoose.startSession();
-
-//   try {
-//     session.startTransaction();
-
-//     for (const req of requirementList) {
-//       const ok = await Stock.findOneAndUpdate(
-//         {
-//           "outlet.outletId": outlet.outletId,
-//           "masterIngredient.ingredientMasterId":
-//             req.ingredientMasterId,
-//           currentStockInBase: { $gte: req.requiredBaseQty },
-//         },
-//         { $inc: { currentStockInBase: -req.requiredBaseQty } },
-//         { session }
-//       );
-
-//       if (!ok) throw new Error("STOCK_CHANGED");
-//     }
-
-//     await session.commitTransaction();
-//   } catch (err) {
-//     await session.abortTransaction();
-
-//     await Sale.updateOne(
-//       { _id: saleId },
-//       {
-//         $set: {
-//           state: "CANCELED",
-//           reason: "STOCK_CHANGED",
-//         },
-//       }
-//     );
-
-//     throw err;
-//   } finally {
-//     session.endSession();
-//   }
-// };
-
-// const deductStockWithTransaction = async ({
-//   requirementList,
-//   outlet,
-//   saleId,
-// }) => {
-//   const session = await mongoose.startSession();
-
-//   try {
-//      const bulkOps = requirementList.map(req => ({
-//       updateOne: {
-//         filter: {
-//           "outlet.outletId": outlet.outletId,
-//           "masterIngredient.ingredientMasterId":
-//             req.ingredientMasterId,
-//           currentStockInBase: { $gte: req.requiredBaseQty },
-//         },
-//         update: {
-//           $inc: { currentStockInBase: -req.requiredBaseQty },
-//         },
-//       },
-//     }));
-//     session.startTransaction();
-
-//     const result = await Stock.bulkWrite(bulkOps, { session });
-
-//     if (result.matchedCount !== requirementList.length) {
-//       throw new Error("STOCK_CHANGED");
-//     }
-
-//     await session.commitTransaction();
-//   } catch (err) {
-//     await session.abortTransaction();
-
-//     await Sale.updateOne(
-//       { _id: saleId },
-//       {
-//         $set: {
-//           state: "CANCELED",
-//           reason: "STOCK_CHANGED",
-//         },
-//       }
-//     );
-
-//     throw err;
-//   } finally {
-//     session.endSession();
-//   }
-// };
-
-
 const MAX_RETRIES = 5;
 
 const deductStockWithTransaction = async ({
@@ -428,7 +148,7 @@ const deductStockWithTransaction = async ({
 
       await session.commitTransaction();
       session.endSession();
-      return; // success
+      return; 
     } catch (err) {
       await session.abortTransaction();
       session.endSession();
@@ -438,7 +158,7 @@ const deductStockWithTransaction = async ({
 
       if (isWriteConflict && attempt < MAX_RETRIES) {
         console.log(`Retrying stock deduction (${attempt})`);
-        continue; // retry
+        continue; 
       }
 
       await Sale.updateOne(
@@ -458,8 +178,6 @@ const deductStockWithTransaction = async ({
 
 export const createSale = asyncHandler(async (req, res) => {
   const { items,tenant, outlet,createdAt } = req.body;
-  // const tenant = req.user.tenant;
-  // const outlet = req.user.outlet;
 
   const saleRecord = await createPendingSale({ tenant, outlet, items ,createdAt});
 

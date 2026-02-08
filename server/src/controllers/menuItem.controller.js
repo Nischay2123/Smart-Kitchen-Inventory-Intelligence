@@ -108,7 +108,7 @@ export const deleteMenuItem = asyncHandler(async (req, res) => {
 
   const menuItemObjectId = new mongoose.Types.ObjectId(menuItemId)
   const tenantContext = req.user.tenant;
-  console.log(req.params, tenantContext);
+  // console.log(req.params, tenantContext);
   
   if (!tenantContext?.tenantId) {
     throw new ApiError(400, "User is not associated with any tenant");

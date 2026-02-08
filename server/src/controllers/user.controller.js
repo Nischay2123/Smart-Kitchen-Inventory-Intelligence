@@ -189,7 +189,7 @@ export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
     _id: outletId,
     "tenant.tenantId": tenantContext.tenantId,
   });
-  console.log(outlet);
+  // console.log(outlet);
   
   if (!outlet) {
     throw new ApiError(404, "Outlet not found or does not belong to your tenant");
@@ -263,7 +263,7 @@ export const completeOutletManagerSignup = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({ email });
-  console.log("verified",user.toObject());
+  // console.log("verified",user.toObject());
   
   if (!user || !user.emailVerified) {
     throw new ApiError(403, "Email not verified");

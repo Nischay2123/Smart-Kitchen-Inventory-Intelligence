@@ -101,7 +101,7 @@ export const runDailySnapshotJob = async (req,res) => {
     session.startTransaction();
 
     const { start, end, day } = getYesterdayRange(date);
-    console.log({ start, end, day });
+    // console.log({ start, end, day });
     
     const tenants = await Tenant.find({ }).lean();
 

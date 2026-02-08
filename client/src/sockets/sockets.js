@@ -29,7 +29,7 @@ export const useStockMovementSocket = ({
   onError,
 }) => {
   useEffect(() => {
-    console.log(tenantId, outletId);
+    // console.log(tenantId, outletId);
     if (!tenantId || !outletId) return;
     
     socket.emit("join_outlet", { tenantId, outletId });
@@ -53,7 +53,7 @@ export const useSalesSocket = ({
 }) => {
   useEffect(() => {
     
-    console.log(tenantId, outletId);
+    // console.log(tenantId, outletId);
     if (!tenantId || !outletId) return;
     
     socket.emit("join_outlet", { tenantId, outletId });

@@ -6,8 +6,8 @@ import { emitEvent } from "../workers/socket.js";
 export const processStockMovement = async (data) => {
   const { orderId, requirementList, tenant, outlet, createdAt,} = data;
 
-  console.log("processStockMovement", orderId);
-  console.log(createdAt);
+  // console.log("processStockMovement", orderId);
+  // console.log(createdAt);
   
   for (const r of requirementList) {
     const ingredient = await IngredientMaster

@@ -84,4 +84,6 @@ const RecipeSchema = new Schema(
   }
 );
 
+RecipeSchema.index({ "tenant.tenantId": 1, "item.itemId": 1 });
+
 export default model("Recipe", RecipeSchema);

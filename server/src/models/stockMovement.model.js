@@ -112,5 +112,6 @@ StockMovementSchema.index({
   createdAt: -1,
 });
 
+StockMovementSchema.index({ orderId: 1, "ingredient.ingredientMasterId": 1 });
 
 export default model("StockMovement", StockMovementSchema);

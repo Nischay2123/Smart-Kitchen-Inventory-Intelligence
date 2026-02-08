@@ -82,4 +82,7 @@ const StockSchema = new Schema(
 );
 
 
+StockSchema.index({ "outlet.outletId": 1, "masterIngredient.ingredientMasterId": 1 });
+
+
 export default model("Stock", StockSchema);

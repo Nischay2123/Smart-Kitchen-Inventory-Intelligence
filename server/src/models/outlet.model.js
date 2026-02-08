@@ -60,4 +60,6 @@ const OutletSchema = new Schema(
   }
 );
 
+OutletSchema.index({ "tenant.tenantId": 1, createdAt: -1 });
+
 export default model("Outlet", OutletSchema);

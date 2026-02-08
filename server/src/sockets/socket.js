@@ -12,6 +12,10 @@ export const initSocket = (httpServer, corsOptions) => {
   });
   
   io.use((socket, next) => {
+
+  if (socket.handshake.auth?.service === "worker") {
+    return next(); 
+  }
   try {
     parser(socket.request, {}, () => {});
 
@@ -33,19 +37,24 @@ export const initSocket = (httpServer, corsOptions) => {
 
 
   io.on("connection", (socket) => {
-    console.log("🔌 Socket connected:", socket.id);
+    console.log("Socket connected:", socket.id);
 
     socket.on("join_outlet", ({ tenantId, outletId }) => {
       if (!tenantId || !outletId) return;
 
+      if (socket.user.tenant?.tenantId !== tenantId || socket.user.outlet?.outletId !== outletId) {
+        console.warn(`User ${socket.user._id} attempted unauthorized join to ${tenantId}`);
+        return;
+      }
+      
       const room = `tenant:${tenantId}:outlet:${outletId}`;
       socket.join(room);
 
-      console.log(`📦 Joined room ${room}`);
+      console.log(`Joined room ${room}`);
     });
 
     socket.on("disconnect", () => {
-      console.log("❌ Socket disconnected:", socket.id);
+      console.log("Socket disconnected:", socket.id);
     });
 
     socket.on("worker_emit", ({ room, event, payload }) => {
