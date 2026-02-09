@@ -9,7 +9,6 @@ const WORKER_PATH = path.join(
   "order.worker.js"
 );
 
-// adjust based on machine power
 const WORKER_COUNT = 4;
 
 console.log(`🚀 Starting ${WORKER_COUNT} workers`);

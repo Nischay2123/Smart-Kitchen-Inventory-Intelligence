@@ -13,6 +13,7 @@ import {
 
 import { useAuth } from "@/auth/auth";
 import { useStockSocket } from "@/sockets/sockets";
+import { SkeletonLoader } from "@/components/laoder";
 
 const ingredientColumn = () => [
   { accessorKey: "ingredientName", header: "Ingredient" },
@@ -26,7 +27,7 @@ export const Consumption = () => {
 
   const [dateRange, setDateRange] = React.useState(null);
 
-  const { data, isLoading, refetch } =
+  const { data, isLoading, refetch, isFetching } =
     useGetSaleStockConsumptionQuery({
       fromDate: dateRange?.from,
       toDate: dateRange?.to,
@@ -64,8 +65,8 @@ export const Consumption = () => {
       />
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
-        {isLoading ? (
-          <div>Loading...</div>
+        {(isLoading || isFetching) ? (
+          <SkeletonLoader />
         ) : (
           <DataCard
             title="Available Stock"

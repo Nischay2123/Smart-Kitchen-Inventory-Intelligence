@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 
 import DataCard from "@/components/data-card/data-card";
 import SiteHeader from "@/components/site-header";
-import { Button } from "@/components/ui/button";
 
 import { useGetStockDetailsQuery } from "@/redux/apis/outlet-manager/stocksApi";
 import { setStocks, updateStockInStore } from "@/redux/reducers/outlet-manager/stockSlice";
@@ -11,78 +10,8 @@ import { setStocks, updateStockInStore } from "@/redux/reducers/outlet-manager/s
 import { useAuth } from "@/auth/auth";
 import { useStockSocket } from "@/sockets/sockets";
 import { CreateStockMovementForm } from "@/components/Form/outlet-manager-form/create-stock-movement";
-
-
-const ingredientColumn = (setOpen, setSelectedIngredient) => [
-  {
-    accessorKey: "ingredientName",
-    header: "Ingredient",
-  },
-
-  {
-    accessorKey: "currentStockInBase",
-    header: "Current Stock",
-  },
-
-  {
-    accessorKey: "baseUnit",
-    header: "Unit",
-  },
-  
-  {
-    accessorKey: "alertState",
-    header: "Status",
-    cell: ({ row }) => {
-      const state = row.original.alertState;
-
-      const statusColor = {
-        OK: "text-green-700",
-        LOW: "text-yellow-700",
-        CRITICAL: "text-red-700",
-        NOT_INITIALIZED: "text-gray-600",
-      };
-
-      const statusBg = {
-        OK: "bg-green-200",
-        LOW: "bg-yellow-200",
-        CRITICAL: "bg-red-200",
-        NOT_INITIALIZED: "bg-gray-200",
-      };
-
-      return (
-        <span
-          className={`font-medium px-2 py-1 rounded ${statusColor[state]} ${statusBg[state]}`}
-        >
-          {state}
-        </span>
-      );
-    },
-  },
-  {
-    id: "action",
-    header: "Action",
-    cell: ({ row }) => (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={(e) => {
-          e.stopPropagation();
-
-          setSelectedIngredient({
-            ingredientMasterId: row.original.ingredientId,
-            ingredientName: row.original.ingredientName,
-            unit: row.original.unit,
-          });
-
-          setOpen(true);
-        }}
-      >
-        Restock
-      </Button>
-    ),
-  },
-];
-
+import { ingredientColumn } from "@/utils/columns/outlet-manager";
+import { SkeletonLoader } from "@/components/laoder";
 
 
 export const Stocks = () => {
@@ -95,7 +24,7 @@ export const Stocks = () => {
 
   
 
-  const { data, isLoading, refetch } = useGetStockDetailsQuery();
+  const { data, isLoading,isFetching, refetch } = useGetStockDetailsQuery();
 
   const [open, setOpen] = React.useState(false);
   const [selectedIngredient, setSelectedIngredient] = React.useState(null);
@@ -126,8 +55,8 @@ export const Stocks = () => {
       />
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
-        {isLoading ? (
-          <div>Loading...</div>
+        {(isLoading || isFetching) ? (
+          <SkeletonLoader/>
         ) : (
           <DataCard
             title="Available Stock"

@@ -5,51 +5,8 @@ import { useStockMovementSocket } from '@/sockets/sockets'
 import React, { useCallback, useState ,useEffect} from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardDateRangePicker from "@/components/data-range-picker";
-
-
-
-const ingredientColumn = (navigate) => [
-  {
-    accessorKey: "ingredient.ingredientMasterName",
-    header: "Ingredient",
-    cell: ({ row }) => (
-      <span className="font-medium">
-        {row.original.ingredient.ingredientMasterName}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "quantity",
-    header: "Quantity",
-    cell: ({ row }) => (
-      <span>
-        {row.original.quantity}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "unit",
-    header: "Unit",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.unit}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "reason",
-    header: "Reason",
-    cell: ({ row }) => {
-
-      return (
-        <span >
-          {row.original.reason}
-        </span>
-      )
-    },
-  },
-]
-
+import { stockMovementColumn } from '@/utils/columns/outlet-manager'
+import { SkeletonLoader } from '@/components/laoder'
 
 export const StockMovement = () => {
   const navigate = useNavigate()
@@ -62,6 +19,7 @@ export const StockMovement = () => {
   const {
     data,
     isLoading,
+    isFetching,
     refetch,
   } = useGetSaleStockMovementDetailsQuery({
       fromDate: dateRange?.from,
@@ -114,14 +72,14 @@ export const StockMovement = () => {
       />
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
-        {isLoading ? (
-          <div>Loading...</div>
+        {(isLoading || isFetching) ? (
+          <SkeletonLoader />
         ) : (
           <DataCard
             title="Stock Movement Entries"
             searchable
-            loading={isLoading}
-            columns={ingredientColumn(navigate)}
+            loading={isLoading || isFetching}
+            columns={stockMovementColumn(navigate)}
             data={stockMovements}
             titleWhenEmpty="No ingredients found"
             descriptionWhenEmpty="We couldn’t find any ingredients here."

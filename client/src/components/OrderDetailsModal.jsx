@@ -86,6 +86,7 @@ const OrderDetailsModal = ({ open, onClose, order, isLoading }) => {
             columns={orderColumns}
             isLoading={isLoading}
             pagination={false}
+            searchable={false}
           />
         </div>
 
