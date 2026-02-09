@@ -41,7 +41,7 @@ const outletColumns = [
     header: "Revenue Contribution",
     cell: ({ row }) => (
       <span className="text-muted-foreground">
-        {row.original.revenueContribution}%
+        {row.original.revenueContribution.toFixed(3)}%
       </span>
     ),
   },

@@ -29,6 +29,9 @@ export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
         }),
       },
     },
+    {
+      $project: { items: 1 }
+    },
     { $unwind: "$items" },
     {
       $group: {
@@ -67,6 +70,7 @@ export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
         },
       },
     },
+    { allowDiskUse: true }
   ];
 
   const data = await Sale.aggregate(pipeline);
@@ -164,7 +168,7 @@ export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
 
   const snapshotStart = new Date(from.setUTCHours(0, 0, 0, 0));
   const snapshotEnd = new Date(to.setUTCHours(23, 59, 59, 999));
-  const outletObjectIds = outletIds.map((i)=> new mongoose.Types.ObjectId(i))
+  const outletObjectIds = outletIds.map((i) => new mongoose.Types.ObjectId(i))
 
 
   const pipeline = [
@@ -177,8 +181,8 @@ export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
     },
     {
       $group: {
-        _id:{outletId: "$outletId"},
-        outletName: {$first:"$outletName"},
+        _id: { outletId: "$outletId" },
+        outletName: { $first: "$outletName" },
         totalSale: { $sum: "$totalSale" },
         confirmedOrders: { $sum: "$confirmedOrders" },
         canceledOrders: { $sum: "$canceledOrders" },
@@ -187,7 +191,7 @@ export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
     },
     {
       $project: {
-        _id:0,
+        _id: 0,
         outletId: "$_id.outletId",
         outletName: "$outletName",
         totalSale: 1,
@@ -219,7 +223,58 @@ export const brandAnalyticsLiveReport = asyncHandler(async (req, res) => {
   const { outletIds } = req.body;
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
-  const outletObjectIds = outletIds.map((i)=> new mongoose.Types.ObjectId(i))
+  const outletObjectIds = outletIds.map((i) => new mongoose.Types.ObjectId(i))
+  // const pipeline = [
+  //   {
+  //     $match: {
+  //       "tenant.tenantId": tenantContext.tenantId,
+  //       "outlet.outletId": { $in: outletObjectIds },
+  //       createdAt: { $gte: todayStart }
+  //     }
+  //   },
+  //   { $unwind: "$items" },
+  //   {
+  //     $group: {
+  //       _id: "$_id",
+  //       outlet: { $first: "$outlet" },
+  //       state: { $first: "$state" },
+  //       sale: { $sum: "$items.totalAmount" },
+  //       cogs: { $sum: "$items.makingCost" }
+  //     }
+  //   },
+  //   {
+  //     $group: {
+  //       _id: {
+  //         outletId: "$outlet.outletId",
+  //         outletName: "$outlet.outletName"
+  //       },
+  //       totalSale: {
+  //         $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0] }
+  //       },
+  //       cogs: {
+  //         $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$cogs", 0] }
+  //       },
+  //       confirmedOrders: {
+  //         $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0] }
+  //       },
+  //       canceledOrders: {
+  //         $sum: { $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0] }
+  //       }
+  //     }
+  //   },
+  //   {
+  //     $project: {
+  //       _id: 0,
+  //       outletId: "$_id.outletId",
+  //       outletName: "$_id.outletName",
+  //       totalSale: 1,
+  //       confirmedOrders: 1,
+  //       canceledOrders: 1,
+  //       cogs: 1
+  //     }
+  //   },
+  // ];
+
   const pipeline = [
     {
       $match: {
@@ -228,36 +283,50 @@ export const brandAnalyticsLiveReport = asyncHandler(async (req, res) => {
         createdAt: { $gte: todayStart }
       }
     },
-    { $unwind: "$items" },
+
     {
-      $group: {
-        _id: "$_id",
-        outlet: { $first: "$outlet" },
-        state: { $first: "$state" },
+      $project: {
+        outletId: "$outlet.outletId",
+        outletName: "$outlet.outletName",
+        state: 1,
         sale: { $sum: "$items.totalAmount" },
         cogs: { $sum: "$items.makingCost" }
       }
     },
+
     {
       $group: {
         _id: {
-          outletId: "$outlet.outletId",
-          outletName: "$outlet.outletName"
+          outletId: "$outletId",
+          outletName: "$outletName"
         },
+
         totalSale: {
-          $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0] }
+          $sum: {
+            $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0]
+          }
         },
+
         cogs: {
-          $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$cogs", 0] }
+          $sum: {
+            $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$cogs", 0]
+          }
         },
+
         confirmedOrders: {
-          $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0] }
+          $sum: {
+            $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0]
+          }
         },
+
         canceledOrders: {
-          $sum: { $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0] }
+          $sum: {
+            $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0]
+          }
         }
       }
     },
+
     {
       $project: {
         _id: 0,
@@ -268,7 +337,7 @@ export const brandAnalyticsLiveReport = asyncHandler(async (req, res) => {
         canceledOrders: 1,
         cogs: 1
       }
-    },
+    }
   ];
 
   const result = await Sale.aggregate(pipeline);
@@ -300,7 +369,13 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
         state: "CONFIRMED",
       },
     },
+
+    {
+      $project: { items: 1 }
+    },
+
     { $unwind: "$items" },
+
     {
       $group: {
         _id: "$items.itemId",
@@ -313,6 +388,7 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
         },
       },
     },
+
     {
       $facet: {
         stats: [
@@ -324,9 +400,28 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
             },
           },
         ],
-        items: [{ $project: { _id: 0, itemId: "$_id", itemName: 1, qty: 1, profit: 1 } }],
+        items: [
+          {
+            $project: {
+              _id: 0,
+              itemId: "$_id",
+              itemName: 1,
+              qty: 1,
+              profit: 1,
+            },
+          },
+        ],
       },
     },
+
+    {
+      $project: {
+        avgQty: { $arrayElemAt: ["$stats.avgQty", 0] },
+        avgProfit: { $arrayElemAt: ["$stats.avgProfit", 0] },
+        items: 1,
+      },
+    },
+
     {
       $project: {
         items: {
@@ -344,8 +439,8 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
                     {
                       case: {
                         $and: [
-                          { $gte: ["$$i.qty", { $arrayElemAt: ["$stats.avgQty", 0] }] },
-                          { $gte: ["$$i.profit", { $arrayElemAt: ["$stats.avgProfit", 0] }] },
+                          { $gte: ["$$i.qty", "$avgQty"] },
+                          { $gte: ["$$i.profit", "$avgProfit"] },
                         ],
                       },
                       then: "STAR",
@@ -353,8 +448,8 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
                     {
                       case: {
                         $and: [
-                          { $lt: ["$$i.qty", { $arrayElemAt: ["$stats.avgQty", 0] }] },
-                          { $gte: ["$$i.profit", { $arrayElemAt: ["$stats.avgProfit", 0] }] },
+                          { $lt: ["$$i.qty", "$avgQty"] },
+                          { $gte: ["$$i.profit", "$avgProfit"] },
                         ],
                       },
                       then: "PUZZLE",
@@ -362,8 +457,8 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
                     {
                       case: {
                         $and: [
-                          { $gte: ["$$i.qty", { $arrayElemAt: ["$stats.avgQty", 0] }] },
-                          { $lt: ["$$i.profit", { $arrayElemAt: ["$stats.avgProfit", 0] }] },
+                          { $gte: ["$$i.qty", "$avgQty"] },
+                          { $lt: ["$$i.profit", "$avgProfit"] },
                         ],
                       },
                       then: "PLOWHORSE",
@@ -377,7 +472,8 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
         },
       },
     },
-  ]);
+  ], { allowDiskUse: true });
+
 
   return res.status(200).json(new ApiResoponse(200, data[0]?.items || [], "success"));
 });
