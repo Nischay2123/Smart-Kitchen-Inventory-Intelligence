@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import DataCard from "@/components/data-card/data-card";
@@ -21,17 +21,23 @@ export const Stocks = () => {
   const ingredientStocks = useSelector(
     (state) => state.Stock.list
   );
-
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
   
 
-  const { data, isLoading,isFetching, refetch } = useGetStockDetailsQuery();
+  const { data, isLoading,isFetching, refetch } = useGetStockDetailsQuery({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize
+  });
 
   const [open, setOpen] = React.useState(false);
   const [selectedIngredient, setSelectedIngredient] = React.useState(null);
 
   React.useEffect(() => {
     if (data?.data) {
-      dispatch(setStocks(data.data));
+      dispatch(setStocks(data.data.stocks));
     }
   }, [data, dispatch]);
 
@@ -66,6 +72,10 @@ export const Stocks = () => {
             titleWhenEmpty="No ingredients found"
             descriptionWhenEmpty="We couldn’t find any ingredients here."
             pagination={true}
+            manualPagination={true}
+            pageCount={data?.data?.pagination?.totalPages || 0}
+            onPaginationChange={setPagination}
+            paginationState={pagination}
           />
         )}
       </div>

@@ -2,7 +2,7 @@ import DataCard from '@/components/data-card/data-card'
 import SiteHeader from '@/components/site-header'
 import { useGetSaleStockMovementDetailsQuery } from '@/redux/apis/outlet-manager/stockMovementApi'
 import { useStockMovementSocket } from '@/sockets/sockets'
-import React, { useCallback, useState ,useEffect} from 'react'
+import React, { useCallback, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardDateRangePicker from "@/components/data-range-picker";
 import { stockMovementColumn } from '@/utils/columns/outlet-manager'
@@ -14,7 +14,12 @@ export const StockMovement = () => {
   const tenantId = user.tenant.tenantId
   const outletId = user.outlet.outletId
   const [dateRange, setDateRange] = React.useState(null);
-  
+
+
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
   const {
     data,
@@ -22,22 +27,26 @@ export const StockMovement = () => {
     isFetching,
     refetch,
   } = useGetSaleStockMovementDetailsQuery({
-      fromDate: dateRange?.from,
-      toDate: dateRange?.to,
-    },{skip:!dateRange})
+    fromDate: dateRange?.from,
+    toDate: dateRange?.to,
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize
+  }, { skip: !dateRange })
 
   const [stockMovements, setStockMovements] = useState([])
-  
-  
+
+
   useEffect(() => {
-    if (data?.data) {
+    if (data?.data?.movements) {
+      setStockMovements(data.data.movements)
+    } else if (Array.isArray(data?.data)) {
       setStockMovements(data.data)
     }
   }, [data])
 
   const handleSocketCreate = useCallback((newDoc) => {
     // console.log(newDoc);
-    
+
     setStockMovements(prev => {
       const exists = prev.some(item => item._id === newDoc._id)
       if (exists) return prev
@@ -56,7 +65,7 @@ export const StockMovement = () => {
     onCreate: handleSocketCreate,
     onError: handleSocketError,
   })
-  
+
   return (
     <div className="w-full bg-gray-50 min-h-screen">
       <SiteHeader
@@ -84,6 +93,10 @@ export const StockMovement = () => {
             titleWhenEmpty="No ingredients found"
             descriptionWhenEmpty="We couldn’t find any ingredients here."
             pagination={true}
+            manualPagination={true}
+            pageCount={data?.data?.pagination?.totalPages || 0}
+            onPaginationChange={setPagination}
+            paginationState={pagination}
           />
         )}
       </div>

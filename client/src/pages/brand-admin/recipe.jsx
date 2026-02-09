@@ -1,6 +1,6 @@
 import DataCard from '@/components/data-card/data-card'
 import SiteHeader from '@/components/site-header'
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   useGetAllItemsQuery,
@@ -14,12 +14,18 @@ import { createRecipeColumn } from '@/utils/columns/brand-admin'
 
 export const Recipe = () => {
   const Navigate = useNavigate()
-
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
   const {
     data,
     isLoading,
     isError,
-  } = useGetAllItemsQuery()
+  } = useGetAllItemsQuery({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize
+  })
 
   const [deleteItem, { isLoading: isDeleting }] =
     useDeleteItemsMutation()
@@ -53,9 +59,13 @@ export const Recipe = () => {
               searchable
               loading={isLoading || isDeleting}
               columns={createRecipeColumn(handleDeleteItem, Navigate)}
-              data={data?.data ?? []}
+              data={data?.data.menuItems ?? []}
               titleWhenEmpty={"No items found to create recipes"}
               descriptionWhenEmpty={"We couldn’t find any items here. Try adding a new one or adjust your filters."}
+              manualPagination={true}
+              pageCount={data?.data?.pagination?.totalPages || 0}
+              onPaginationChange={setPagination}
+              paginationState={pagination}
             />
         }
 

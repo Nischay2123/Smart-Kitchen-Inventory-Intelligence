@@ -15,7 +15,7 @@ export const ingredientColumn = (setOpen, setSelectedIngredient) => [
     accessorKey: "baseUnit",
     header: "Unit",
   },
-  
+
   {
     accessorKey: "alertState",
     header: "Status",
@@ -72,24 +72,36 @@ export const ingredientColumn = (setOpen, setSelectedIngredient) => [
 
 
 export const stockMovementColumn = (navigate) => [
-    {
-      accessorKey: "orderId",
-      header: "Order Id",
-      cell: ({ row }) => (
-        <span className="font-medium">
-          {row.original.orderId}
+  {
+    id: "srNo",
+    header: "Sr. No.",
+    cell: ({ row, table }) => {
+      const pageIndex = table.getState().pagination.pageIndex;
+      const pageSize = table.getState().pagination.pageSize;
+
+      return (
+        <span>
+          {pageIndex * pageSize + row.index + 1}
         </span>
-      ),
+      );
     },
-    {
-      accessorKey: "ingredient.ingredientMasterName",
-      header: "Ingredient",
-      cell: ({ row }) => (
-        <span className="font-medium">
-          {row.original.ingredient.ingredientMasterName}
-        </span>
-      ),
-    },
+  },
+  {
+    accessorKey: "createdAt",
+    header: "Time",
+    cell: ({ row }) => (
+      <span className="font-medium">{`${new Date(row.original.createdAt).toLocaleDateString()} - ${new Date(row.original.createdAt).toLocaleTimeString()}`}</span>
+    ),
+  },
+  {
+    accessorKey: "ingredient.ingredientMasterName",
+    header: "Ingredient",
+    cell: ({ row }) => (
+      <span className="font-medium">
+        {row.original.ingredient.ingredientMasterName}
+      </span>
+    ),
+  },
   {
     accessorKey: "quantity",
     header: "Quantity",
@@ -154,7 +166,7 @@ export const restockColumn = (navigate) => [
   {
     accessorKey: "purchasePriceInUnit",
     header: "Price",
-    cell:({row})=>(
+    cell: ({ row }) => (
       <span>
         {row.original.purchasePriceInUnit ? row.original.purchasePriceInUnit : "--"}
       </span>
@@ -176,21 +188,20 @@ export const restockColumn = (navigate) => [
 
 
 export const orderColumns = (onView) => [
-    {
-  id: "srNo",
-  header: "Sr. No.",
-  cell: ({ row, table }) => {
-    const pageIndex = table.getState().pagination.pageIndex;
-    const pageSize = table.getState().pagination.pageSize;
+  {
+    id: "srNo",
+    header: "Sr. No.",
+    cell: ({ row, table }) => {
+      const pageIndex = table.getState().pagination.pageIndex;
+      const pageSize = table.getState().pagination.pageSize;
 
-    return (
-      <span>
-        {pageIndex * pageSize + row.index + 1}
-      </span>
-    );
+      return (
+        <span>
+          {pageIndex * pageSize + row.index + 1}
+        </span>
+      );
+    },
   },
-},
-
   {
     accessorKey: "createdAt",
     header: "Time",

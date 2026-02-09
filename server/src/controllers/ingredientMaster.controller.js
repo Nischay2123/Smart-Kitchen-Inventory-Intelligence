@@ -4,6 +4,7 @@ import Unit from "../models/baseUnit.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { paginate } from "../utils/pagination.js";
 
 export const createIngredient = asyncHandler(async (req, res) => {
 
@@ -148,7 +149,7 @@ export const getAllIngredients = asyncHandler(async (req, res) => {
   if (req.user.role === "SUPER_ADMIN") {
     throw new ApiError(403, "Only BRAND_ADMIN and OUTLET_MANAGER can view ingredients");
   }
-
+  const {page,limit}= req.query;
   const tenantContext = req.user.tenant;
   if (!tenantContext?.tenantId) {
     throw new ApiError(400, "User is not associated with any tenant");
@@ -159,13 +160,22 @@ export const getAllIngredients = asyncHandler(async (req, res) => {
   };
 
 
-  const ingredients = await IngredientMaster.find(filter)
-    .sort({ createdAt: -1 });
+  // const ingredients = await IngredientMaster.find(filter)
+  //   .sort({ createdAt: -1 });
+
+  const { data: ingredients, meta } = await paginate(IngredientMaster, filter, {
+    page,
+    limit,
+    sort: { createdAt: -1 }
+  });
 
   return res.status(200).json(
     new ApiResoponse(
       200,
+    {
       ingredients,
+      pagination: meta
+    },
       "Ingredients fetched successfully"
     )
   );

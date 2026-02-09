@@ -16,11 +16,18 @@ export const Orders = () => {
   const tenantId = user.tenant.tenantId
   const outletId = user.outlet.outletId
   const [dateRange, setDateRange] = React.useState(null);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
 
 
   const { data, isLoading, refetch,isFetching } = useGetSaleDetailsQuery({
       fromDate: dateRange?.from,
       toDate: dateRange?.to,
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize
     },{skip:!dateRange})
   const [orders, setOrders] = useState([])
 
@@ -32,7 +39,7 @@ export const Orders = () => {
 
   useEffect(() => {
     if (data?.data) {
-      setOrders(data.data)
+      setOrders(data.data.saleRecords)
     }
   }, [data])
 
@@ -95,6 +102,10 @@ export const Orders = () => {
             columns={orderColumns(handleViewOrder)}
             data={orders}
             pagination
+            manualPagination={true}
+            pageCount={data?.data?.pagination?.totalPages || 0}
+            onPaginationChange={setPagination}
+            paginationState={pagination}
           />
         )}
       </div>

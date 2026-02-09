@@ -13,7 +13,11 @@ const DataCard = ({
   searchable,
   pagination,
   titleWhenEmpty,
-  descriptionWhenEmpty
+  descriptionWhenEmpty,
+  manualPagination,
+  pageCount,
+  onPaginationChange,
+  paginationState
 }) => {
   return (
     <section className="flex-1 min-w-0 flex flex-col rounded-xl bg-white border border-border/40 shadow-sm overflow-hidden">
@@ -47,6 +51,10 @@ const DataCard = ({
             selectedRowId={selectedRowId}
             rowSelection={rowSelection}
             onRowSelectionChange={onRowSelectionChange}
+            manualPagination={manualPagination}
+            pageCount={pageCount}
+            onPaginationChange={onPaginationChange}
+            paginationState={paginationState}
           />
         )}
       </div>

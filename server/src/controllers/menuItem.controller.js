@@ -4,6 +4,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
+import { paginate } from "../utils/pagination.js";
 
 
 export const createMenuItem = asyncHandler(async (req, res) => {
@@ -76,7 +77,7 @@ export const getAllMenuItems = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User is not associated with any tenant");
   }
 
-  const { search } = req.query;
+  const { search, page = 1, limit = 10 } = req.query;
 
   const filter = {
     "tenant.tenantId": tenantContext.tenantId,
@@ -86,12 +87,20 @@ export const getAllMenuItems = asyncHandler(async (req, res) => {
     filter.itemName = { $regex: search, $options: "i" };
   }
 
-  const menuItems = await MenuItem.find(filter).sort({ createdAt: -1 });
+  // const menuItems = await MenuItem.find(filter).sort({ createdAt: -1 });
+  const { data: menuItems, meta } = await paginate(MenuItem, filter, {
+    page,
+    limit,
+    sort: { createdAt: -1 }
+  });
 
   return res.status(200).json(
     new ApiResoponse(
       200,
-      menuItems,
+      {
+        menuItems,
+        pagination: meta
+      },
       "Menu items fetched successfully"
     )
   );
@@ -109,7 +118,7 @@ export const deleteMenuItem = asyncHandler(async (req, res) => {
   const menuItemObjectId = new mongoose.Types.ObjectId(menuItemId)
   const tenantContext = req.user.tenant;
   // console.log(req.params, tenantContext);
-  
+
   if (!tenantContext?.tenantId) {
     throw new ApiError(400, "User is not associated with any tenant");
   }

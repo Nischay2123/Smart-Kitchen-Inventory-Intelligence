@@ -79,7 +79,7 @@ export const Overview = () => {
           const live = await liveApi({
             outletIds: batch,
           }).unwrap();
-          console.log(live);
+          // console.log(live);
           
           const merged = mergeAnalytics(
             snapshot.data,

@@ -89,7 +89,6 @@ export const mergeAnalytics = (snapshot = [], live = []) => {
 
   const result = Array.from(map.values());
 
-  // compute KPIs
   const brandSale = result.reduce(
     (sum, r) => sum + r.totalSale,
     0

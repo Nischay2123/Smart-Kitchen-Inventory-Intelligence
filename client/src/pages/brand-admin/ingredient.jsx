@@ -15,12 +15,20 @@ import { SkeletonLoader } from '@/components/laoder'
 export const Ingredients = () => {
 
   const [open, setOpen] = useState(false)
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
 
   const {
     data,
     isLoading,
     isError,
-  } = useGetAllIngredientsQuery()
+  } = useGetAllIngredientsQuery({
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize
+  })
 
   const [deleteIngredient, { isLoading: isDeleting }] =
     useDeleteIngredientMutation()
@@ -63,12 +71,16 @@ export const Ingredients = () => {
             searchable
             loading={isLoading || isDeleting}
             columns={ingredientColumn(handleDeleteItem)}
-            data={data?.data ?? []}
+            data={data?.data.ingredients ?? []}
             titleWhenEmpty="No ingredients found"
             descriptionWhenEmpty="
               We couldn’t find any ingredients here.
               Try adding a new one.
             "
+            manualPagination={true}
+            pageCount={data?.data?.pagination?.totalPages || 0}
+            onPaginationChange={setPagination}
+            paginationState={pagination}
           />
         )}
       </div>

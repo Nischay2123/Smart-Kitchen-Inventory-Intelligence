@@ -4,9 +4,10 @@ export const ingredient = baseApi.injectEndpoints({
   endpoints: (builder) => ({
 
     getAllIngredients: builder.query({
-      query: () => ({
+      query: ({page,limit}) => ({
         url: "ingredient/get_all_ingredient",
         method: "GET",
+        params:{page,limit}
       }),
       providesTags: ["Ingredient"],
     }),

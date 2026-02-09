@@ -5,9 +5,10 @@ export const items = baseApi.injectEndpoints({
 
     // -------- Items --------
     getAllItems: builder.query({
-      query: () => ({
+      query: ({page,limit}) => ({
         url: "menu/get_all_item",
         method: "GET",
+        params:{page,limit}
       }),
       providesTags: ["Items"],
     }),

@@ -14,12 +14,19 @@ import { SkeletonLoader } from '@/components/laoder'
 const Item = () => {
   const [open, setOpen] = useState(false)
   const Navigate = useNavigate()
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
   const {
     data,
     isLoading,
     isError,
-  } = useGetAllItemsQuery()
+  } = useGetAllItemsQuery({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize
+  })
 
   const [deleteItem, { isLoading: isDeleting }] =
     useDeleteItemsMutation()
@@ -55,9 +62,13 @@ const Item = () => {
               searchable
               loading={isLoading || isDeleting}
               columns={menuColumns(handleDeleteItem, Navigate)}
-              data={data?.data ?? []}
+              data={data?.data.menuItems ?? []}
               titleWhenEmpty={"No items found"}
               descriptionWhenEmpty={"We couldn’t find any items here. Try adding a new one or adjust your filters."}
+              manualPagination={true}
+              pageCount={data?.data?.pagination?.totalPages || 0}
+              onPaginationChange={setPagination}
+              paginationState={pagination}
             />
         }
 

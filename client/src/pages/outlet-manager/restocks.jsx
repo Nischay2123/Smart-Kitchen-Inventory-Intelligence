@@ -1,7 +1,7 @@
 import DataCard from '@/components/data-card/data-card'
 import SiteHeader from '@/components/site-header'
 import { useGetStockMovementDetailsQuery } from '@/redux/apis/outlet-manager/stockMovementApi'
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardDateRangePicker from "@/components/data-range-picker";
 import { restockColumn } from '@/utils/columns/outlet-manager'
@@ -11,7 +11,10 @@ export const Restocks = () => {
   const navigate = useNavigate()
 
   const [dateRange, setDateRange] = React.useState(null);
-  
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
   const {
     data,
@@ -21,6 +24,8 @@ export const Restocks = () => {
   } = useGetStockMovementDetailsQuery({
       fromDate: dateRange?.from,
       toDate: dateRange?.to,
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize
     },{skip:!dateRange})
 
   return (
@@ -45,10 +50,14 @@ export const Restocks = () => {
             searchable
             loading={isLoading}
             columns={restockColumn(navigate)}
-            data={data?.data ?? []}
+            data={data?.data.movements ?? []}
             titleWhenEmpty="No ingredients found"
             descriptionWhenEmpty="We couldn’t find any ingredients here."
             pagination={true}
+            manualPagination={true}
+            pageCount={data?.data?.pagination?.totalPages || 0}
+            onPaginationChange={setPagination}
+            paginationState={pagination}
           />
         )}
       </div>

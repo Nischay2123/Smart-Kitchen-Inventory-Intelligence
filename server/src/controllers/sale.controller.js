@@ -14,6 +14,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 
 import { orderQueue } from "../queues/order.queue.js";
+import { paginate } from "../utils/pagination.js";
 
 const createPendingSale = async ({ tenant, outlet, items,createdAt}) => {
   return Sale.create({
@@ -115,10 +116,70 @@ const cancelSaleAndRespond = async ({
 
 const MAX_RETRIES = 5;
 
+// const deductStockWithTransaction = async ({
+//   requirementList,
+//   outlet,
+//   saleId,
+// }) => {
+//   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+//     const session = await mongoose.startSession();
+
+//     try {
+//       session.startTransaction();
+
+//       const bulkOps = requirementList.map(req => ({
+//         updateOne: {
+//           filter: {
+//             "outlet.outletId": outlet.outletId,
+//             "masterIngredient.ingredientMasterId":
+//               req.ingredientMasterId,
+//             currentStockInBase: { $gte: req.requiredBaseQty },
+//           },
+//           update: {
+//             $inc: { currentStockInBase: -req.requiredBaseQty },
+//           },
+//         },
+//       }));
+
+//       const result = await Stock.bulkWrite(bulkOps, { session });
+
+//       if (result.matchedCount !== requirementList.length) {
+//         throw new Error("STOCK_CHANGED");
+//       }
+
+//       await session.commitTransaction();
+//       session.endSession();
+//       return; 
+//     } catch (err) {
+//       await session.abortTransaction();
+//       session.endSession();
+
+//       const isWriteConflict =
+//         err.message?.includes("Write conflict");
+
+//       if (isWriteConflict && attempt < MAX_RETRIES) {
+//         console.log(`Retrying stock deduction (${attempt})`);
+//         continue; 
+//       }
+
+//       await Sale.updateOne(
+//         { _id: saleId },
+//         {
+//           $set: {
+//             state: "CANCELED",
+//             reason: "STOCK_CHANGED",
+//           },
+//         }
+//       );
+
+//       throw err;
+//     }
+//   }
+// };
+
 const deductStockWithTransaction = async ({
   requirementList,
   outlet,
-  saleId,
 }) => {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const session = await mongoose.startSession();
@@ -148,7 +209,7 @@ const deductStockWithTransaction = async ({
 
       await session.commitTransaction();
       session.endSession();
-      return; 
+      return;
     } catch (err) {
       await session.abortTransaction();
       session.endSession();
@@ -158,20 +219,10 @@ const deductStockWithTransaction = async ({
 
       if (isWriteConflict && attempt < MAX_RETRIES) {
         console.log(`Retrying stock deduction (${attempt})`);
-        continue; 
+        continue;
       }
 
-      await Sale.updateOne(
-        { _id: saleId },
-        {
-          $set: {
-            state: "CANCELED",
-            reason: "STOCK_CHANGED",
-          },
-        }
-      );
-
-      throw err;
+      throw new ApiError(409, "STOCK_CHANGED");
     }
   }
 };
@@ -213,11 +264,20 @@ export const createSale = asyncHandler(async (req, res) => {
     });
   }
 
-  await deductStockWithTransaction({
-    requirementList,
-    outlet,
+  try {
+    await deductStockWithTransaction({
+      requirementList,
+      outlet,
+      saleId: saleRecord._id,
+    });
+  } catch (error) {
+    return cancelSaleAndRespond({
+    res,
     saleId: saleRecord._id,
+    reason: "STOCK_CHANGED",
+    items,
   });
+  }
 
   // console.log(saleRecord.createdAt);
   
@@ -258,7 +318,8 @@ export const getAllSales = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Access denied");
   }
 
-  const { fromDate, toDate } = req.query;
+  const {  fromDate, toDate, page = 1, limit = 10 } = req.query;
+
 
   const filter = {
     "tenant.tenantId": req.user.tenant.tenantId,
@@ -271,10 +332,18 @@ export const getAllSales = asyncHandler(async (req, res) => {
     if (toDate) filter.createdAt.$lte = new Date(toDate);
   }
 
-  const sales = await Sale.find(filter).sort({ createdAt: -1 });
+  // const sales = await Sale.find(filter).sort({ createdAt: -1 });
+  const {data:saleRecords, meta} = await paginate(Sale,filter,{
+    page,
+    limit,
+    sort:{createdAt:-1}
+  })
 
   return res.status(200).json(
-    new ApiResoponse(200, sales, "Sales fetched")
+    new ApiResoponse(200, {
+      saleRecords,
+      pagination:meta
+    }, "Sales fetched")
   );
 });
 

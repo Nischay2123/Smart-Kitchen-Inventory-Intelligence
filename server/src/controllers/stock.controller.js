@@ -3,6 +3,7 @@ import IngredientMaster from "../models/ingredientMaster.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { paginate } from "../utils/pagination.js";
 
 export const getAllStockDetails = asyncHandler(async (req, res) => {
   if (req.user.role !== "OUTLET_MANAGER") {
@@ -15,6 +16,8 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
   const tenantContext = req.user.tenant;
   const outletContext = req.user.outlet;
 
+  const { page = 1, limit = 10 } = req.query;
+
   if (!tenantContext?.tenantId || !outletContext?.outletId) {
     throw new ApiError(
       400,
@@ -22,9 +25,15 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
     );
   }
 
-  const ingredients = await IngredientMaster.find({
-    "tenant.tenantId": tenantContext.tenantId,
-  });
+  const { data: ingredients, meta } = await paginate(
+    IngredientMaster,
+    { "tenant.tenantId": tenantContext.tenantId },
+    {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      sort: { name: 1 },
+    }
+  );
 
   const stocks = await Stock.find({
     "tenant.tenantId": tenantContext.tenantId,
@@ -32,21 +41,20 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
   });
 
   const stockMap = new Map(
-    stocks.map(s => [
+    stocks.map((s) => [
       s.masterIngredient.ingredientMasterId.toString(),
       s,
     ])
   );
-  // console.log(ingredients);
-  
-  const result = ingredients.map(ingredient => {
+
+  const result = ingredients.map((ingredient) => {
     const stock = stockMap.get(ingredient._id.toString());
 
     if (!stock) {
       return {
         ingredientId: ingredient._id,
         ingredientName: ingredient.name,
-        baseUnit: ingredient.unit[0].baseUnit,
+        baseUnit: ingredient.unit[0]?.baseUnit,
         unit: ingredient.unit,
         currentStockInBase: 0,
         alertState: "NOT_INITIALIZED",
@@ -57,7 +65,7 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
       ingredientId: ingredient._id,
       ingredientName: ingredient.name,
       baseUnit: stock.baseUnit,
-      unit:ingredient.unit,
+      unit: ingredient.unit,
       currentStockInBase: stock.currentStockInBase,
       alertState: stock.alertState,
     };
@@ -66,8 +74,12 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
   return res.status(200).json(
     new ApiResoponse(
       200,
-      result,
+      {
+        stocks: result,
+        pagination: meta,
+      },
       "Stock details fetched successfully"
     )
   );
 });
+
