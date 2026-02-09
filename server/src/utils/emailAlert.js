@@ -54,7 +54,7 @@ export const sendOTPEmail = async ({
   to,
   otp
 }) => {
-  console.log(to,otp,process.env.SMTP_USER);
+  // console.log(to,otp,process.env.SMTP_USER);
   
   await mailer.sendMail({
     from: `"OTP Verification" <${process.env.SMTP_USER}>`,

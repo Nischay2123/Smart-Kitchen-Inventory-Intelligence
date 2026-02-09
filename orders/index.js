@@ -24,14 +24,6 @@ const outlets = [
 /* =========================
    ITEMS
 ========================= */
-// const items = [
-//   { itemId: "6969d0fb0bb5db2d4a3932a8", itemName: "Latte" },
-//   { itemId: "696a2181448eaa44cbb20e56", itemName: "Cold Coffee" },
-//   { itemId: "696a42eaf3dc0ee373dd3f92", itemName: "Dal Makhni" },
-//   { itemId: "6977bf41ce1177f4a76c4cdd", itemName: "Veg Burger" },
-//   { itemId: "6977bf41ce1177f4a76c4ce0", itemName: "Rice" }
-// ];
-
 const items = [
   { itemId: "696a2181448eaa44cbb20e56", itemName: "Large Cold Coffee" },
   { itemId: "6977bf41ce1177f4a76c4cda", itemName: "Butter Chicken" },
@@ -70,6 +62,14 @@ const getDateDaysAgo = daysAgo => {
   return d;
 };
 
+const getTodayDate = () => {
+  const d = new Date();
+  d.setHours(randomInt(9, 22));
+  d.setMinutes(randomInt(0, 59));
+  d.setSeconds(randomInt(0, 59));
+  return d;
+};
+
 const sendOrder = async (outlet, createdAt) => {
   try {
     await axios.post(API_URL, {
@@ -78,13 +78,12 @@ const sendOrder = async (outlet, createdAt) => {
       items: buildOrderItems(),
       createdAt
     });
-  } catch (error) {
+  } catch {
     console.log("Order failed, continuing...");
   }
 };
 
-/* ---------- outlet simulation ---------- */
-
+/* ---------- historical simulation ---------- */
 const simulateOutlet = async outlet => {
   const DAYS = 7;
   const ORDERS_PER_DAY = 10;
@@ -96,9 +95,7 @@ const simulateOutlet = async outlet => {
     console.log(`📅 Day-${day}`);
 
     for (let i = 0; i < ORDERS_PER_DAY; i++) {
-      sendOrder(outlet, getDateDaysAgo(day)); // fire
-
-      // spacing between orders (realistic)
+      sendOrder(outlet, getDateDaysAgo(day));
       await sleep(randomInt(300, 1200));
     }
   }
@@ -106,12 +103,29 @@ const simulateOutlet = async outlet => {
   console.log(`✅ Outlet done: ${outlet.outletName}`);
 };
 
-/* ---------- start stress test ---------- */
+/* ---------- TODAY orders simulation ---------- */
+const simulateTodayForOutlet = async outlet => {
+  const ORDERS_TODAY = 5;
 
+  console.log(`📍 Sending today's orders: ${outlet.outletName}`);
+
+  for (let i = 0; i < ORDERS_TODAY; i++) {
+    sendOrder(outlet, getTodayDate());
+    await sleep(randomInt(300, 1200));
+  }
+
+  console.log(`✅ Today's orders done: ${outlet.outletName}`);
+};
+
+/* ---------- start ---------- */
 (async () => {
   console.log("🚀 Stress test starting\n");
 
-  await Promise.all(outlets.map(simulateOutlet));
+  /* Historical data */
+  // await Promise.all(outlets.map(simulateOutlet));
+
+  /* TODAY orders — uncomment when needed */
+  await Promise.all(outlets.map(simulateTodayForOutlet));
 
   console.log("\n🎉 Stress test complete");
 })();

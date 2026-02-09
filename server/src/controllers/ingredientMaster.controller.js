@@ -5,6 +5,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { paginate } from "../utils/pagination.js";
+import { cacheService } from "../services/cache.service.js";
 
 export const createIngredient = asyncHandler(async (req, res) => {
 
@@ -14,7 +15,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
 
   const { name, unitIds, threshold } = req.body;
 
-  // ───────────── VALIDATION ─────────────
 
   if (
     !name ||
@@ -33,14 +33,12 @@ export const createIngredient = asyncHandler(async (req, res) => {
 
   const tenantContext = req.user.tenant;
 
-  // validate objectIds
   [...unitIds, threshold.unitId].forEach(id => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       throw new ApiError(400, `Invalid unitId: ${id}`);
     }
   });
 
-  // ───────────── FETCH UNITS ─────────────
 
   const units = await Unit.find({
     _id: { $in: unitIds },
@@ -54,7 +52,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
     );
   }
 
-  // all units must share same baseUnit
   const baseUnitSet = new Set(units.map(u => u.baseUnit));
 
   if (baseUnitSet.size > 1) {
@@ -64,7 +61,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
     );
   }
 
-  // ───────────── THRESHOLD UNIT ─────────────
 
   const thresholdUnit = units.find(
     u => String(u._id) === String(threshold.unitId)
@@ -77,7 +73,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
     );
   }
 
-  // logical validation
   if (Number(threshold.critical) > Number(threshold.low)) {
     throw new ApiError(
       400,
@@ -85,7 +80,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
     );
   }
 
-  // ───────────── DUPLICATE CHECK ─────────────
 
   const existing = await IngredientMaster.findOne({
     "tenant.tenantId": tenantContext.tenantId,
@@ -96,7 +90,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
     throw new ApiError(409, "Ingredient already exists");
   }
 
-  // ───────────── CREATE ─────────────
 
   const ingredient = await IngredientMaster.create({
 
@@ -107,7 +100,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
 
     name: name.trim(),
 
-    // allowed units
     unit: units.map(u => ({
       unitId: u._id,
       unitName: u.unit,
@@ -115,7 +107,6 @@ export const createIngredient = asyncHandler(async (req, res) => {
       conversionRate: u.conversionRate,
     })),
 
-    // threshold with context
     threshold: {
       lowInBase:
         Number(threshold.low) *
@@ -134,6 +125,14 @@ export const createIngredient = asyncHandler(async (req, res) => {
     },
   });
 
+
+  const cacheKey = cacheService.generateKey(
+    "ingredient",
+    tenantContext.tenantId,
+    ingredient._id
+  );
+  await cacheService.set(cacheKey, ingredient);
+
   return res.status(201).json(
     new ApiResoponse(
       201,
@@ -149,7 +148,7 @@ export const getAllIngredients = asyncHandler(async (req, res) => {
   if (req.user.role === "SUPER_ADMIN") {
     throw new ApiError(403, "Only BRAND_ADMIN and OUTLET_MANAGER can view ingredients");
   }
-  const {page,limit}= req.query;
+  const { page, limit } = req.query;
   const tenantContext = req.user.tenant;
   if (!tenantContext?.tenantId) {
     throw new ApiError(400, "User is not associated with any tenant");
@@ -172,10 +171,10 @@ export const getAllIngredients = asyncHandler(async (req, res) => {
   return res.status(200).json(
     new ApiResoponse(
       200,
-    {
-      ingredients,
-      pagination: meta
-    },
+      {
+        ingredients,
+        pagination: meta
+      },
       "Ingredients fetched successfully"
     )
   );
@@ -210,6 +209,14 @@ export const deleteIngredient = asyncHandler(async (req, res) => {
   }
 
   await IngredientMaster.deleteOne({ _id: ingredient._id });
+
+  // Delete Cache
+  const cacheKey = cacheService.generateKey(
+    "ingredient",
+    tenantContext.tenantId,
+    ingredient._id
+  );
+  await cacheService.del(cacheKey);
 
   return res.status(200).json(
     new ApiResoponse(

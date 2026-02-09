@@ -70,11 +70,22 @@ const validateContext = (req) => {
   return { tenant, outlet };
 };
 
+import { cacheService } from "../services/cache.service.js";
+
 const validateIngredient = async ({
   ingredientMasterId,
   tenantId,
   session,
 }) => {
+  const cacheKey = cacheService.generateKey(
+    "ingredient",
+    tenantId,
+    ingredientMasterId
+  );
+
+  const cached = await cacheService.get(cacheKey);
+  if (cached) return cached;
+
   const ingredient = await IngredientMaster.findOne({
     _id: ingredientMasterId,
     "tenant.tenantId": tenantId,
@@ -84,6 +95,8 @@ const validateIngredient = async ({
   if (!ingredient) {
     throw new ApiError(404, "Ingredient not found");
   }
+
+  await cacheService.set(cacheKey, ingredient);
 
   // console.log("validatePayload start");
 
@@ -478,6 +491,11 @@ export const getOrderConsumptionSummary = asyncHandler(async (req, res) => {
         totalConsumed: {
           $sum: "$quantity",
         },
+        totalCost :{
+          $sum:{
+            $multiply:["$unitCost","$quantity"]
+          }
+        }
       },
     },
     {
@@ -486,6 +504,7 @@ export const getOrderConsumptionSummary = asyncHandler(async (req, res) => {
         ingredientName: "$_id.ingredientName",
         unit: "$_id.unit",
         totalConsumed: 1,
+        totalCost:1
       },
     },
     {

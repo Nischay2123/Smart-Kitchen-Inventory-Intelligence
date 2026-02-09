@@ -6,6 +6,7 @@ import Unit from "../models/baseUnit.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { cacheService } from "../services/cache.service.js";
 
 export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
@@ -43,8 +44,6 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
   }
 
 
-
-  /* -------------------- Unit Fetch (SINGLE CALL) -------------------- */
   const unitIds = [
     ...new Set(
       recipeItems.map(i => i.unitId?.toString())
@@ -68,7 +67,6 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
     units.map(u => [u._id.toString(), u])
   );
 
-  /* -------------------- Normalize Recipe Items -------------------- */
   const normalizedRecipeItems = recipeItems.map(item => {
 
     const qty = Number(item.Qty);
@@ -93,13 +91,12 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
       ingredientMasterId: item.ingredientMasterId,
       ingredientName: item.ingredientName,
 
-      qty,               
-      baseQty,           
-      unit: item.unit,   
+      qty,
+      baseQty,
+      unit: item.unit,
     };
   });
 
-  /* -------------------- Upsert Recipe -------------------- */
   const recipe = await Recipe.findOneAndUpdate(
     {
       "tenant.tenantId": tenantContext.tenantId,
@@ -122,6 +119,13 @@ export const createOrUpdateRecipe = asyncHandler(async (req, res) => {
       runValidators: true,
     }
   );
+
+  const cacheKey = cacheService.generateKey(
+    "recipe",
+    tenantContext.tenantId,
+    menuItem._id
+  );
+  await cacheService.set(cacheKey, recipe);
 
   return res.status(200).json(
     new ApiResoponse(
@@ -148,11 +152,19 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User is not associated with any tenant");
   }
 
-  // 1️⃣ Fetch recipe
-  const recipe = await Recipe.findOne({
-    "tenant.tenantId": tenantContext.tenantId,
-    "item.itemId": itemId,
-  }).lean();
+  const cacheKey = cacheService.generateKey("recipe", tenantContext.tenantId, itemId);
+  let recipe = await cacheService.get(cacheKey);
+
+  if (!recipe) {
+    recipe = await Recipe.findOne({
+      "tenant.tenantId": tenantContext.tenantId,
+      "item.itemId": itemId,
+    }).lean();
+
+    if (recipe) {
+      await cacheService.set(cacheKey, recipe);
+    }
+  }
 
   if (!recipe) {
     return res.status(200).json(
@@ -160,7 +172,6 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
     );
   }
 
-  // 2️⃣ Fetch ingredient masters
   const ingredientIds = recipe.recipeItems.map(
     i => i.ingredientMasterId
   );
@@ -173,7 +184,6 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
     ingredients.map(i => [i._id.toString(), i])
   );
 
-  // 3️⃣ Transform recipe items
   const transformedRecipeItems = recipe.recipeItems.map(item => {
     const ingredient = ingredientMap.get(
       item.ingredientMasterId.toString()
@@ -186,7 +196,7 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
       );
     }
     console.log(ingredient);
-    
+
     const selectedUnit = ingredient.unit.find(
       u => u.unitName === item.unit
     );
@@ -201,8 +211,8 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
     return {
       ingredientId: item.ingredientMasterId,
       ingredientName: item.ingredientName,
-      quantity: item.qty,                 
-      unitName: item.unit,            
+      quantity: item.qty,
+      unitName: item.unit,
     };
   });
 

@@ -17,6 +17,9 @@ import { SkeletonLoader } from "@/components/laoder";
 
 const ingredientColumn = () => [
   { accessorKey: "ingredientName", header: "Ingredient" },
+  { accessorKey: "totalCost", header: "Total Cost" ,cell:({row})=>(
+    <span>{row.original.totalCost.toFixed(3)}</span>
+  )},
   { accessorKey: "totalConsumed", header: "Total Consumption" },
   { accessorKey: "unit", header: "Unit" },
 ];

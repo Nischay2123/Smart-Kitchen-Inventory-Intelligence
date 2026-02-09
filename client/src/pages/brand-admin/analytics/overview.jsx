@@ -22,6 +22,19 @@ import {
 
 import { useGetAllOutletsQuery } from "@/redux/apis/brand-admin/outletApi";
 
+const isTodayInRange = (from, to) => {
+  const today = new Date();
+
+  const f = new Date(from);
+  const t = new Date(to);
+
+  f.setHours(0,0,0,0);
+  t.setHours(0,0,0,0);
+  today.setHours(0,0,0,0);
+
+  return today >= f && today < t;
+};
+
 const outletColumns = [
   {
     accessorKey: "outletName",
@@ -69,26 +82,36 @@ export const Overview = () => {
 
         let finalResult = [];
 
-        for (const batch of batches) {
-          const snapshot = await snapshotApi({
-            outletIds: batch,
-            from,
-            to,
-          }).unwrap();
+        const includeLive = isTodayInRange(from, to);
 
-          const live = await liveApi({
-            outletIds: batch,
-          }).unwrap();
-          // console.log(live);
-          
-          const merged = mergeAnalytics(
-            snapshot.data,
-            live.data
-          );
-          // console.log(merged);
-          
-          finalResult = finalResult.concat(merged);
-        }
+for (const batch of batches) {
+  const snapshot = await snapshotApi({
+    outletIds: batch,
+    from,
+    to,
+  }).unwrap();
+
+  let merged ;
+
+  if (includeLive) {
+    const live = await liveApi({
+      outletIds: batch,
+    }).unwrap();
+
+    merged = mergeAnalytics(
+      snapshot.data,
+      live.data
+    );
+  }else{
+    merged=mergeAnalytics(
+      snapshot.data
+    )
+  }
+
+
+  finalResult = finalResult.concat(merged);
+}
+
         // console.log("ghjk",finalResult);
         
         setData(finalResult);

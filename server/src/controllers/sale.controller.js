@@ -15,8 +15,10 @@ import { ApiResoponse } from "../utils/apiResponse.js";
 
 import { orderQueue } from "../queues/order.queue.js";
 import { paginate } from "../utils/pagination.js";
+import { cacheService } from "../services/cache.service.js";
 
-const createPendingSale = async ({ tenant, outlet, items,createdAt}) => {
+
+const createPendingSale = async ({ tenant, outlet, items, createdAt }) => {
   return Sale.create({
     tenant,
     outlet,
@@ -34,16 +36,42 @@ const createPendingSale = async ({ tenant, outlet, items,createdAt}) => {
 };
 
 const loadRecipeMap = async ({ tenant, items }) => {
-  const itemIds = items.map(i => i.itemId);
+  const itemIds = items.map((i) => String(i.itemId));
+  const uniqueItemIds = [...new Set(itemIds)];
 
-  const recipes = await Recipe.find({
-    "tenant.tenantId": tenant.tenantId,
-    "item.itemId": { $in: itemIds },
-  }).lean();
+  const recipeMap = new Map();
+  const missingItemIds = [];
 
-  return new Map(
-    recipes.map(r => [String(r.item.itemId), r])
+  const cacheKeys = uniqueItemIds.map((id) =>
+    cacheService.generateKey("recipe", tenant.tenantId, id)
   );
+
+  const cachedRecipes = await cacheService.mget(cacheKeys);
+
+  cachedRecipes.forEach((recipe, index) => {
+    if (recipe) {
+      recipeMap.set(uniqueItemIds[index], recipe);
+    } else {
+      missingItemIds.push(uniqueItemIds[index]);
+    }
+  });
+
+  if (missingItemIds.length > 0) {
+    const dbRecipes = await Recipe.find({
+      "tenant.tenantId": tenant.tenantId,
+      "item.itemId": { $in: missingItemIds },
+    }).lean();
+
+    for (const recipe of dbRecipes) {
+      const itemId = String(recipe.item.itemId);
+      recipeMap.set(itemId, recipe);
+
+      const key = cacheService.generateKey("recipe", tenant.tenantId, itemId);
+      await cacheService.set(key, recipe);
+    }
+  }
+
+  return recipeMap;
 };
 
 const buildItemFailureMap = (items, recipeMap, failedIngredients) => {
@@ -228,9 +256,9 @@ const deductStockWithTransaction = async ({
 };
 
 export const createSale = asyncHandler(async (req, res) => {
-  const { items,tenant, outlet,createdAt } = req.body;
+  const { items, tenant, outlet, createdAt } = req.body;
 
-  const saleRecord = await createPendingSale({ tenant, outlet, items ,createdAt});
+  const saleRecord = await createPendingSale({ tenant, outlet, items, createdAt });
 
   const recipeMap = await loadRecipeMap({ tenant, items });
 
@@ -272,15 +300,15 @@ export const createSale = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     return cancelSaleAndRespond({
-    res,
-    saleId: saleRecord._id,
-    reason: "STOCK_CHANGED",
-    items,
-  });
+      res,
+      saleId: saleRecord._id,
+      reason: "STOCK_CHANGED",
+      items,
+    });
   }
 
   // console.log(saleRecord.createdAt);
-  
+
   try {
     await orderQueue.add("sale.confirmed", {
       orderId: saleRecord._id,
@@ -318,7 +346,7 @@ export const getAllSales = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Access denied");
   }
 
-  const {  fromDate, toDate, page = 1, limit = 10 } = req.query;
+  const { fromDate, toDate, page = 1, limit = 10 } = req.query;
 
 
   const filter = {
@@ -333,16 +361,16 @@ export const getAllSales = asyncHandler(async (req, res) => {
   }
 
   // const sales = await Sale.find(filter).sort({ createdAt: -1 });
-  const {data:saleRecords, meta} = await paginate(Sale,filter,{
+  const { data: saleRecords, meta } = await paginate(Sale, filter, {
     page,
     limit,
-    sort:{createdAt:-1}
+    sort: { createdAt: -1 }
   })
 
   return res.status(200).json(
     new ApiResoponse(200, {
       saleRecords,
-      pagination:meta
+      pagination: meta
     }, "Sales fetched")
   );
 });

@@ -70,10 +70,11 @@ export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
         },
       },
     },
-    { allowDiskUse: true }
   ];
 
-  const data = await Sale.aggregate(pipeline);
+    
+    
+  const data = await Sale.aggregate(pipeline,{ allowDiskUse: true });
   return res.status(200).json(new ApiResoponse(200, data, "success"));
 });
 
