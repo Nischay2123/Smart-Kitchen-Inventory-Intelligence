@@ -3,13 +3,14 @@ export const paginate = async (model, filter = {}, options = {}) => {
   const limit = parseInt(options.limit, 10) || 10;
   const sort = options.sort || { createdAt: -1 };
   const search = options.search || "";
+  const searchField = options.searchField || "name";
 
   const skip = (page - 1) * limit;
 
   let finalFilter = { ...filter };
 
   if (search && search.trim() !== "") {
-    finalFilter.name = {
+    finalFilter[searchField] = {
       $regex: search.trim(),
       $options: "i",
     };

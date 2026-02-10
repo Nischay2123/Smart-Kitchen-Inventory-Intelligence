@@ -97,7 +97,7 @@ export const Orders = () => {
         ) : (
           <DataCard
             title="Orders"
-            searchable
+            searchable={false}
             loading={isLoading}
             columns={orderColumns(handleViewOrder)}
             data={orders}

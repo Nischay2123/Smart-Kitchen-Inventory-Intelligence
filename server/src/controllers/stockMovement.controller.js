@@ -369,7 +369,7 @@ export const getAllStockMovementsForOrders = asyncHandler(async (req, res) => {
   const tenantContext = req.user.tenant;
   const outletContext = req.user.outlet;
 
-  const { ingredientMasterId, fromDate, toDate, page = 1, limit = 10 } = req.query;
+  const { ingredientMasterId, fromDate, toDate, page = 1, limit = 10, search = "" } = req.query;
 
   const filter = {
     "tenant.tenantId": tenantContext.tenantId,
@@ -390,7 +390,9 @@ export const getAllStockMovementsForOrders = asyncHandler(async (req, res) => {
   const { data: movements, meta } = await paginate(StockMovement, filter, {
     page,
     limit,
-    sort: { createdAt: -1 }
+    search,
+    sort: { createdAt: -1 },
+    searchField: "ingredient.ingredientMasterName",
   });
 
   return res.status(200).json(
@@ -409,7 +411,7 @@ export const getAllStockMovementsExceptOrders = asyncHandler(async (req, res) =>
   const tenantContext = req.user.tenant;
   const outletContext = req.user.outlet;
 
-  const { ingredientMasterId, fromDate, toDate, page = 1, limit = 10 } = req.query;
+  const { ingredientMasterId, fromDate, toDate, page = 1, limit = 10, search } = req.query;
 
 
   const filter = {
@@ -431,7 +433,9 @@ export const getAllStockMovementsExceptOrders = asyncHandler(async (req, res) =>
   const { data: movements, meta } = await paginate(StockMovement, filter, {
     page,
     limit,
-    sort: { createdAt: -1 }
+    search,
+    sort: { createdAt: -1 },
+    searchField: "ingredient.ingredientMasterName",
   });
 
   return res.status(200).json(
@@ -491,9 +495,9 @@ export const getOrderConsumptionSummary = asyncHandler(async (req, res) => {
         totalConsumed: {
           $sum: "$quantity",
         },
-        totalCost :{
-          $sum:{
-            $multiply:["$unitCost","$quantity"]
+        totalCost: {
+          $sum: {
+            $multiply: ["$unitCost", "$quantity"]
           }
         }
       },
@@ -504,7 +508,7 @@ export const getOrderConsumptionSummary = asyncHandler(async (req, res) => {
         ingredientName: "$_id.ingredientName",
         unit: "$_id.unit",
         totalConsumed: 1,
-        totalCost:1
+        totalCost: 1
       },
     },
     {
