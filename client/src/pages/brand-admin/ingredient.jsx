@@ -10,6 +10,7 @@ import {
 
 import { CreateIngredientModal } from '@/components/Form/brand-admin-form/create-ingredient-form'
 import { SkeletonLoader } from '@/components/laoder'
+import { debounce } from 'lodash'
 
 
 export const Ingredients = () => {
@@ -19,6 +20,8 @@ export const Ingredients = () => {
     pageIndex: 0,
     pageSize: 10,
   })
+  const [search, setSearch] = useState("");
+  
 
 
   const {
@@ -27,7 +30,8 @@ export const Ingredients = () => {
     isError,
   } = useGetAllIngredientsQuery({
       page: pagination.pageIndex + 1,
-      limit: pagination.pageSize
+      limit: pagination.pageSize,
+      search
   })
 
   const [deleteIngredient, { isLoading: isDeleting }] =
@@ -50,7 +54,22 @@ export const Ingredients = () => {
       console.error("Failed to delete ingredient", error)
     }
   }
+  const debouncedSearch = React.useMemo(
+    () =>
+      debounce((value) => {
+        setPagination((prev) => ({
+          ...prev,
+          pageIndex: 0, 
+        }));
 
+        setSearch(value);
+      }, 400),
+    []
+  );
+
+  React.useEffect(() => {
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
   return (
     <div className="w-full bg-gray-50 min-h-screen">
 
@@ -81,6 +100,7 @@ export const Ingredients = () => {
             pageCount={data?.data?.pagination?.totalPages || 0}
             onPaginationChange={setPagination}
             paginationState={pagination}
+            onGlobalFilterChange={debouncedSearch}
           />
         )}
       </div>

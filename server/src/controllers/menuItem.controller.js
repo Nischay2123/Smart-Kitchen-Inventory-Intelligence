@@ -77,20 +77,18 @@ export const getAllMenuItems = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User is not associated with any tenant");
   }
 
-  const { search, page = 1, limit = 10 } = req.query;
+  const { search="", page = 1, limit = 10 } = req.query;
 
   const filter = {
     "tenant.tenantId": tenantContext.tenantId,
   };
 
-  if (search) {
-    filter.itemName = { $regex: search, $options: "i" };
-  }
-
   // const menuItems = await MenuItem.find(filter).sort({ createdAt: -1 });
   const { data: menuItems, meta } = await paginate(MenuItem, filter, {
     page,
     limit,
+    search,
+    searchField:"itemName",
     sort: { createdAt: -1 }
   });
 

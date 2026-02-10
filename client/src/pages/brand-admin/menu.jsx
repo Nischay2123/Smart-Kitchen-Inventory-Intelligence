@@ -9,6 +9,7 @@ import {
 import { CreateItemModal } from '@/components/Form/brand-admin-form/create-item-form'
 import { menuColumns } from '@/utils/columns/brand-admin'
 import { SkeletonLoader } from '@/components/laoder'
+import { debounce } from 'lodash'
 
 
 const Item = () => {
@@ -18,6 +19,8 @@ const Item = () => {
     pageIndex: 0,
     pageSize: 10,
   })
+  const [search, setSearch] = useState("");
+  
 
   const {
     data,
@@ -25,7 +28,8 @@ const Item = () => {
     isError,
   } = useGetAllItemsQuery({
     page: pagination.pageIndex + 1,
-    limit: pagination.pageSize
+    limit: pagination.pageSize,
+    search
   })
 
   const [deleteItem, { isLoading: isDeleting }] =
@@ -44,7 +48,22 @@ const Item = () => {
       console.error("Failed to delete outlet manager", error)
     }
   }
-
+  const debouncedSearch = React.useMemo(
+      () =>
+        debounce((value) => {
+          setPagination((prev) => ({
+            ...prev,
+            pageIndex: 0, 
+          }));
+  
+          setSearch(value);
+        }, 400),
+      []
+    );
+  
+    React.useEffect(() => {
+      return () => debouncedSearch.cancel();
+    }, [debouncedSearch]);
   return (
     <div className='w-full bg-gray-50 min-h-screen'>
       <SiteHeader
@@ -69,6 +88,7 @@ const Item = () => {
               pageCount={data?.data?.pagination?.totalPages || 0}
               onPaginationChange={setPagination}
               paginationState={pagination}
+              onGlobalFilterChange={debouncedSearch}
             />
         }
 

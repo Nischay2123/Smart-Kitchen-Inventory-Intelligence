@@ -8,6 +8,7 @@ import {
 } from "@/redux/apis/brand-admin/itemApi"
 import { SkeletonLoader } from '@/components/laoder'
 import { createRecipeColumn } from '@/utils/columns/brand-admin'
+import { debounce } from 'lodash'
 
 
 
@@ -18,13 +19,16 @@ export const Recipe = () => {
     pageIndex: 0,
     pageSize: 10,
   })
+  const [search, setSearch] = useState("");
+  
   const {
     data,
     isLoading,
     isError,
   } = useGetAllItemsQuery({
     page: pagination.pageIndex + 1,
-    limit: pagination.pageSize
+    limit: pagination.pageSize,
+    search
   })
 
   const [deleteItem, { isLoading: isDeleting }] =
@@ -43,6 +47,22 @@ export const Recipe = () => {
       console.error("Failed to delete outlet manager", error)
     }
   }
+  const debouncedSearch = React.useMemo(
+      () =>
+        debounce((value) => {
+          setPagination((prev) => ({
+            ...prev,
+            pageIndex: 0, 
+          }));
+  
+          setSearch(value);
+        }, 400),
+      []
+    );
+  
+    React.useEffect(() => {
+      return () => debouncedSearch.cancel();
+    }, [debouncedSearch]);
   return (
     <div className='w-full bg-gray-50 min-h-screen'>
       <SiteHeader
@@ -66,6 +86,7 @@ export const Recipe = () => {
               pageCount={data?.data?.pagination?.totalPages || 0}
               onPaginationChange={setPagination}
               paginationState={pagination}
+              onGlobalFilterChange={debouncedSearch}
             />
         }
 

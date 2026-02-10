@@ -148,7 +148,7 @@ export const getAllIngredients = asyncHandler(async (req, res) => {
   if (req.user.role === "SUPER_ADMIN") {
     throw new ApiError(403, "Only BRAND_ADMIN and OUTLET_MANAGER can view ingredients");
   }
-  const { page, limit } = req.query;
+  const { page, limit, search } = req.query;
   const tenantContext = req.user.tenant;
   if (!tenantContext?.tenantId) {
     throw new ApiError(400, "User is not associated with any tenant");
@@ -165,6 +165,7 @@ export const getAllIngredients = asyncHandler(async (req, res) => {
   const { data: ingredients, meta } = await paginate(IngredientMaster, filter, {
     page,
     limit,
+    search,
     sort: { createdAt: -1 }
   });
 
