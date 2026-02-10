@@ -58,6 +58,7 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
         unit: ingredient.unit,
         currentStockInBase: 0,
         alertState: "NOT_INITIALIZED",
+        threshold: ingredient.threshold
       };
     }
 
@@ -68,6 +69,7 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
       unit: ingredient.unit,
       currentStockInBase: stock.currentStockInBase,
       alertState: stock.alertState,
+      threshold: ingredient.threshold
     };
   });
 

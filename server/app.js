@@ -2,6 +2,8 @@ import env from "dotenv"
 env.config()
 
 import express from "express";
+import "./src/crons/dailySnapshot.cron.js"; 
+import "./src/crons/orderQueue.cron.js"; 
 import connectDB from "./src/utils/db.js";
 import cors from 'cors';
 import cookieParser from 'cookie-parser'

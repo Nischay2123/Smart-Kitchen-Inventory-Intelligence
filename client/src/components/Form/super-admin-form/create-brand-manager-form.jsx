@@ -18,6 +18,7 @@ import {
 
 import { Success } from "@/components/success";
 import { EmailOtpVerification } from "@/components/emailOtpVerification";
+import { isValidPassword } from "@/utils/password";
 
 export function CreateBrandManagerModal({ open, onOpenChange, id }) {
   const [userName, setUserName] = React.useState("");
@@ -30,6 +31,12 @@ export function CreateBrandManagerModal({ open, onOpenChange, id }) {
   const [createBrandManager] = useCreateBrandManagerMutation();
   const [sendOtp] = useSendOtpMutation();
   const [verifyOtp] = useVerifyOtpMutation();
+
+  const isPasswordValid = React.useMemo(
+    () => isValidPassword(password),
+    [password]
+  );
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,10 +93,17 @@ export function CreateBrandManagerModal({ open, onOpenChange, id }) {
               required
             />
 
+            {password && !isPasswordValid && (
+              <p className="text-xs text-red-500">
+                Password must be at least 8 characters and include one letter and one number
+              </p>
+            )}
+
+
             <Button
               type="submit"
               className="w-full"
-              disabled={status === "loading" || !isVerified}
+              disabled={status === "loading" || !isVerified || !isPasswordValid}
             >
               {status === "loading" ? "Creating..." : "Create"}
             </Button>

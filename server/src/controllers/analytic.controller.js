@@ -24,9 +24,7 @@ export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
           $gte: new Date(fromDate),
           $lte: new Date(toDate),
         },
-        ...(outletId && {
-          "outlet.outletId": new mongoose.Types.ObjectId(outletId),
-        }),
+        "outlet.outletId": new mongoose.Types.ObjectId(outletId),
       },
     },
     {

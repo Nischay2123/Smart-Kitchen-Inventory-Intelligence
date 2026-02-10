@@ -28,9 +28,9 @@ const isTodayInRange = (from, to) => {
   const f = new Date(from);
   const t = new Date(to);
 
-  f.setHours(0,0,0,0);
-  t.setHours(0,0,0,0);
-  today.setHours(0,0,0,0);
+  f.setHours(0, 0, 0, 0);
+  t.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
 
   return today >= f && today < t;
 };
@@ -74,53 +74,53 @@ export const Overview = () => {
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
-      try {
-        setLoading(true);
+    try {
+      setLoading(true);
 
-        const outletIds = outlets.data.map((o) => o._id);
-        const batches = chunkArray(outletIds, 250);
+      const outletIds = outlets.data.map((o) => o._id);
+      const batches = chunkArray(outletIds, 250);
 
-        let finalResult = [];
+      let finalResult = [];
 
-        const includeLive = isTodayInRange(from, to);
+      const includeLive = isTodayInRange(from, to);
 
-for (const batch of batches) {
-  const snapshot = await snapshotApi({
-    outletIds: batch,
-    from,
-    to,
-  }).unwrap();
+      for (const batch of batches) {
+        const snapshot = await snapshotApi({
+          outletIds: batch,
+          from,
+          to,
+        }).unwrap();
 
-  let merged ;
+        let merged;
 
-  if (includeLive) {
-    const live = await liveApi({
-      outletIds: batch,
-    }).unwrap();
+        if (includeLive) {
+          const live = await liveApi({
+            outletIds: batch,
+          }).unwrap();
 
-    merged = mergeAnalytics(
-      snapshot.data,
-      live.data
-    );
-  }else{
-    merged=mergeAnalytics(
-      snapshot.data
-    )
-  }
+          merged = mergeAnalytics(
+            snapshot.data,
+            live.data
+          );
+        } else {
+          merged = mergeAnalytics(
+            snapshot.data
+          )
+        }
 
 
-  finalResult = finalResult.concat(merged);
-}
-
-        // console.log("ghjk",finalResult);
-        
-        setData(finalResult);
-      } catch (err) {
-        console.error("Analytics loading failed", err);
-      } finally {
-        setLoading(false);
+        finalResult = finalResult.concat(merged);
       }
-    };
+
+      // console.log("ghjk",finalResult);
+
+      setData(finalResult);
+    } catch (err) {
+      console.error("Analytics loading failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!outlets?.data || !from || !to) return;
@@ -130,13 +130,13 @@ for (const batch of batches) {
   const aggregated = aggregateData(data);
 
   const [focusedDeployment, setFocusedDeployment] = useState(null);
-  
+
   const displayedData = focusedDeployment
     ? {
-        ...focusedDeployment,
-        totalOrder: focusedDeployment.confirmedOrders,
-        totalBillCanceled: focusedDeployment.canceledOrders,
-      }
+      ...focusedDeployment,
+      totalOrder: focusedDeployment.confirmedOrders,
+      totalBillCanceled: focusedDeployment.canceledOrders,
+    }
     : aggregated;
 
 
@@ -177,7 +177,7 @@ for (const batch of batches) {
             data={data ?? []}
             xKey="outletName"
             yKey="totalSale"
-            onBarClick={() => {}}
+            onBarClick={() => { }}
             loading={loading}
           />
 

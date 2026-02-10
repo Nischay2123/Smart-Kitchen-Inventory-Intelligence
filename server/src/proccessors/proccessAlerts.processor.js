@@ -40,10 +40,23 @@ export const processAlerts = async ({ outlet, tenant, requirementList }) => {
       criticalInBase,
       alertState: newState,
       stockId: stock._id,
+      prevAlert: stock.alertState
     });
   }
 
   if (!alertItems.length) return;
+
+  await Stock.bulkWrite(
+    alertItems.map((item) => ({
+      updateOne: {
+        filter: { 
+          _id: item.stockId ,
+          alertState:item.prevAlert
+        },
+        update: { $set: { alertState: item.alertState } },
+      },
+    }))
+  );
 
   const emails = await getOutletManagersEmails(
     tenant.tenantId,
@@ -57,13 +70,5 @@ export const processAlerts = async ({ outlet, tenant, requirementList }) => {
       alerts: alertItems,
     });
   }
-
-  await Stock.bulkWrite(
-    alertItems.map((item) => ({
-      updateOne: {
-        filter: { _id: item.stockId },
-        update: { $set: { alertState: item.alertState } },
-      },
-    }))
-  );
+  
 };

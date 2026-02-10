@@ -35,7 +35,7 @@ export function DataTable({
   data,
   columns,
   pageSize = 10,
-  searchable = true,
+  searchable = false,
   pagination = true,
   onRowClick = () => { },
   rowSelection,
@@ -96,7 +96,7 @@ const table = useReactTable({
     <div className="flex flex-col space-y-3 h-full">
 
       {/* Search */}
-      {searchable && (
+      {false && (
         <div className="flex items-center gap-2">
           <Input
             placeholder="Search..."

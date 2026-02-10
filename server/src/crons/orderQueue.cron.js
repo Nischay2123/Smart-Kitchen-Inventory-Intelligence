@@ -2,7 +2,9 @@ import cron from "node-cron";
 import QueueFail from "../models/queueFail.model.js";
 import { orderQueue } from "../queues/order.queue.js";
 
-cron.schedule("*/30 * * * * *", async () => {
+cron.schedule("0 */1 * * * *", async () => {
+  console.log("order queue cron started");
+  
   const events = await QueueFail.find({nextRetryAt: { $lte: new Date() }})
     .sort({ createdAt: 1 })
     .limit(50);

@@ -11,6 +11,13 @@ export const ingredient = baseApi.injectEndpoints({
       }),
       providesTags: ["Ingredient"],
     }),
+    getAllIngredientsInOnce: builder.query({
+      query: () => ({
+        url: "ingredient/get_all_ingredient_once",
+        method: "GET",
+      }),
+      providesTags: ["Ingredient"],
+    }),
 
     createIngredients: builder.mutation({
       query: ({ name, unitIds ,threshold}) => ({
@@ -35,5 +42,6 @@ export const ingredient = baseApi.injectEndpoints({
 export const {
   useCreateIngredientsMutation,
   useDeleteIngredientMutation,
-  useGetAllIngredientsQuery
+  useGetAllIngredientsQuery,
+  useGetAllIngredientsInOnceQuery
 } = ingredient;

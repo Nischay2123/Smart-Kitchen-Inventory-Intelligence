@@ -18,6 +18,7 @@ import {
 
 import { Success } from "@/components/success";
 import { EmailOtpVerification } from "@/components/emailOtpVerification";
+import { isValidPassword } from "@/utils/password";
 
 export function CreateOutletManagerModal({ open, onOpenChange, id }) {
   const [userName, setUserName] = React.useState("");
@@ -30,6 +31,12 @@ export function CreateOutletManagerModal({ open, onOpenChange, id }) {
   const [createOutletManager] = useCreateOutletManagerMutation();
   const [sendOtp] = useSendOtpOutletMutation();
   const [verifyOtp] = useVerifyOtpOutletMutation();
+
+  const isPasswordValid = React.useMemo(
+    () => isValidPassword(password),
+    [password]
+  );
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,11 +92,16 @@ export function CreateOutletManagerModal({ open, onOpenChange, id }) {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            {password && !isPasswordValid && (
+              <p className="text-xs text-red-500">
+                Password must be at least 8 characters and include one letter and one number
+              </p>
+            )}
 
             <Button
               type="submit"
               className="w-full"
-              disabled={status === "loading" || !isVerified}
+              disabled={status === "loading" || !isVerified || !isPasswordValid}
             >
               {status === "loading" ? "Creating..." : "Create"}
             </Button>

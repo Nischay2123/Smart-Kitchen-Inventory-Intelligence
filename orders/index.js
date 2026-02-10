@@ -25,15 +25,20 @@ const outlets = [
    ITEMS
 ========================= */
 const items = [
-  { itemId: "696a2181448eaa44cbb20e56", itemName: "Large Cold Coffee" },
-  { itemId: "6977bf41ce1177f4a76c4cda", itemName: "Butter Chicken" },
-  { itemId: "6977bf41ce1177f4a76c4cdb", itemName: "Paneer Butter Masala" },
-  { itemId: "6977bf41ce1177f4a76c4cde", itemName: "Chicken Burger" },
-  { itemId: "6977bf41ce1177f4a76c4cdf", itemName: "Garlic Naan" },
-  { itemId: "6977bf41ce1177f4a76c4ce3", itemName: "Cheese Omelette" },
-  { itemId: "697b88912241fd3a9b4cbcb9", itemName: "Pizza" },
-  { itemId: "697b88ad2241fd3a9b4cbcca", itemName: "Hakka Noodles" },
-  { itemId: "697b88c52241fd3a9b4cbcdb", itemName: "Pasta" }
+  // { itemId: "696a2181448eaa44cbb20e56", itemName: "Large Cold Coffee" },
+  // { itemId: "6977bf41ce1177f4a76c4cda", itemName: "Butter Chicken" },
+  // { itemId: "6977bf41ce1177f4a76c4cdb", itemName: "Paneer Butter Masala" },
+  // { itemId: "6977bf41ce1177f4a76c4cde", itemName: "Chicken Burger" },
+  // { itemId: "6977bf41ce1177f4a76c4cdf", itemName: "Garlic Naan" },
+  // { itemId: "6977bf41ce1177f4a76c4ce3", itemName: "Cheese Omelette" },
+  // { itemId: "697b88912241fd3a9b4cbcb9", itemName: "Pizza" },
+  // { itemId: "697b88ad2241fd3a9b4cbcca", itemName: "Hakka Noodles" },
+  // { itemId: "697b88c52241fd3a9b4cbcdb", itemName: "Pasta" },
+  // { itemId: "6969d0fb0bb5db2d4a3932a8", itemName: "Latte" },
+  { itemId: "696a42eaf3dc0ee373dd3f92", itemName: "Dal Makhni" },
+  { itemId: "6977bf41ce1177f4a76c4cdd", itemName: "Veg Burger" },
+  { itemId: "6977bf41ce1177f4a76c4ce0", itemName: "Plain Rice" },
+  // { itemId: "6977bf41ce1177f4a76c4ce2", itemName: "Cold Coffee" }
 ];
 
 const randomInt = (min, max) =>
@@ -95,7 +100,7 @@ const simulateOutlet = async outlet => {
     console.log(`📅 Day-${day}`);
 
     for (let i = 0; i < ORDERS_PER_DAY; i++) {
-      sendOrder(outlet, getDateDaysAgo(day));
+      sendOrder(outlet);
       await sleep(randomInt(300, 1200));
     }
   }
@@ -110,7 +115,7 @@ const simulateTodayForOutlet = async outlet => {
   console.log(`📍 Sending today's orders: ${outlet.outletName}`);
 
   for (let i = 0; i < ORDERS_TODAY; i++) {
-    sendOrder(outlet, getTodayDate());
+    sendOrder(outlet, new Date());
     await sleep(randomInt(300, 1200));
   }
 

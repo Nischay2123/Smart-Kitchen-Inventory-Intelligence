@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 
 import {
-  useGetAllIngredientsQuery,
+  useGetAllIngredientsInOnceQuery,
 } from "@/redux/apis/brand-admin/ingredientApi";
 
 import {
@@ -35,7 +35,7 @@ const CreateRecipeForm = ({
     data: ingredientOptions = { data: [] },
     isLoading,
     isError,
-  } = useGetAllIngredientsQuery();
+  } = useGetAllIngredientsInOnceQuery();
 
   const [createRecipe, { isLoading: isCreating }] =
     useCreateRecipeMutation();
@@ -75,7 +75,7 @@ useEffect(() => {
 
   setIngredients(mapped);
 
-}, [isUpdate, data, ingredientOptions.data]);
+}, [isUpdate, data.recipeItems]);
 
 
   const selectedIngredientIds = ingredients

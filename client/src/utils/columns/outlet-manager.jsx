@@ -15,7 +15,41 @@ export const ingredientColumn = (setOpen, setSelectedIngredient) => [
     accessorKey: "baseUnit",
     header: "Unit",
   },
+  {
+    id: "threshold",
+    header: "Threshold",
 
+    cell: ({ row }) => {
+
+      const t = row.original.threshold
+
+      if (!t) return "-"
+
+      return (
+        <div className="text-xs space-y-1">
+
+          <div>
+            Low: {t.lowInBase}{" "}
+            <span className="text-muted-foreground">
+              (base)
+            </span>
+          </div>
+
+          <div>
+            Critical: {t.criticalInBase}{" "}
+            <span className="text-muted-foreground">
+              (base)
+            </span>
+          </div>
+
+          <div className="text-muted-foreground">
+            unit: {t.unit?.baseUnit}
+          </div>
+
+        </div>
+      )
+    },
+  },
   {
     accessorKey: "alertState",
     header: "Status",

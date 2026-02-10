@@ -41,8 +41,9 @@ export const initSocket = (httpServer, corsOptions) => {
 
     socket.on("join_outlet", ({ tenantId, outletId }) => {
       if (!tenantId || !outletId) return;
-
-      if (socket.user.tenant?.tenantId !== tenantId || socket.user.outlet?.outletId !== outletId) {
+      // console.log(socket.user);
+      
+      if (socket.user.tenantId !== tenantId || socket.user.outletId !== outletId) {
         console.warn(`User ${socket.user._id} attempted unauthorized join to ${tenantId}`);
         return;
       }
