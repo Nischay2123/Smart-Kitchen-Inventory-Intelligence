@@ -46,62 +46,68 @@ export function DataTable({
   pageCount,
   onPaginationChange,
   paginationState: manualPaginationState,
+  onGlobalFilterChange,
 }) {
   const [sorting, setSorting] = React.useState([])
   const [globalFilter, setGlobalFilter] = React.useState("")
 
   const [paginationStateInternal, setPaginationStateInternal] =
-  React.useState({
-    pageIndex: 0,
-    pageSize,
+    React.useState({
+      pageIndex: 0,
+      pageSize,
+    });
+
+  const table = useReactTable({
+    data,
+    columns,
+    pageCount: manualPagination ? pageCount : undefined,
+
+    state: {
+      sorting,
+      globalFilter,
+      rowSelection,
+      pagination: manualPagination
+        ? manualPaginationState
+        : paginationStateInternal,
+    },
+
+    manualPagination,
+
+    onPaginationChange: manualPagination
+      ? onPaginationChange
+      : setPaginationStateInternal,
+
+    enableRowSelection: !!onRowSelectionChange,
+    onRowSelectionChange,
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+
+    getRowId,
+
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+
+    ...(manualPagination
+      ? {}
+      : { getPaginationRowModel: getPaginationRowModel() }),
   });
-
-const table = useReactTable({
-  data,
-  columns,
-  pageCount: manualPagination ? pageCount : undefined,
-
-  state: {
-    sorting,
-    globalFilter,
-    rowSelection,
-    pagination: manualPagination
-      ? manualPaginationState
-      : paginationStateInternal,
-  },
-
-  manualPagination,
-
-  onPaginationChange: manualPagination
-    ? onPaginationChange
-    : setPaginationStateInternal,
-
-  enableRowSelection: !!onRowSelectionChange,
-  onRowSelectionChange,
-  onSortingChange: setSorting,
-  onGlobalFilterChange: setGlobalFilter,
-
-  getRowId,
-
-  getCoreRowModel: getCoreRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  getFilteredRowModel: getFilteredRowModel(),
-
-  ...(manualPagination
-    ? {}
-    : { getPaginationRowModel: getPaginationRowModel() }),
-});
 
   return (
     <div className="flex flex-col space-y-3 h-full">
 
       {/* Search */}
-      {false && (
+      {searchable && (
         <div className="flex items-center gap-2">
           <Input
             placeholder="Search..."
             value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value
+              setGlobalFilter(value)
+              onGlobalFilterChange?.(value)
+            }}
+
             className="max-w-sm h-9 bg-white border-muted focus-visible:ring-1 focus-visible:ring-primary"
           />
         </div>
@@ -184,8 +190,8 @@ const table = useReactTable({
         </div>
       </div>
 
-      {/* Pagination */}
-      {/* {pagination && (
+
+      {pagination && (
         <div className="flex items-center justify-between pt-2 border-t text-sm text-muted-foreground">
           <span>
             Page {table.getState().pagination.pageIndex + 1} of{" "}
@@ -193,6 +199,17 @@ const table = useReactTable({
           </span>
 
           <div className="flex gap-1">
+            {/* First Page */}
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={!table.getCanPreviousPage()}
+              onClick={() => table.setPageIndex(0)}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+
+            {/* Previous */}
             <Button
               variant="ghost"
               size="icon"
@@ -202,6 +219,7 @@ const table = useReactTable({
               <ChevronLeft className="h-4 w-4" />
             </Button>
 
+            {/* Next */}
             <Button
               variant="ghost"
               size="icon"
@@ -210,63 +228,21 @@ const table = useReactTable({
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
+
+            {/* Last Page */}
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={!table.getCanNextPage()}
+              onClick={() =>
+                table.setPageIndex(table.getPageCount() - 1)
+              }
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      )} */}
-
-
-      {pagination && (
-  <div className="flex items-center justify-between pt-2 border-t text-sm text-muted-foreground">
-    <span>
-      Page {table.getState().pagination.pageIndex + 1} of{" "}
-      {table.getPageCount()}
-    </span>
-
-    <div className="flex gap-1">
-      {/* First Page */}
-      <Button
-        variant="ghost"
-        size="icon"
-        disabled={!table.getCanPreviousPage()}
-        onClick={() => table.setPageIndex(0)}
-      >
-        <ChevronsLeft className="h-4 w-4" />
-      </Button>
-
-      {/* Previous */}
-      <Button
-        variant="ghost"
-        size="icon"
-        disabled={!table.getCanPreviousPage()}
-        onClick={() => table.previousPage()}
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-
-      {/* Next */}
-      <Button
-        variant="ghost"
-        size="icon"
-        disabled={!table.getCanNextPage()}
-        onClick={() => table.nextPage()}
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
-
-      {/* Last Page */}
-      <Button
-        variant="ghost"
-        size="icon"
-        disabled={!table.getCanNextPage()}
-        onClick={() =>
-          table.setPageIndex(table.getPageCount() - 1)
-        }
-      >
-        <ChevronsRight className="h-4 w-4" />
-      </Button>
-    </div>
-  </div>
-)}
+      )}
 
     </div>
 

@@ -17,7 +17,8 @@ const DataCard = ({
   manualPagination,
   pageCount,
   onPaginationChange,
-  paginationState
+  paginationState,
+  onGlobalFilterChange,
 }) => {
   return (
     <section className="flex-1 min-w-0 flex flex-col rounded-xl bg-white border border-border/40 shadow-sm overflow-hidden">
@@ -34,14 +35,7 @@ const DataCard = ({
 
       {/* Body */}
       <div className="flex-1 min-h-0 p-4 bg-white">
-        {data.length === 0 ? (
-          <div className="h-full flex items-center justify-center">
-            <Empty
-              title={titleWhenEmpty}
-              descpription={descriptionWhenEmpty}
-            />
-          </div>
-        ) : (
+        
           <DataTable
             searchable={searchable}
             pagination={pagination}
@@ -55,8 +49,8 @@ const DataCard = ({
             pageCount={pageCount}
             onPaginationChange={onPaginationChange}
             paginationState={paginationState}
+            onGlobalFilterChange={onGlobalFilterChange}
           />
-        )}
       </div>
 
     </section>

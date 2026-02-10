@@ -246,6 +246,8 @@ export const orderColumns = (onView) => [
 
   {
     header: "Order Price",
+    accessorFn: (row) =>
+    row.items.reduce((sum, item) => sum + item.totalAmount, 0),
     cell: ({ row }) => {
       const total = row.original.items.reduce(
         (sum, item) => sum + item.totalAmount,
@@ -257,6 +259,8 @@ export const orderColumns = (onView) => [
 
   {
     header: "Making Cost",
+    accessorFn: (row) =>
+    row.items.reduce((sum, item) => sum + item.makingCost, 0),
     cell: ({ row }) => {
       const cost = row.original.items.reduce(
         (sum, item) => sum + item.makingCost,

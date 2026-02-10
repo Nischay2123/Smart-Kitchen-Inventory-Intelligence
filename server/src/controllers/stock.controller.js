@@ -16,7 +16,7 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
   const tenantContext = req.user.tenant;
   const outletContext = req.user.outlet;
 
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10 ,search=""} = req.query;
 
   if (!tenantContext?.tenantId || !outletContext?.outletId) {
     throw new ApiError(
@@ -31,6 +31,7 @@ export const getAllStockDetails = asyncHandler(async (req, res) => {
     {
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
+      search,
       sort: { name: 1 },
     }
   );
