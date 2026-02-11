@@ -9,6 +9,8 @@ import Stock from "../models/stock.model.js";
 import Sale from "../models/sale.model.js";
 import Recipe from "../models/recipes.model.js";
 import QueueFail from "../models/queueFail.model.js";
+import Tenant from "../models/tenant.model.js";
+import Outlet from "../models/outlet.model.js";
 
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
@@ -17,6 +19,25 @@ import { orderQueue } from "../queues/order.queue.js";
 import { paginate } from "../utils/pagination.js";
 import { cacheService } from "../services/cache.service.js";
 
+const validateTenant = async (tenantId) => {
+  // console.log("tenant",tenantId);
+  
+  const tenant = await Tenant.findOne({ _id:tenantId }).lean();
+  if (!tenant) throw new ApiError(404, "TENANT_NOT_FOUND");
+  return tenant;
+};
+
+const validateOutlet = async (tenantId, outletId) => {
+  // console.log("outlet",tenantId, outletId);
+  
+  const outlet = await Outlet.findOne({
+    "tenant.tenantId": tenantId,
+    _id:outletId,
+  }).lean();
+
+  if (!outlet) throw new ApiError(404, "OUTLET_NOT_FOUND");
+  return outlet;
+};
 
 const createPendingSale = async ({ tenant, outlet, items, createdAt }) => {
   return Sale.create({
@@ -203,71 +224,34 @@ const deductStockWithTransaction = async ({
 export const createSale = asyncHandler(async (req, res) => {
   const { items, tenant, outlet, createdAt } = req.body;
 
+  await validateTenant(tenant.tenantId);
+  // console.log("create sale",tenant , outlet);
+  
+  await validateOutlet(tenant.tenantId, outlet.outletId);
+
   const saleRecord = await createPendingSale({ tenant, outlet, items, createdAt });
 
-  const recipeMap = await loadRecipeMap({ tenant, items });
-
-  const { requirementList, recipeErrors } =
-    await buildStockRequirement(items, recipeMap);
-
-  if (recipeErrors.length > 0) {
-    return cancelSaleAndRespond({
-      res,
-      saleId: saleRecord._id,
-      reason: "RECIPE_NOT_FOUND",
-      items,
-    });
-  }
-
-  const validation = await validateStock(
-    requirementList,
-    outlet.outletId
-  );
-
-  if (!validation.isValid) {
-    const itemFailureMap =
-      buildItemFailureMap(items, recipeMap, validation.failed);
-
-    return cancelSaleAndRespond({
-      res,
-      saleId: saleRecord._id,
-      reason: "INSUFFICIENT_STOCK",
-      items,
-      itemFailureMap,
-    });
-  }
+  let recipeMap;
+  let requirementList;
 
   try {
+    recipeMap = await loadRecipeMap({ tenant, items });
+
+    const stockRequirements = await buildStockRequirement(items, recipeMap);
+    requirementList = stockRequirements.requirementList;
+    const recipeErrors = stockRequirements.recipeErrors;
+
+    if (recipeErrors.length > 0) {
+      throw new Error("RECIPE_NOT_FOUND");
+    }
+
     await deductStockWithTransaction({
       requirementList,
       outlet,
-      saleId: saleRecord._id,
     });
-  } catch (error) {
-    return cancelSaleAndRespond({
-      res,
-      saleId: saleRecord._id,
-      reason: "STOCK_CHANGED",
-      items,
-    });
-  }
 
-  // console.log(saleRecord.createdAt);
-
-  try {
-    await orderQueue.add("sale.confirmed", {
-      orderId: saleRecord._id,
-      tenant,
-      outlet,
-      items,
-      requirementList,
-      state: "CONFIRMED",
-      createdAt: saleRecord.createdAt,
-    });
-  } catch (err) {
-    await QueueFail.create({
-      eventType: "sale.confirmed",
-      payload: {
+    try {
+      await orderQueue.add("sale.confirmed", {
         orderId: saleRecord._id,
         tenant,
         outlet,
@@ -275,15 +259,56 @@ export const createSale = asyncHandler(async (req, res) => {
         requirementList,
         state: "CONFIRMED",
         createdAt: saleRecord.createdAt,
-        nextRetryAt: new Date(Date.now() + 60 * 60 * 1000)
-      },
-      lastError: err.message,
+      });
+    } catch (err) {
+      await QueueFail.create({
+        eventType: "sale.confirmed",
+        payload: {
+          orderId: saleRecord._id,
+          tenant,
+          outlet,
+          items,
+          requirementList,
+          state: "CONFIRMED",
+          createdAt: saleRecord.createdAt,
+          nextRetryAt: new Date(Date.now() + 60 * 60 * 1000)
+        },
+        lastError: err.message,
+      });
+    }
+    return res.status(201).json({
+      saleId: saleRecord._id,
+      state: "CONFIRMED",
+    });
+
+  } catch (error) {
+    let reason = error.message || "INTERNAL_SERVER_ERROR";
+    let itemFailureMap = new Map();
+
+    if (error.message === "STOCK_CHANGED" || error.statusCode === 409) {
+      if (requirementList && recipeMap) {
+        const validation = await validateStock(
+          requirementList,
+          outlet.outletId
+        );
+
+        if (!validation.isValid) {
+          reason = "INSUFFICIENT_STOCK";
+          itemFailureMap = buildItemFailureMap(items, recipeMap, validation.failed);
+        } else {
+          reason = "STOCK_CHANGED";
+        }
+      }
+    }
+
+    return cancelSaleAndRespond({
+      res,
+      saleId: saleRecord._id,
+      reason,
+      items,
+      itemFailureMap,
     });
   }
-  return res.status(201).json({
-    saleId: saleRecord._id,
-    state: "CONFIRMED",
-  });
 });
 
 export const getAllSales = asyncHandler(async (req, res) => {
