@@ -5,7 +5,7 @@ import { BrandAdminApp } from "@/apps/brand-admin/brand-admin-app.jsx";
 import { OutletAdminApp } from "@/apps/outlet-admin/outlet-admin-app.jsx";
 import { useAuth } from "./auth/auth";
 import { Route, Routes, Navigate } from "react-router-dom";
-import ForgotPassword from "@/pages/auth/ForgotPassword";
+import ForgotPassword from "@/pages/ForgotPassword";
 
 export default function App() {
   const { user, loading } = useAuth();
