@@ -4,8 +4,8 @@ export const Sale = baseApi.injectEndpoints({
   endpoints: (builder) => ({
 
     getSaleDetails: builder.query({
-      query: ({fromDate,toDate,page,limit}) => ({
-        url: "sales/get_sales",
+      query: ({ fromDate, toDate, page, limit }) => ({
+        url: "sales",
         method: "GET",
         params: { fromDate, toDate, page, limit },
       }),

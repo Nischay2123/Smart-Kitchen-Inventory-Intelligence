@@ -5,21 +5,21 @@ export const Analytics = baseApi.injectEndpoints({
 
     getAllOutlets: builder.query({
       query: () => ({
-        url: "analytics/get_outlets",
+        url: "analytics/outlets",
         method: "GET",
       }),
     }),
 
     getDeploymentData: builder.query({
       query: ({ from, to }) => ({
-        url: "analytics/get_deployment_data",
+        url: "analytics/reports/deployment-snapshot",
         method: "GET",
         params: { fromDate: from, toDate: to },
       }),
     }),
     getLiveDeploymentData: builder.query({
       query: ({ from, to, outletIds }) => ({
-        url: "analytics/get_deployment_data",
+        url: "analytics/reports/deployment-snapshot",
         method: "GET",
         params: { fromDate: from, toDate: to },
         body: { outletIds }
@@ -27,7 +27,7 @@ export const Analytics = baseApi.injectEndpoints({
     }),
     getSnapshotDeploymentData: builder.mutation({
       query: ({ outletIds, from, to }) => ({
-        url: "analytics/get_deployment_data",
+        url: "analytics/reports/deployment-snapshot",
         method: "POST",
         params: { fromDate: from, toDate: to },
         body: { outletIds },
@@ -36,7 +36,7 @@ export const Analytics = baseApi.injectEndpoints({
 
     getLiveDeploymentData: builder.mutation({
       query: ({ outletIds }) => ({
-        url: "analytics/get_deployment_data_live",
+        url: "analytics/reports/deployment-live",
         method: "POST",
         body: { outletIds },
       }),
@@ -44,16 +44,16 @@ export const Analytics = baseApi.injectEndpoints({
 
     getMenuItemData: builder.query({
       query: ({ from, to, outletId }) => ({
-        url: "analytics/get_profit_data",
+        url: "analytics/profit",
         method: "GET",
         params: { fromDate: from, toDate: to, outletId },
       }),
     }),
     getMenuMatrixData: builder.query({
       query: ({ from, to }) => ({
-        url: "analytics/get_menu_matrix",
+        url: "analytics/menu-matrix",
         method: "GET",
-        params:{fromDate:from,toDate:to},
+        params: { fromDate: from, toDate: to },
       }),
     }),
 

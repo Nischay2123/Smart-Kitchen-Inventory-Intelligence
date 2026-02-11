@@ -5,6 +5,6 @@ import { getAllStockDetails } from "../controllers/stock.controller.js";
 
 const router = express.Router();
 
-router.get("/get_stock_details",verifyJwt, getAllStockDetails);
+router.get("/", verifyJwt, getAllStockDetails);
 
 export default router;

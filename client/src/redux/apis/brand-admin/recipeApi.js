@@ -4,8 +4,8 @@ export const Recipes = baseApi.injectEndpoints({
   endpoints: (builder) => ({
 
     getRecipe: builder.query({
-      query: ({itemId}) => ({
-        url: `recipes/get_recipe/${itemId}`,
+      query: ({ itemId }) => ({
+        url: `recipes/${itemId}`,
         method: "GET",
       }),
       providesTags: ["Ingredient"],
@@ -13,7 +13,7 @@ export const Recipes = baseApi.injectEndpoints({
 
     createRecipe: builder.mutation({
       query: ({ itemId, recipeItems }) => ({
-        url: "recipes/recipe",
+        url: "recipes",
         method: "POST",
         body: { itemId, recipeItems },
       }),

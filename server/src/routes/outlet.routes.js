@@ -5,8 +5,8 @@ import { createOutlet, deleteOutlet, getAllOutlets } from "../controllers/outlet
 
 const router = express.Router();
 
-router.post("/create_outlet",verifyJwt, createOutlet);
-router.get("/get_all_outlet",verifyJwt, getAllOutlets);
-router.delete("/delete/:outletId",verifyJwt, deleteOutlet);
+router.post("/", verifyJwt, createOutlet);
+router.get("/", verifyJwt, getAllOutlets);
+router.delete("/:outletId", verifyJwt, deleteOutlet);
 
 export default router;

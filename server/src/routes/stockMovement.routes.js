@@ -6,9 +6,9 @@ import { ingredientUsageAndBurnRate } from "../controllers/analytic.controller.j
 
 const router = express.Router();
 
-router.post("/create_stock_movement",verifyJwt, createStockMovement);
-router.get("/get_stock_movements",verifyJwt, getAllStockMovementsExceptOrders);
-router.get("/get_orders_stock_movements",verifyJwt, getAllStockMovementsForOrders);
-router.get("/get_stock_consumption",verifyJwt, ingredientUsageAndBurnRate);
+router.post("/", verifyJwt, createStockMovement);
+router.get("/", verifyJwt, getAllStockMovementsExceptOrders);
+router.get("/orders", verifyJwt, getAllStockMovementsForOrders);
+router.get("/consumption", verifyJwt, ingredientUsageAndBurnRate);
 
 export default router;

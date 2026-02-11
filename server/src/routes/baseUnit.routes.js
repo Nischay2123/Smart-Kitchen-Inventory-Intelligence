@@ -5,7 +5,7 @@ import { createUnit, getAllBaseUnits } from "../controllers/baseUnit.controller.
 
 const router = express.Router();
 
-router.post("/create_unit",verifyJwt, createUnit);
-router.get("/get_all_unit",verifyJwt, getAllBaseUnits);
+router.post("/", verifyJwt, createUnit);
+router.get("/", verifyJwt, getAllBaseUnits);
 
 export default router;

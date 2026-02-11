@@ -5,7 +5,7 @@ export const baseUnit = baseApi.injectEndpoints({
 
     getAllUnits: builder.query({
       query: () => ({
-        url: "units/get_all_unit",
+        url: "units",
         method: "GET",
       }),
       providesTags: ["BaseUnit"],
@@ -13,7 +13,7 @@ export const baseUnit = baseApi.injectEndpoints({
 
     createUnit: builder.mutation({
       query: ({ unit, baseUnit, conversionRate }) => ({
-        url: "units/create_unit",
+        url: "units",
         method: "POST",
         body: { unit, baseUnit, conversionRate },
       }),

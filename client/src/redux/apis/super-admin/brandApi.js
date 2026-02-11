@@ -6,7 +6,7 @@ export const brands = baseApi.injectEndpoints({
     // -------- TENANTS --------
     getAllTenants: builder.query({
       query: () => ({
-        url: "tenants/get_all_tenant",
+        url: "tenants",
         method: "GET",
       }),
       providesTags: ["Tenants"],
@@ -14,7 +14,7 @@ export const brands = baseApi.injectEndpoints({
 
     createBrand: builder.mutation({
       query: ({ name }) => ({
-        url: "tenants/create_tenant",
+        url: "tenants",
         method: "POST",
         body: { name },
       }),
@@ -23,7 +23,7 @@ export const brands = baseApi.injectEndpoints({
 
     deleteBrand: builder.mutation({
       query: ({ tenantId }) => ({
-        url: `tenants/delete/${tenantId}`,
+        url: `tenants/${tenantId}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Tenants"],
@@ -32,7 +32,7 @@ export const brands = baseApi.injectEndpoints({
     // -------- BRAND MANAGERS --------
     getAllBrandManagers: builder.query({
       query: ({ tenantId } = {}) => ({
-        url: "users/get_all_brand_manager",
+        url: "users/brand-managers",
         method: "GET",
         params: tenantId ? { tenantId } : undefined,
       }),
@@ -41,7 +41,7 @@ export const brands = baseApi.injectEndpoints({
 
     createBrandManager: builder.mutation({
       query: ({ userName, email, password, tenantId, tenantName }) => ({
-        url: "users/create_brand_manager",
+        url: "users/brand-managers",
         method: "POST",
         body: {
           userName,
@@ -54,7 +54,7 @@ export const brands = baseApi.injectEndpoints({
     }),
     sendOtp: builder.mutation({
       query: ({ email }) => ({
-        url: "users/genrate_otp",
+        url: "users/auth/signup/otp",
         method: "POST",
         body: {
           email,
@@ -62,8 +62,8 @@ export const brands = baseApi.injectEndpoints({
       }),
     }),
     verifyOtp: builder.mutation({
-      query: ({email,otp }) => ({
-        url: "users/verify_otp",
+      query: ({ email, otp }) => ({
+        url: "users/auth/signup/verify",
         method: "POST",
         body: {
           email,
@@ -74,7 +74,7 @@ export const brands = baseApi.injectEndpoints({
 
     deleteBrandManager: builder.mutation({
       query: ({ managerId }) => ({
-        url: `users/delete_brand_manager/${managerId}`,
+        url: `users/brand-managers/${managerId}`,
         method: "DELETE",
       }),
       invalidatesTags: ["BrandManagers"],

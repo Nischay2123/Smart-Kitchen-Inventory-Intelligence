@@ -5,8 +5,8 @@ import { createMenuItem, deleteMenuItem, getAllMenuItems } from "../controllers/
 
 const router = express.Router();
 
-router.post("/create_item",verifyJwt, createMenuItem);
-router.get("/get_all_item",verifyJwt, getAllMenuItems);
-router.delete("/delete/:menuItemId",verifyJwt, deleteMenuItem);
+router.post("/", verifyJwt, createMenuItem);
+router.get("/", verifyJwt, getAllMenuItems);
+router.delete("/:menuItemId", verifyJwt, deleteMenuItem);
 
 export default router;

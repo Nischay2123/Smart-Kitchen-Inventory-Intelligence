@@ -22,38 +22,38 @@ const router = express.Router();
 router.use("/users", Users);
 router.use("/tenants", Tenants);
 router.use("/outlets", Outlets);
-router.use("/menu", Menus);
+router.use("/menu-items", Menus);
 router.use("/units", Unit);
-router.use("/ingredient", IngredientMaster);
+router.use("/ingredients", IngredientMaster);
 router.use("/recipes", Recipe);
 router.use("/stocks", Stocks);
-router.use("/stockMovements", StockMovements);
-router.use("/sales",Sales);
-router.use("/analytics",Analytics);
+router.use("/stock-movements", StockMovements);
+router.use("/sales", Sales);
+router.use("/analytics", Analytics);
 
 
-router.post("/genrate_sanpshot",runDailySnapshotJob)
+router.post("/genrate_sanpshot", runDailySnapshotJob)
 
 
-router.get("/get_all_tenants",async(req,res)=>{
+router.get("/get_all_tenants", async (req, res) => {
     const result = await Tenant.find({})
 
     return res.status(200).json({
-        data:result
+        data: result
     })
 })
-router.get("/get_all_outlets",async(req,res)=>{
+router.get("/get_all_outlets", async (req, res) => {
     const result = await Outlet.find({})
 
     return res.status(200).json({
-        data:result
+        data: result
     })
 })
-router.get("/get_all_items",async(req,res)=>{
+router.get("/get_all_items", async (req, res) => {
     const result = await MenuItem.find({})
 
     return res.status(200).json({
-        data:result
+        data: result
     })
 })
 

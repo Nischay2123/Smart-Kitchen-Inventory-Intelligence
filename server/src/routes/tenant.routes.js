@@ -5,8 +5,8 @@ import { verifyJwt } from "../middlerwares/auth.middleware.js";
 
 const router = express.Router();
 
-router.post("/create_tenant",verifyJwt, createTenant);
-router.get("/get_all_tenant",verifyJwt, getAllTenants);
-router.delete("/delete/:tenantId",verifyJwt, deleteTenant);
+router.post("/", verifyJwt, createTenant);
+router.get("/", verifyJwt, getAllTenants);
+router.delete("/:tenantId", verifyJwt, deleteTenant);
 
 export default router;

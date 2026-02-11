@@ -6,7 +6,7 @@ export const outlets = baseApi.injectEndpoints({
     // -------- OUTLETS --------
     getAllOutlets: builder.query({
       query: () => ({
-        url: "outlets/get_all_outlet",
+        url: "outlets",
         method: "GET",
       }),
       providesTags: ["Outlets"],
@@ -14,7 +14,7 @@ export const outlets = baseApi.injectEndpoints({
 
     createOutlet: builder.mutation({
       query: ({ outletName, address }) => ({
-        url: "outlets/create_outlet",
+        url: "outlets",
         method: "POST",
         body: { outletName, address },
       }),
@@ -23,7 +23,7 @@ export const outlets = baseApi.injectEndpoints({
 
     deleteOutlet: builder.mutation({
       query: ({ outletId }) => ({
-        url: `outlets/delete/${outletId}`,
+        url: `outlets/${outletId}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Outlets"],
@@ -32,7 +32,7 @@ export const outlets = baseApi.injectEndpoints({
     // -------- OUTLETS MANAGERS --------
     getAllOutletManagers: builder.query({
       query: ({ outletId } = {}) => ({
-        url: "users/get_all_oulet_manager",
+        url: "users/outlet-managers",
         method: "GET",
         params: outletId ? { outletId } : undefined,
       }),
@@ -40,8 +40,8 @@ export const outlets = baseApi.injectEndpoints({
     }),
 
     createOutletManager: builder.mutation({
-      query: ({ userName, email, password}) => ({
-        url: "users/create_outlet_manager",
+      query: ({ userName, email, password }) => ({
+        url: "users/outlet-managers",
         method: "POST",
         body: {
           userName,
@@ -52,17 +52,17 @@ export const outlets = baseApi.injectEndpoints({
       invalidatesTags: ["OutletManagers"],
     }),
     sendOtpOutlet: builder.mutation({
-      query: ({ email,outletId }) => ({
-        url: "users/genrate_otp_outlet",
+      query: ({ email, outletId }) => ({
+        url: "users/auth/outlet-managers/otp",
         method: "POST",
         body: {
-          email,outletId
+          email, outletId
         },
       }),
     }),
     verifyOtpOutlet: builder.mutation({
-      query: ({email,otp }) => ({
-        url: "users/verify_otp_outlet",
+      query: ({ email, otp }) => ({
+        url: "users/auth/outlet-managers/verify",
         method: "POST",
         body: {
           email,
@@ -73,20 +73,20 @@ export const outlets = baseApi.injectEndpoints({
 
     deleteOutletManager: builder.mutation({
       query: ({ managerId }) => ({
-        url: `users/delete_outlet_manager/${managerId}`,
+        url: `users/outlet-managers/${managerId}`,
         method: "DELETE",
       }),
       invalidatesTags: ["OutletManagers"],
     }),
 
 
-    updatePermission : builder.mutation({
-      query:({userId,permissions})=>({
-        url:`users/permissions_outlet_managers/${userId}`,
-        method:"POST",
-        body:{permissions}
+    updatePermission: builder.mutation({
+      query: ({ userId, permissions }) => ({
+        url: `users/outlet-managers/${userId}/permissions`,
+        method: "PUT",
+        body: { permissions }
       }),
-      invalidatesTags:["OutletManagers"]
+      invalidatesTags: ["OutletManagers"]
     })
   }),
 });

@@ -5,17 +5,17 @@ export const items = baseApi.injectEndpoints({
 
     // -------- Items --------
     getAllItems: builder.query({
-      query: ({page,limit,search}) => ({
-        url: "menu/get_all_item",
+      query: ({ page, limit, search }) => ({
+        url: "menu-items",
         method: "GET",
-        params:{page,limit,search}
+        params: { page, limit, search }
       }),
       providesTags: ["Items"],
     }),
 
     createItem: builder.mutation({
       query: ({ itemName, price }) => ({
-        url: "menu/create_item",
+        url: "menu-items",
         method: "POST",
         body: { itemName, price },
       }),
@@ -24,7 +24,7 @@ export const items = baseApi.injectEndpoints({
 
     deleteItems: builder.mutation({
       query: ({ itemId }) => ({
-        url: `menu/delete/${itemId}`,
+        url: `menu-items/${itemId}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Items"],

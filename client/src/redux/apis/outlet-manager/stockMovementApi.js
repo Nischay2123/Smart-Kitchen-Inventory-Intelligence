@@ -4,24 +4,24 @@ export const StockMovement = baseApi.injectEndpoints({
   endpoints: (builder) => ({
 
     getStockMovementDetails: builder.query({
-      query: ({ fromDate, toDate, page, limit,search }) => ({
-        url: "stockMovements/get_stock_movements",
+      query: ({ fromDate, toDate, page, limit, search }) => ({
+        url: "stock-movements",
         method: "GET",
-        params: { fromDate, toDate, page, limit ,search},
+        params: { fromDate, toDate, page, limit, search },
       }),
       providesTags: ["Stocks"],
     }),
     getSaleStockMovementDetails: builder.query({
-      query: ({ fromDate, toDate, page, limit ,search}) => ({
-        url: "stockMovements/get_orders_stock_movements",
+      query: ({ fromDate, toDate, page, limit, search }) => ({
+        url: "stock-movements/orders",
         method: "GET",
-        params: { fromDate, toDate, page, limit,search },
+        params: { fromDate, toDate, page, limit, search },
       }),
       providesTags: ["Stocks"],
     }),
     getSaleStockConsumption: builder.query({
       query: ({ fromDate, toDate }) => ({
-        url: "stockMovements/get_stock_consumption",
+        url: "stock-movements/consumption",
         method: "GET",
         params: { fromDate, toDate },
       }),
@@ -30,7 +30,7 @@ export const StockMovement = baseApi.injectEndpoints({
 
     createStockMovement: builder.mutation({
       query: ({ ingredientMasterId, quantity, reason, purchasePricePerUnit, unitId }) => ({
-        url: "stockMovements/create_stock_movement",
+        url: "stock-movements",
         method: "POST",
         body: { ingredientMasterId, quantity, reason, purchasePricePerUnit, unitId },
       }),

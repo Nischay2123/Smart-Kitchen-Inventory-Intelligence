@@ -4,24 +4,24 @@ export const ingredient = baseApi.injectEndpoints({
   endpoints: (builder) => ({
 
     getAllIngredients: builder.query({
-      query: ({page,limit,search}) => ({
-        url: "ingredient/get_all_ingredient",
+      query: ({ page, limit, search }) => ({
+        url: "ingredients",
         method: "GET",
-        params:{page,limit,search}
+        params: { page, limit, search }
       }),
       providesTags: ["Ingredient"],
     }),
     getAllIngredientsInOnce: builder.query({
       query: () => ({
-        url: "ingredient/get_all_ingredient_once",
+        url: "ingredients/all",
         method: "GET",
       }),
       providesTags: ["Ingredient"],
     }),
 
     createIngredients: builder.mutation({
-      query: ({ name, unitIds ,threshold}) => ({
-        url: "ingredient/create_ingredient",
+      query: ({ name, unitIds, threshold }) => ({
+        url: "ingredients",
         method: "POST",
         body: { name, unitIds, threshold },
       }),
@@ -30,7 +30,7 @@ export const ingredient = baseApi.injectEndpoints({
 
     deleteIngredient: builder.mutation({
       query: ({ ingredientId }) => ({
-        url: `ingredient/delete/${ingredientId}`,
+        url: `ingredients/${ingredientId}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Ingredient"],
