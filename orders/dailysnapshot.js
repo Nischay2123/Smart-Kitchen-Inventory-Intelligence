@@ -3,7 +3,7 @@ import axios from "axios";
 const API = "http://localhost:8000/api/v1/genrate_sanpshot";
 
 // start date: 10 Jan
-const startDate = new Date("2026-01-10");
+const startDate = new Date("2026-02-07");
 
 // yesterday
 const endDate = new Date();

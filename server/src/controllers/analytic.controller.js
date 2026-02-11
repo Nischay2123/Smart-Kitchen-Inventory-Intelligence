@@ -77,12 +77,13 @@ export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
 });
 
 export const ingredientUsageAndBurnRate = asyncHandler(async (req, res) => {
-  if (req.user.role !== "BRAND_ADMIN") {
+  if (req.user.role !== "OUTLET_MANAGER") {
     throw new ApiError(403, "Unauthorized");
   }
 
   const tenant = req.user.tenant;
-  const { fromDate, toDate, outletId } = req.query;
+  const { fromDate, toDate } = req.query;
+  const outletId = req.user.outlet.outletId
 
   const match = {
     "tenant.tenantId": tenant.tenantId,

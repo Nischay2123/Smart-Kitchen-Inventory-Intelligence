@@ -20,7 +20,10 @@ const ingredientColumn = () => [
   { accessorKey: "totalCost", header: "Total Cost" ,cell:({row})=>(
     <span>{row.original.totalCost.toFixed(3)}</span>
   )},
-  { accessorKey: "totalConsumed", header: "Total Consumption" },
+  { accessorKey: "noOfOrders", header: "Used In Orders" },
+  { accessorKey: "avgQtyPerOrder", header: "Average Quantity Used Per Order" },
+  { accessorKey: "avgCostPerOrder", header: "Average Cost Per Order" },
+  { accessorKey: "totalQty", header: "Total Consumption" },
   { accessorKey: "unit", header: "Unit" },
 ];
 
@@ -51,7 +54,7 @@ export const Consumption = () => {
   });
 
   return (
-    <div className="w-full bg-gray-50 min-h-screen">
+    <div className="w-full bg-gray-50 min-h-screen overflow-x-hidden">
       <SiteHeader
         headerTitle="Consumption"
         description="Consumption of the ingredients in this outlet for the selected time frame"

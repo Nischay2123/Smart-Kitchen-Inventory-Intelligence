@@ -66,7 +66,7 @@ export const processAlerts = async ({ outlet, tenant, requirementList }) => {
   if (emails.length > 0) {
     await sendStockAlertEmail({
       to: emails,
-      outletName: outlet.name,
+      outletName: outlet.outletName,
       alerts: alertItems,
     });
   }

@@ -143,67 +143,7 @@ const cancelSaleAndRespond = async ({
 };
 
 const MAX_RETRIES = 5;
-
-// const deductStockWithTransaction = async ({
-//   requirementList,
-//   outlet,
-//   saleId,
-// }) => {
-//   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-//     const session = await mongoose.startSession();
-
-//     try {
-//       session.startTransaction();
-
-//       const bulkOps = requirementList.map(req => ({
-//         updateOne: {
-//           filter: {
-//             "outlet.outletId": outlet.outletId,
-//             "masterIngredient.ingredientMasterId":
-//               req.ingredientMasterId,
-//             currentStockInBase: { $gte: req.requiredBaseQty },
-//           },
-//           update: {
-//             $inc: { currentStockInBase: -req.requiredBaseQty },
-//           },
-//         },
-//       }));
-
-//       const result = await Stock.bulkWrite(bulkOps, { session });
-
-//       if (result.matchedCount !== requirementList.length) {
-//         throw new Error("STOCK_CHANGED");
-//       }
-
-//       await session.commitTransaction();
-//       session.endSession();
-//       return; 
-//     } catch (err) {
-//       await session.abortTransaction();
-//       session.endSession();
-
-//       const isWriteConflict =
-//         err.message?.includes("Write conflict");
-
-//       if (isWriteConflict && attempt < MAX_RETRIES) {
-//         console.log(`Retrying stock deduction (${attempt})`);
-//         continue; 
-//       }
-
-//       await Sale.updateOne(
-//         { _id: saleId },
-//         {
-//           $set: {
-//             state: "CANCELED",
-//             reason: "STOCK_CHANGED",
-//           },
-//         }
-//       );
-
-//       throw err;
-//     }
-//   }
-// };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const deductStockWithTransaction = async ({
   requirementList,
@@ -246,7 +186,12 @@ const deductStockWithTransaction = async ({
         err.message?.includes("Write conflict");
 
       if (isWriteConflict && attempt < MAX_RETRIES) {
-        console.log(`Retrying stock deduction (${attempt})`);
+        const backoff = 20 + Math.random() * 80;
+        console.log(
+          `Retrying stock deduction (${attempt}) after ${backoff.toFixed(0)}ms`
+        );
+
+        await sleep(backoff);
         continue;
       }
 

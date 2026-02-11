@@ -28,10 +28,16 @@ export const buildStockRequirement = async (items, recipeMap) => {
         });
       }
     }
-  }
+  } 
+  const requirementList = Array.from(requirementMap.values())
+  .sort((a, b) =>
+    String(a.ingredientMasterId)
+      .localeCompare(String(b.ingredientMasterId))
+  );
+
 
   return {
-    requirementList: Array.from(requirementMap.values()),
+    requirementList,
     recipeErrors,
   };
 };
