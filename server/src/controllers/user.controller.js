@@ -182,15 +182,15 @@ export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
   if (!email || !outletId) {
     throw new ApiError(400, "email and outletId are required");
   }
-  
+
   const tenantContext = req.user.tenant;
-  
+
   const outlet = await Outlet.findOne({
     _id: outletId,
     "tenant.tenantId": tenantContext.tenantId,
   });
   // console.log(outlet);
-  
+
   if (!outlet) {
     throw new ApiError(404, "Outlet not found or does not belong to your tenant");
   }
@@ -202,7 +202,7 @@ export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
   if (!user) {
     user = await User.create({ email });
   }
-  
+
 
   user.otpHash = hashOTP(otp);
   user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -211,7 +211,7 @@ export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
     outletId: outlet._id,
     outletName: outlet.outletName,
   };
-  user.tenant=tenantContext
+  user.tenant = tenantContext
 
 
   await user.save();
@@ -251,7 +251,7 @@ export const verifyOutletManagerOTP = asyncHandler(async (req, res) => {
   user.otpPurpose = undefined;
 
   await user.save();
-  
+
 
   res.json({ success: true, message: "Email verified successfully" });
 });
@@ -264,7 +264,7 @@ export const completeOutletManagerSignup = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({ email });
   // console.log("verified",user.toObject());
-  
+
   if (!user || !user.emailVerified) {
     throw new ApiError(403, "Email not verified");
   }
@@ -276,18 +276,18 @@ export const completeOutletManagerSignup = asyncHandler(async (req, res) => {
   if (!user.outlet?.outletId) {
     throw new ApiError(400, "Outlet context missing");
   }
-  
-  const permission={
-    "RESTOCK":false,
-    "ANALYTICS":false
+
+  const permission = {
+    "RESTOCK": false,
+    "ANALYTICS": false
   }
   user.userName = userName;
   user.password = password;
   user.role = "OUTLET_MANAGER";
-  user.outletManagerPermissions=permission
+  user.outletManagerPermissions = permission
 
   await user.save();
-  
+
   res.status(201).json(
     new ApiResoponse(
       201,
@@ -339,7 +339,7 @@ export const getAllOutletManagers = asyncHandler(async (req, res) => {
   const outletManagers = await User.find(filter)
     .select("-password")
     .sort({ createdAt: -1 });
-  
+
   return res.status(200).json(
     new ApiResoponse(
       200,
@@ -431,7 +431,7 @@ export const login = asyncHandler(async (req, res) => {
           role: user.role,
           tenant: user.tenant,
           outlet: user.outlet,
-          outletManagerPermissions:user.outletManagerPermissions
+          outletManagerPermissions: user.outletManagerPermissions
         },
       },
       "Login successful"
@@ -502,3 +502,77 @@ export const updateOutletManagerPermissions = asyncHandler(async (req, res) => {
     }, "Permissions updated successfully")
   )
 })
+
+export const requestPasswordResetOTP = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const otp = generateOTP();
+
+  user.otpHash = hashOTP(otp);
+  user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); 
+  user.otpPurpose = "FORGOT_PASSWORD";
+
+  await user.save();
+
+  await sendOTPEmail({
+    to: email,
+    otp: otp
+  });
+
+  res.json({ success: true, message: "OTP sent successfully" });
+});
+
+export const verifyPasswordResetOTP = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+
+  const user = await User.findOne({ email }).select(
+    "+otpHash +otpExpiresAt +otpPurpose"
+  );
+
+  if (!user || user.otpPurpose !== "FORGOT_PASSWORD") {
+    throw new ApiError(400, "Invalid request");
+  }
+
+  if (user.otpExpiresAt < Date.now()) {
+    throw new ApiError(400, "OTP expired");
+  }
+
+  if (hashOTP(otp) !== user.otpHash) {
+    user.otpAttempts++; 
+    await user.save();
+    throw new ApiError(400, "Invalid OTP");
+  }
+
+  user.emailVerified=true
+  user.otpHash = undefined;
+  user.otpExpiresAt = undefined;
+  user.otpPurpose = undefined;
+  res.json({ success: true, message: "OTP verified successfully" });
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  const user = await User.findOne({ email }).select(
+    "+otpPurpose +emailVerified"
+  );
+
+  if (!user || user.otpPurpose !== "FORGOT_PASSWORD") {
+    throw new ApiError(400, "Invalid request");
+  }
+
+  if (!user.emailVerified) {
+    throw new ApiError(400, "Email not verified");
+  }
+
+
+  user.password = newPassword;
+  await user.save();
+
+  res.json({ success: true, message: "Password reset successfully" });
+});
