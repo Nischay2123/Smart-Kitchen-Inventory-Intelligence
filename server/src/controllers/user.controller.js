@@ -37,7 +37,7 @@ export const requestSignupOTP = asyncHandler(async (req, res) => {
     otp: otp
   });
 
-  res.json({ success: true, message: "OTP sent successfully" });
+  res.status(200).json(new ApiResoponse(200, { success: true, message: "OTP sent successfully" }, "OTP sent successfully"));
 });
 
 export const verifySignupOTP = asyncHandler(async (req, res) => {
@@ -68,7 +68,7 @@ export const verifySignupOTP = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  res.json({ success: true, message: "Email verified successfully" });
+  res.status(200).json(new ApiResoponse(200, { success: true, message: "Email verified successfully" }, "Email verified successfully"));
 });
 
 export const completeSignup = asyncHandler(async (req, res) => {
@@ -97,10 +97,7 @@ export const completeSignup = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  res.status(201).json({
-    success: true,
-    message: "User created successfully",
-  });
+  res.status(201).json(new ApiResoponse(201, { success: true, message: "User created successfully" }, "User created successfully"));
 });
 
 
@@ -218,10 +215,7 @@ export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
 
   await sendOTPEmail({ to: email, otp });
 
-  res.json({
-    success: true,
-    message: "OTP sent successfully to Outlet Manager email",
-  });
+  res.status(200).json(new ApiResoponse(200, { success: true, message: "OTP sent successfully to Outlet Manager email" }, "OTP sent successfully to Outlet Manager email"));
 });
 
 export const verifyOutletManagerOTP = asyncHandler(async (req, res) => {
@@ -253,7 +247,7 @@ export const verifyOutletManagerOTP = asyncHandler(async (req, res) => {
   await user.save();
 
 
-  res.json({ success: true, message: "Email verified successfully" });
+  res.status(200).json(new ApiResoponse(200, { success: true, message: "Email verified successfully" }, "Email verified successfully"));
 });
 export const completeOutletManagerSignup = asyncHandler(async (req, res) => {
   const { email, userName, password } = req.body;
@@ -514,7 +508,7 @@ export const requestPasswordResetOTP = asyncHandler(async (req, res) => {
   const otp = generateOTP();
 
   user.otpHash = hashOTP(otp);
-  user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); 
+  user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
   user.otpPurpose = "FORGOT_PASSWORD";
 
   await user.save();
@@ -524,7 +518,7 @@ export const requestPasswordResetOTP = asyncHandler(async (req, res) => {
     otp: otp
   });
 
-  res.json({ success: true, message: "OTP sent successfully" });
+  res.status(200).json(new ApiResoponse(200, { success: true, message: "OTP sent successfully" }, "OTP sent successfully"));
 });
 
 export const verifyPasswordResetOTP = asyncHandler(async (req, res) => {
@@ -543,16 +537,16 @@ export const verifyPasswordResetOTP = asyncHandler(async (req, res) => {
   }
 
   if (hashOTP(otp) !== user.otpHash) {
-    user.otpAttempts++; 
+    user.otpAttempts++;
     await user.save();
     throw new ApiError(400, "Invalid OTP");
   }
 
-  user.emailVerified=true
+  user.emailVerified = true
   user.otpHash = undefined;
   user.otpExpiresAt = undefined;
   user.otpPurpose = undefined;
-  res.json({ success: true, message: "OTP verified successfully" });
+  res.status(200).json(new ApiResoponse(200, { success: true, message: "OTP verified successfully" }, "OTP verified successfully"));
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {
@@ -574,5 +568,5 @@ export const resetPassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   await user.save();
 
-  res.json({ success: true, message: "Password reset successfully" });
+  res.status(200).json(new ApiResoponse(200, { success: true, message: "Password reset successfully" }, "Password reset successfully"));
 });

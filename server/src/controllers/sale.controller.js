@@ -21,18 +21,18 @@ import { cacheService } from "../services/cache.service.js";
 
 const validateTenant = async (tenantId) => {
   // console.log("tenant",tenantId);
-  
-  const tenant = await Tenant.findOne({ _id:tenantId }).lean();
+
+  const tenant = await Tenant.findOne({ _id: tenantId }).lean();
   if (!tenant) throw new ApiError(404, "TENANT_NOT_FOUND");
   return tenant;
 };
 
 const validateOutlet = async (tenantId, outletId) => {
   // console.log("outlet",tenantId, outletId);
-  
+
   const outlet = await Outlet.findOne({
     "tenant.tenantId": tenantId,
-    _id:outletId,
+    _id: outletId,
   }).lean();
 
   if (!outlet) throw new ApiError(404, "OUTLET_NOT_FOUND");
@@ -63,11 +63,17 @@ const loadRecipeMap = async ({ tenant, items }) => {
   const recipeMap = new Map();
   const missingItemIds = [];
 
-  const cacheKeys = uniqueItemIds.map((id) =>
-    cacheService.generateKey("recipe", tenant.tenantId, id)
-  );
+  let cachedRecipes = [];
+  try {
+    const cacheKeys = uniqueItemIds.map((id) =>
+      cacheService.generateKey("recipe", tenant.tenantId, id)
+    );
 
-  const cachedRecipes = await cacheService.mget(cacheKeys);
+    cachedRecipes = await cacheService.mget(cacheKeys);
+  } catch (err) {
+    console.error("Cache Read Error:", err);
+    cachedRecipes = new Array(uniqueItemIds.length).fill(null);
+  }
 
   cachedRecipes.forEach((recipe, index) => {
     if (recipe) {
@@ -88,7 +94,7 @@ const loadRecipeMap = async ({ tenant, items }) => {
       recipeMap.set(itemId, recipe);
 
       const key = cacheService.generateKey("recipe", tenant.tenantId, itemId);
-      await cacheService.set(key, recipe);
+      cacheService.set(key, recipe).catch(err => console.error("Cache Write Error:", err));
     }
   }
 
@@ -172,10 +178,9 @@ const deductStockWithTransaction = async ({
 }) => {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const session = await mongoose.startSession();
+    session.startTransaction();
 
     try {
-      session.startTransaction();
-
       const bulkOps = requirementList.map(req => ({
         updateOne: {
           filter: {
@@ -197,11 +202,9 @@ const deductStockWithTransaction = async ({
       }
 
       await session.commitTransaction();
-      session.endSession();
       return;
     } catch (err) {
       await session.abortTransaction();
-      session.endSession();
 
       const isWriteConflict =
         err.message?.includes("Write conflict");
@@ -211,12 +214,13 @@ const deductStockWithTransaction = async ({
         console.log(
           `Retrying stock deduction (${attempt}) after ${backoff.toFixed(0)}ms`
         );
-
         await sleep(backoff);
         continue;
       }
 
       throw new ApiError(409, "STOCK_CHANGED");
+    } finally {
+      session.endSession();
     }
   }
 };
@@ -226,7 +230,7 @@ export const createSale = asyncHandler(async (req, res) => {
 
   await validateTenant(tenant.tenantId);
   // console.log("create sale",tenant , outlet);
-  
+
   await validateOutlet(tenant.tenantId, outlet.outletId);
 
   const saleRecord = await createPendingSale({ tenant, outlet, items, createdAt });
@@ -261,25 +265,31 @@ export const createSale = asyncHandler(async (req, res) => {
         createdAt: saleRecord.createdAt,
       });
     } catch (err) {
-      await QueueFail.create({
-        eventType: "sale.confirmed",
-        payload: {
-          orderId: saleRecord._id,
-          tenant,
-          outlet,
-          items,
-          requirementList,
-          state: "CONFIRMED",
-          createdAt: saleRecord.createdAt,
-          nextRetryAt: new Date(Date.now() + 60 * 60 * 1000)
-        },
-        lastError: err.message,
-      });
+      console.error("Queue Add Error:", err);
+      try {
+        await QueueFail.create({
+          eventType: "sale.confirmed",
+          payload: {
+            orderId: saleRecord._id,
+            tenant,
+            outlet,
+            items,
+            requirementList,
+            state: "CONFIRMED",
+            createdAt: saleRecord.createdAt,
+            nextRetryAt: new Date(Date.now() + 60 * 60 * 1000)
+          },
+          lastError: err.message,
+        });
+      } catch (dbErr) {
+        console.error("CRITICAL: QueueFail DB Insert Failed:", dbErr);
+      }
     }
-    return res.status(201).json({
+
+    return res.status(201).json(new ApiResoponse(201, {
       saleId: saleRecord._id,
       state: "CONFIRMED",
-    });
+    }, "Sale created successfully"));
 
   } catch (error) {
     let reason = error.message || "INTERNAL_SERVER_ERROR";
@@ -287,27 +297,33 @@ export const createSale = asyncHandler(async (req, res) => {
 
     if (error.message === "STOCK_CHANGED" || error.statusCode === 409) {
       if (requirementList && recipeMap) {
-        const validation = await validateStock(
-          requirementList,
-          outlet.outletId
-        );
+        try {
+          const validation = await validateStock(
+            requirementList,
+            outlet.outletId
+          );
 
-        if (!validation.isValid) {
-          reason = "INSUFFICIENT_STOCK";
-          itemFailureMap = buildItemFailureMap(items, recipeMap, validation.failed);
-        } else {
+          if (!validation.isValid) {
+            reason = "INSUFFICIENT_STOCK";
+            itemFailureMap = buildItemFailureMap(items, recipeMap, validation.failed);
+          } else {
+            reason = "STOCK_CHANGED";
+          }
+        } catch (validationErr) {
+          console.error("Stock Validation Error during rollback diagnosis:", validationErr);
           reason = "STOCK_CHANGED";
         }
       }
     }
 
-    return cancelSaleAndRespond({
+    await cancelSaleAndRespond({
       res,
       saleId: saleRecord._id,
       reason,
       items,
       itemFailureMap,
     });
+    return;
   }
 });
 

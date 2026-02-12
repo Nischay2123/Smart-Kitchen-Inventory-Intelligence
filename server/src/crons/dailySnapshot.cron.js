@@ -1,259 +1,35 @@
 import cron from "node-cron";
-import mongoose from "mongoose";
-import Tenant  from "../models/tenant.model.js";
-import Sale  from "../models/sale.model.js";
-import  TenantDailySnapshot  from "../models/tenantDailySnapshot.model.js";
-
-const startOfDay = (d) => {
-  const date = new Date(d);
-  date.setUTCHours(0, 0, 0, 0);
-  return date;
-};
-
-const endOfDay = (d) => {
-  const date = new Date(d);
-  date.setUTCHours(23, 59, 59, 999);
-  return date;
-};
-
-const getYesterdayRange = (date) => {
-  let d ;
-  if(date){
-    d = new Date(date) ;
-    d.setDate(d.getDate() );
-  }
-  else{
-    d= new Date()
-    d.setDate(d.getDate() - 1);
-  } 
-  return {
-    start: startOfDay(d),
-    end: endOfDay(d),
-    day: startOfDay(d)
-  };
-};
-
-// const buildPipeline = (tenantId, start, end) => [
-//   {
-//     $match: {
-//       "tenant.tenantId": tenantId,
-//       createdAt: { $gte: start, $lte: end }
-//     }
-//   },
-//   { $unwind: "$items" },
-//   {
-//     $group: {
-//       _id: "$_id", 
-//       outletId: { $first: "$outlet.outletId" },
-//       outletName: { $first: "$outlet.outletName" },
-//       state: { $first: "$state" },
-
-//       sale: { $sum: "$items.totalAmount" },
-//       makingCost: { $sum: "$items.makingCost" }
-//     }
-//   },
-//   {
-//     $group: {
-//       _id: {
-//         outletId: "$outletId",
-//         outletName: "$outletName"
-//       },
-
-//       totalSale: {
-//         $sum: {
-//           $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0]
-//         }
-//       },
-
-//       cogs: {
-//         $sum: {
-//           $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$makingCost", 0]
-//         }
-//       },
-
-//       confirmedOrders: {
-//         $sum: {
-//           $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0]
-//         }
-//       },
-
-//       canceledOrders: {
-//         $sum: {
-//           $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0]
-//         }
-//       }
-//     }
-//   }
-// ];
-
-
-const buildPipeline = (tenantId, start, end) => [
-  {
-    $match: {
-      "tenant.tenantId": tenantId,
-      createdAt: { $gte: start, $lte: end }
-    }
-  },
-  {
-    $project: {
-      outletId: "$outlet.outletId",
-      outletName: "$outlet.outletName",
-      state: 1,
-      sale: { $sum: "$items.totalAmount" },
-      makingCost: { $sum: "$items.makingCost" }
-    }
-  },
-  {
-    $group: {
-      _id: {
-        outletId: "$outletId",
-        outletName: "$outletName"
-      },
-      totalSale: {
-        $sum: {
-          $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0]
-        }
-      },
-      cogs: {
-        $sum: {
-          $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$makingCost", 0]
-        }
-      },
-      confirmedOrders: {
-        $sum: {
-          $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0]
-        }
-      },
-      canceledOrders: {
-        $sum: {
-          $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0]
-        }
-      }
-    }
-  }
-];
-
+import { dailySnapshotQueue } from "../queues/dailySnapshot.queue.js";
+import QueueFail from "../models/queueFail.model.js";
 
 export const runDailySnapshotJob = async () => {
-  console.log("Snapshot cron started");
+  console.log("Scheduling Snapshot Job to Queue");
 
   try {
-    const { start, end, day } = getYesterdayRange();
-    const tenants = await Tenant.find({}).lean();
-
-    for (const tenant of tenants) {
-      const stats = await Sale.aggregate(
-        buildPipeline(tenant._id, start, end),
-        { allowDiskUse: true }
-      );
-
-      if (!stats.length) continue;
-
-      const session = await mongoose.startSession();
-
-      try {
-        session.startTransaction();
-
-        const ops = stats.map((row) => ({
-          updateOne: {
-            filter: {
-              tenantId: tenant._id,
-              outletId: row._id.outletId,
-              date: day,
-            },
-            update: {
-              $set: {
-                tenantId: tenant._id,
-                outletId: row._id.outletId,
-                outletName: row._id.outletName,
-                date: day,
-                totalSale: row.totalSale,
-                confirmedOrders: row.confirmedOrders,
-                canceledOrders: row.canceledOrders,
-                cogs: row.cogs,
-              },
-            },
-            upsert: true,
-          },
-        }));
-
-        await TenantDailySnapshot.bulkWrite(ops, { session });
-
-        await session.commitTransaction();
-        console.log(`Tenant ${tenant._id} snapshot saved`);
-      } catch (err) {
-        await session.abortTransaction();
-        console.error("Tenant snapshot failed:", err);
-      } finally {
-        session.endSession();
-      }
-    }
-
-    console.log("Snapshot cron completed");
+    await dailySnapshotQueue.add("daily-snapshot", {
+      scheduledAt: new Date(),
+    });
+    console.log("Snapshot Job added to queue");
   } catch (err) {
-    console.error("Snapshot cron failed:", err);
+    console.error("Failed to add Snapshot Job to queue:", err);
+    try {
+      await QueueFail.create({
+        eventType: "daily-snapshot",
+        payload: {
+          scheduledAt: new Date(),
+        },
+        lastError: err.message,
+        nextRetryAt: new Date(Date.now() + 10 * 60 * 1000) // Retry in 10 minutes
+      });
+      console.log("Failed Snapshot Job saved to QueueFail");
+    } catch (saveErr) {
+      console.error("CRITICAL: Failed to save QueueFail doc:", saveErr);
+    }
   }
 };
-// export const runDailySnapshotJob = async (req,res) => {
-//   const session = await mongoose.startSession();
-//   const {date}= req.body
-//   try {
-//     session.startTransaction();
 
-//     const { start, end, day } = getYesterdayRange(date);
-//     // console.log({ start, end, day });
-    
-//     const tenants = await Tenant.find({ }).lean();
-
-//     for (const tenant of tenants) {
-//       const stats = await Sale.aggregate(
-//         buildPipeline(tenant._id, start, end)
-//       );
-
-//       if (!stats.length) continue;
-
-//       const ops = stats.map((row) => ({
-//         updateOne: {
-//           filter: {
-//             tenantId: tenant._id,
-//             outletId: row._id.outletId,
-//             date: day
-//           },
-//           update: {
-//             $set: {
-//               tenantId: tenant._id,
-//               outletId: row._id.outletId,
-//               outletName: row._id.outletName,
-//               date: day,
-//               totalSale: row.totalSale,
-//               confirmedOrders: row.confirmedOrders,
-//               canceledOrders: row.canceledOrders,
-//               cogs: row.cogs
-//             }
-//           },
-//           upsert: true
-//         }
-//       }));
-
-//       await TenantDailySnapshot.bulkWrite(ops, { session });
-//     }
-
-//     await session.commitTransaction();
-//     console.log(" Daily snapshot cron completed");
-//     return res.status(200).json({
-//       message:"success"
-//     })
-//   } catch (err) {
-//     await session.abortTransaction();
-//     console.error(" Daily snapshot cron failed", err);
-//     return res.status(401).json({
-//       error:err
-//     })
-//   } finally {
-//     session.endSession();
-//   }
-// };
-
-cron.schedule("0 1 * * *", runDailySnapshotJob, {
+// Schedule to run at 1:00 AM every day
+cron.schedule("0 */1 * * *", runDailySnapshotJob, {
   timezone: "Asia/Kolkata"
 });
+

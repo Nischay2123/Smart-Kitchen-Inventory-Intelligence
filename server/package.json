@@ -8,7 +8,9 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "start:worker": "nodemon src/workers/startWorkers.js",
+    "start:scheduler": "nodemon src/scheduler.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

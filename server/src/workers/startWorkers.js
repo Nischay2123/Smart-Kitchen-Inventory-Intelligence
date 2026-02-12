@@ -4,28 +4,36 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const WORKER_PATH = path.join(
+const WORKER_PATH_ORDER = path.join(
   __dirname,
   "order.worker.js"
+);
+
+const WORKER_PATH_SNAPSHOT = path.join(
+  __dirname,
+  "dailySnapshot.worker.js"
 );
 
 const WORKER_COUNT = 4;
 
 console.log(`🚀 Starting ${WORKER_COUNT} workers`);
 
-const startWorker = () => {
-  const worker = fork(WORKER_PATH);
+const startWorker = (workerPath, name) => {
+  const worker = fork(workerPath);
 
-  console.log(`Worker PID started: ${worker.pid}`);
+  console.log(`${name} Worker PID started: ${worker.pid}`);
 
   worker.on("exit", () => {
     console.log(
-      `Worker ${worker.pid} crashed. Restarting...`
+      `${name} Worker ${worker.pid} crashed. Restarting...`
     );
-    startWorker();
+    startWorker(workerPath, name);
   });
 };
 
 for (let i = 0; i < WORKER_COUNT; i++) {
-  startWorker();
+  startWorker(WORKER_PATH_ORDER, "Order");
 }
+
+// Start 1 snapshot worker
+startWorker(WORKER_PATH_SNAPSHOT, "Snapshot");
