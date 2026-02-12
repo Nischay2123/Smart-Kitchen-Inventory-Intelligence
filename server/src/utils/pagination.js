@@ -8,22 +8,20 @@ export const paginate = async (model, filter = {}, options = {}) => {
   const skip = (page - 1) * limit;
 
   let finalFilter = { ...filter };
-  
+
   if (search && search.trim() !== "") {
     finalFilter[searchField] = {
       $regex: search.trim(),
       $options: "i",
     };
-  };
+  }
 
-  const totalDocs = await model.countDocuments(finalFilter);
+  const [totalDocs, data] = await Promise.all([
+    model.countDocuments(filter),
+    model.find(filter).sort(sort).skip(skip).limit(limit) 
+  ]);
+
   const totalPages = Math.ceil(totalDocs / limit) || 1;
-
-  const data = await model
-    .find(finalFilter)
-    .sort(sort)
-    .skip(skip)
-    .limit(limit);
 
   return {
     data,
