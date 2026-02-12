@@ -2,28 +2,34 @@ import mongoose, { model } from "mongoose";
 
 const tenantDailySnapshotSchema = new mongoose.Schema(
   {
-    tenantId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      ref: "Tenant"
+    tenant: {
+      tenantId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tenant",
+        required: true
+      },
+      tenantName: {
+        type: String,
+        required: true
+      }
     },
 
-    outletId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      ref: "Outlet"
-    },
-
-    outletName: {
-      type: String,
-      required: true,
-      trim: true
+    outlet: {
+      outletId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Outlet",
+        required: true
+      },
+      outletName: {
+        type: String,
+        required: true
+      }
     },
 
     date: {
-        type: Date,
-        required: true,
-        set: (v) => new Date(new Date(v).setUTCHours(0, 0, 0, 0))
+      type: Date,
+      required: true,
+      set: (v) => new Date(new Date(v).setUTCHours(0, 0, 0, 0))
     },
 
 
@@ -61,7 +67,7 @@ const tenantDailySnapshotSchema = new mongoose.Schema(
 );
 
 tenantDailySnapshotSchema.index(
-  { tenantId: 1, date: 1 },
+  { "tenant.tenantId": 1, date: 1 },
 );
 
 export default model(

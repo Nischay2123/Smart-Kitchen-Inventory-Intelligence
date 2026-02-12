@@ -82,12 +82,12 @@ export const processDailySnapshot = async (job) => {
     const yesterday = getYesterday(targetDate);
 
     try {
-        const tenants = await Tenant.find({}).select("_id").lean();
+        const tenants = await Tenant.find({}).select("_id name").lean();
 
         for (const tenant of tenants) {
 
             const lastSnapshot = await TenantDailySnapshot
-                .findOne({ tenantId: tenant._id })
+                .findOne({ "tenant.tenantId": tenant._id })
                 .sort({ date: -1 })
                 .select("date")
                 .lean();
@@ -130,15 +130,20 @@ export const processDailySnapshot = async (job) => {
                 const ops = stats.map((row) => ({
                     updateOne: {
                         filter: {
-                            tenantId: tenant._id,
-                            outletId: row._id.outletId,
+                            "tenant.tenantId": tenant._id,
+                            "outlet.outletId": row._id.outletId,
                             date: row._id.day,
                         },
                         update: {
                             $set: {
-                                tenantId: tenant._id,
-                                outletId: row._id.outletId,
-                                outletName: row._id.outletName,
+                                tenant: {
+                                    tenantId: tenant._id,
+                                    tenantName: tenant.name 
+                                },
+                                outlet: {
+                                    outletId: row._id.outletId,
+                                    outletName: row._id.outletName
+                                },
                                 date: row._id.day,
                                 totalSale: row.totalSale,
                                 confirmedOrders: row.confirmedOrders,

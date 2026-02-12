@@ -70,9 +70,9 @@ export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
     },
   ];
 
-    
-    
-  const data = await Sale.aggregate(pipeline,{ allowDiskUse: true });
+
+
+  const data = await Sale.aggregate(pipeline, { allowDiskUse: true });
   return res.status(200).json(new ApiResoponse(200, data, "success"));
 });
 
@@ -174,15 +174,15 @@ export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
   const pipeline = [
     {
       $match: {
-        tenantId: tenantContext.tenantId,
-        outletId: { $in: outletObjectIds },
+        "tenant.tenantId": tenantContext.tenantId,
+        "outlet.outletId": { $in: outletObjectIds },
         date: { $gte: snapshotStart, $lte: snapshotEnd }
       }
     },
     {
       $group: {
-        _id: { outletId: "$outletId" },
-        outletName: { $first: "$outletName" },
+        _id: { outletId: "$outlet.outletId" },
+        outletName: { $first: "$outlet.outletName" },
         totalSale: { $sum: "$totalSale" },
         confirmedOrders: { $sum: "$confirmedOrders" },
         canceledOrders: { $sum: "$canceledOrders" },
@@ -203,7 +203,6 @@ export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
   ];
 
   const result = await TenantDailySnapshot.aggregate(pipeline);
-  // const result = await TenantDailySnapshot.find({});
 
   return res.status(200).json(
     new ApiResoponse(200, result, "Snapshot analytics fetched successfully")
