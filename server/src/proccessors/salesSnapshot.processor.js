@@ -4,102 +4,133 @@ import Recipe from "../models/recipes.model.js";
 import Stock from "../models/stock.model.js";
 import { emitEvent } from "../workers/socket.js";
 
-
 export const processSalesSnapshot = async (data) => {
   const {
     orderId,
     tenant,
     outlet,
-    state,          
-    items,          
+    state,
+    items,
   } = data;
 
-  const sale = await Sales.findById(orderId);
-  if (!sale) return;
+  try {
+    const sale = await Sales.findById(orderId);
+    if (!sale) return;
 
-  const itemIds = items.map(i => i.itemId);
+    const itemIds = items.map((i) => i.itemId);
 
-  const [menus, recipes] = await Promise.all([
-    MenuItem.find({ _id: { $in: itemIds } }).lean(),
-    Recipe.find({
-      "tenant.tenantId": tenant.tenantId,
-      "item.itemId": { $in: itemIds },
-    }).lean(),
-  ]);
+    const [menus, recipes] = await Promise.all([
+      MenuItem.find({ _id: { $in: itemIds } }).lean(),
+      Recipe.find({
+        "tenant.tenantId": tenant.tenantId,
+        "item.itemId": { $in: itemIds },
+      }).lean(),
+    ]);
 
-  const menuMap = new Map(menus.map(m => [String(m._id), m]));
-  const recipeMap = new Map(
-    recipes.map(r => [String(r.item.itemId), r])
-  );
+    const menuMap = new Map(
+      menus.map((m) => [String(m._id), m])
+    );
 
-  const ingredientIds = [
-    ...new Set(
-      recipes.flatMap(r =>
-        r.recipeItems.map(i => String(i.ingredientMasterId))
-      )
-    ),
-  ];
+    const recipeMap = new Map(
+      recipes.map((r) => [
+        String(r.item.itemId),
+        r,
+      ])
+    );
 
-  const stocks = await Stock.find({
-    "outlet.outletId": outlet.outletId,
-    "masterIngredient.ingredientMasterId": { $in: ingredientIds },
-  }).lean();
+    const ingredientIds = [
+      ...new Set(
+        recipes.flatMap((r) =>
+          (r.recipeItems || []).map((i) =>
+            String(i.ingredientMasterId)
+          )
+        )
+      ),
+    ];
 
-  const stockMap = new Map(
-    stocks.map(s => [
-      String(s.masterIngredient.ingredientMasterId),
-      s,
-    ])
-  );
+    const stocks = await Stock.find({
+      "outlet.outletId": outlet.outletId,
+      "masterIngredient.ingredientMasterId": {
+        $in: ingredientIds,
+      },
+    }).lean();
 
-  const finalItems = sale.items.map(item => {
-    if (state !== "CONFIRMED") {
+    const stockMap = new Map(
+      stocks.map((s) => [
+        String(
+          s.masterIngredient.ingredientMasterId
+        ),
+        s,
+      ])
+    );
+
+    const finalItems = sale.items.map((item) => {
+      if (state !== "CONFIRMED") {
+        return {
+          ...item.toObject(),
+          totalAmount: 0,
+          makingCost: 0,
+        };
+      }
+
+      const menu = menuMap.get(
+        String(item.itemId)
+      );
+      const recipe = recipeMap.get(
+        String(item.itemId)
+      );
+
+      if (!menu || !recipe)
+        return item.toObject();
+
+      let makingCost = 0;
+
+      for (const ing of recipe.recipeItems ||
+        []) {
+        const stock = stockMap.get(
+          String(ing.ingredientMasterId)
+        );
+        if (!stock) continue;
+
+        makingCost +=
+          ing.baseQty *
+          stock.unitCost *
+          item.qty;
+      }
+
       return {
         ...item.toObject(),
-        totalAmount: 0,
-        makingCost: 0,
+        totalAmount:
+          menu.price * item.qty,
+        makingCost,
       };
-    }
+    });
 
-    const menu = menuMap.get(String(item.itemId));
-    const recipe = recipeMap.get(String(item.itemId));
+    const saleRecord =
+      await Sales.findOneAndUpdate(
+        { _id: orderId, state: "PENDING" },
+        {
+          $set: {
+            state,
+            items: finalItems,
+          },
+        },
+        { new: true }
+      ).lean();
 
-    if (!menu || !recipe) return item.toObject();
+    const room = `tenant:${tenant.tenantId}:outlet:${outlet.outletId}`;
 
-    let makingCost = 0;
+    emitEvent(
+      room,
+      "SALES_CREATED",
+      saleRecord
+    );
+  } catch (err) {
+    console.error(
+      `processSalesSnapshot failed order=${orderId}`,
+      err
+    );
 
-    for (const ing of recipe.recipeItems) {
-      const stock = stockMap.get(
-        String(ing.ingredientMasterId)
-      );
-      if (!stock) continue;
-
-      makingCost += ing.baseQty * stock.unitCost * item.qty;
-    }
-
-    return {
-      ...item.toObject(),
-      totalAmount: menu.price * item.qty,
-      makingCost,
-    };
-  });
-
-  const saleRecord = await Sales.findOneAndUpdate(
-    { _id: orderId, state: "PENDING" },
-    {
-      $set: {
-        state,
-        items: finalItems,
-      },
-    },
-    {
-      new: true,
-    }
-  ).lean();
-
-
-  const room = `tenant:${tenant.tenantId}:outlet:${outlet.outletId}`;
-  emitEvent(room, "SALES_CREATED", 
-    saleRecord
-  );
+    throw err;
+  }
 };

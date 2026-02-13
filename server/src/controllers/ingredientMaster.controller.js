@@ -184,7 +184,6 @@ export const getAllIngredientsInOnce = asyncHandler(async (req, res) => {
   if (req.user.role === "SUPER_ADMIN") {
     throw new ApiError(403, "Only BRAND_ADMIN and OUTLET_MANAGER can view ingredients");
   }
-  const { page, limit } = req.query;
   const tenantContext = req.user.tenant;
   if (!tenantContext?.tenantId) {
     throw new ApiError(400, "User is not associated with any tenant");

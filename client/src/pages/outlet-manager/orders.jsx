@@ -44,7 +44,7 @@ export const Orders = () => {
   }, [data])
 
   const handleSocketCreate = useCallback((newDoc) => {
-    console.log(newDoc);
+    // console.log(newDoc);
     
     setOrders((prev) => {
       const exists = prev.some((item) => item._id === newDoc._id)

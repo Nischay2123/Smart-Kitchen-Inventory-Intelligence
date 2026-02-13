@@ -29,7 +29,7 @@ export const runDailySnapshotJob = async () => {
 };
 
 // Schedule to run at 1:00 AM every day
-cron.schedule("0 */1 * * *", runDailySnapshotJob, {
+cron.schedule("0 1 * * *", runDailySnapshotJob, {
   timezone: "Asia/Kolkata"
 });
 

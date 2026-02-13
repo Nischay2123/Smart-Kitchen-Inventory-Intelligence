@@ -50,33 +50,34 @@ const CreateRecipeForm = ({
     },
   ]);
 
-useEffect(() => {
+  useEffect(() => {
+    if (
+      !isUpdate ||
+      !data?.recipeItems?.length ||
+      !ingredientOptions?.data?.length
+    )
+      return;
 
-  if (!isUpdate || !data?.recipeItems?.length) return;
+    const mapped = data.recipeItems.map((item) => {
+      const master = ingredientOptions.data.find(
+        (ing) => ing._id === item.ingredientId
+      );
 
-  const mapped = data.recipeItems.map((item) => {
+      const unitObj = master?.unit?.find(
+        (u) => u.unitName === item.unitName
+      );
 
-    const master = ingredientOptions.data.find(
-      (ing) => ing._id === item.ingredientId
-    );
+      return {
+        ingredientId: item.ingredientId,
+        name: item.ingredientName,
+        quantity: item.quantity,
+        unitId: unitObj?.unitId || "",
+        unitName: item.unitName,
+      };
+    });
 
-    const unitObj = master?.unit?.find(
-      (u) => u.unitName === item.unitName
-    );
-
-    return {
-      ingredientId: item.ingredientId,
-      name: item.ingredientName,
-      quantity: item.quantity,
-      unitId: unitObj?.unitId || "",
-      unitName: item.unitName,
-    };
-  });
-
-  setIngredients(mapped);
-
-}, [isUpdate, data.recipeItems]);
-
+    setIngredients(mapped);
+  }, [isUpdate, data?.recipeItems, ingredientOptions?.data]);
 
   const selectedIngredientIds = ingredients
     .map((ing) => ing.ingredientId)

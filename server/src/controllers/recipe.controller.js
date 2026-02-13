@@ -195,7 +195,7 @@ export const getSingleRecipe = asyncHandler(async (req, res) => {
         `Ingredient not found for recipe item ${item.ingredientName}`
       );
     }
-    console.log(ingredient);
+    // console.log(ingredient);
 
     const selectedUnit = ingredient.unit.find(
       u => u.unitName === item.unit

@@ -52,7 +52,7 @@ export default function MenuEngineeringMatrix({ data = [] }) {
       </Card>
     )
   }
-    console.log(data);
+    // console.log(data);
 
   const avgQty =
     data.reduce((a, b) => a + b.qty, 0) / data.length
