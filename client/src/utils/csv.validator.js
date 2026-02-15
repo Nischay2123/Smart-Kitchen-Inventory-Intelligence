@@ -1,0 +1,75 @@
+export const CSV_SCHEMAS = {
+    ingredient: {
+        headers: ["Name", "Units", "BaseUnit", "Low", "Critical", "ThresholdUnit"],
+        required: ["Name", "Units", "BaseUnit", "Low", "Critical", "ThresholdUnit"],
+        validateRow: (row, index) => {
+            const errors = [];
+            if (!row.Name?.trim()) errors.push(`Row ${index + 1}: Name is required`);
+            if (!row.Units?.trim()) errors.push(`Row ${index + 1}: Units is required`);
+            if (!row.BaseUnit?.trim()) errors.push(`Row ${index + 1}: BaseUnit is required`);
+            if (!row.ThresholdUnit?.trim()) errors.push(`Row ${index + 1}: ThresholdUnit is required`);
+
+            if (row.Low && isNaN(Number(row.Low)))
+                errors.push(`Row ${index + 1}: Low must be a number`);
+            if (row.Critical && isNaN(Number(row.Critical)))
+                errors.push(`Row ${index + 1}: Critical must be a number`);
+            return errors;
+        }
+    },
+    "menu-item": {
+        headers: ["ItemName", "Price"],
+        required: ["ItemName", "Price"],
+        validateRow: (row, index) => {
+            const errors = [];
+            if (!row.ItemName?.trim()) errors.push(`Row ${index + 1}: ItemName is required`);
+            if (!row.Price || isNaN(Number(row.Price))) errors.push(`Row ${index + 1}: Price must be a valid number`);
+            return errors;
+        }
+    },
+    recipe: {
+        headers: ["ItemName", "IngredientName", "Quantity", "Unit"],
+        required: ["ItemName", "IngredientName", "Quantity"],
+        validateRow: (row, index) => {
+            const errors = [];
+            if (!row.ItemName?.trim()) errors.push(`Row ${index + 1}: ItemName is required`);
+            if (!row.IngredientName?.trim()) errors.push(`Row ${index + 1}: IngredientName is required`);
+            if (!row.Quantity || isNaN(Number(row.Quantity))) errors.push(`Row ${index + 1}: Quantity must be a valid number`);
+            return errors;
+        }
+    },
+    stock: {
+        headers: ["IngredientName", "Quantity", "UnitCost", "AlertState"],
+        required: ["IngredientName", "Quantity"],
+        validateRow: (row, index) => {
+            const errors = [];
+            if (!row.IngredientName?.trim()) errors.push(`Row ${index + 1}: IngredientName is required`);
+            if (!row.Quantity || isNaN(Number(row.Quantity))) errors.push(`Row ${index + 1}: Quantity must be a valid number`);
+            if (row.UnitCost && isNaN(Number(row.UnitCost))) errors.push(`Row ${index + 1}: UnitCost must be a number`);
+            return errors;
+        }
+    }
+};
+
+export const validateCsv = (data, type) => {
+    const schema = CSV_SCHEMAS[type];
+    if (!schema) return ["Invalid CSV Type"];
+
+    const errors = [];
+    const headers = Object.keys(data[0] || {});
+
+    const missingHeaders = schema.headers.filter(h => !headers.includes(h) && (schema.required.includes(h) || schema.headers.includes(h)));
+    const missingRequired = schema.required.filter(h => !headers.includes(h));
+
+    if (missingRequired.length > 0) {
+        return [`Missing required headers: ${missingRequired.join(", ")}`];
+    }
+
+    data.forEach((row, index) => {
+        const rowErrors = schema.validateRow(row, index);
+        if (rowErrors.length > 0) {
+            errors.push(...rowErrors);
+        }
+    });
+
+    return errors;
+};

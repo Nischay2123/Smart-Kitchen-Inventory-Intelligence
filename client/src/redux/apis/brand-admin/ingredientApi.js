@@ -28,6 +28,15 @@ export const ingredient = baseApi.injectEndpoints({
       invalidatesTags: ["Ingredient"],
     }),
 
+    createIngredientsBulk: builder.mutation({
+      query: (ingredients) => ({
+        url: "ingredients/bulk",
+        method: "POST",
+        body: ingredients,
+      }),
+      invalidatesTags: ["Ingredient"],
+    }),
+
     deleteIngredient: builder.mutation({
       query: ({ ingredientId }) => ({
         url: `ingredients/${ingredientId}`,
@@ -41,6 +50,7 @@ export const ingredient = baseApi.injectEndpoints({
 
 export const {
   useCreateIngredientsMutation,
+  useCreateIngredientsBulkMutation,
   useDeleteIngredientMutation,
   useGetAllIngredientsQuery,
   useGetAllIngredientsInOnceQuery

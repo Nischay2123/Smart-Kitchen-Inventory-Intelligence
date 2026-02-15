@@ -14,10 +14,10 @@ export const items = baseApi.injectEndpoints({
     }),
 
     createItem: builder.mutation({
-      query: ({ itemName, price }) => ({
+      query: (items) => ({
         url: "menu-items",
         method: "POST",
-        body: { itemName, price },
+        body: items,
       }),
       invalidatesTags: ["Items"],
     }),

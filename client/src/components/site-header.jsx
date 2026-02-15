@@ -13,11 +13,12 @@ const SiteHeader = ({
   description,
   actionTooltip = "Create",
   onActionClick,
-  isTooltip=true,
+  isTooltip = true,
   onRefetch,
-  isRefetch=false,
+  isRefetch = false,
   onLogOut,
-  isLogout=false
+  isLogout = false,
+  children
 }) => {
   return (
     <div className="flex flex-col w-full py-10 lg:py-0">
@@ -35,86 +36,87 @@ const SiteHeader = ({
           </div>
         </div>
 
-        <div className="flex justify-between">
-        {/* Right */}
-        {isTooltip &&
-          <div className="flex items-center gap-2 px-4 lg:p-6">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={onActionClick}
-                  className="
+        <div className="flex items-center gap-4">
+          {children}
+
+          {isTooltip &&
+            <div className="flex items-center gap-2 px-4 lg:p-6">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={onActionClick}
+                      className="
                     bg-red-500 
                     hover:bg-red-600 
                     active:scale-95
                     transition-all
                     duration-200
                   "
-                  size="icon"
-                >
-                  <Plus className="h-4 w-4" strokeWidth={3} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>{actionTooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>}
+                      size="icon"
+                    >
+                      <Plus className="h-4 w-4" strokeWidth={3} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>{actionTooltip}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>}
 
-        {isLogout &&
-          <div className="flex items-center gap-2 px-4 lg:p-6">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={onLogOut}
-                  className="
+          {isLogout &&
+            <div className="flex items-center gap-2 px-4 lg:p-6">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={onLogOut}
+                      className="
                     bg-red-500 
                     hover:bg-red-600 
                     active:scale-95
                     transition-all
                     duration-200
                   "
-                  size="icon"
-                >
-                  <LogOut className="h-4 w-4" strokeWidth={3}/>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>Logout</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>}
+                      size="icon"
+                    >
+                      <LogOut className="h-4 w-4" strokeWidth={3} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Logout</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>}
 
 
-        {isRefetch &&
-          <div className="flex items-center gap-2 px-4 lg:p-6">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={onRefetch}
-                  className="
+          {isRefetch &&
+            <div className="flex items-center gap-2 px-4 lg:p-6">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={onRefetch}
+                      className="
                     bg-red-500 
                     hover:bg-red-600 
                     active:scale-95
                     transition-all
                     duration-200
                   "
-                  size="icon"
-                >
-                  <RefreshCcw className="h-4 w-4" strokeWidth={3} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                <p>{actionTooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>}
+                      size="icon"
+                    >
+                      <RefreshCcw className="h-4 w-4" strokeWidth={3} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>{actionTooltip}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>}
 
         </div>
       </header>

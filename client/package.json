@@ -30,6 +30,7 @@
     "lodash": "^4.17.23",
     "lucide-react": "^0.562.0",
     "node-cron": "^4.2.1",
+    "papaparse": "^5.5.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-redux": "^9.2.0",

@@ -1,7 +1,8 @@
 import DataCard from '@/components/data-card/data-card'
 import SiteHeader from '@/components/site-header'
+import CsvScanner from '@/components/common/CsvScanner'
 import React, { useState } from 'react'
-import {ingredientColumn} from "../../utils/columns/brand-admin"
+import { ingredientColumn } from "../../utils/columns/brand-admin"
 
 import {
   useGetAllIngredientsQuery,
@@ -21,17 +22,18 @@ export const Ingredients = () => {
     pageSize: 10,
   })
   const [search, setSearch] = useState("");
-  
+
 
 
   const {
     data,
     isLoading,
     isError,
+    refetch,
   } = useGetAllIngredientsQuery({
-      page: pagination.pageIndex + 1,
-      limit: pagination.pageSize,
-      search
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+    search
   })
 
   const [deleteIngredient, { isLoading: isDeleting }] =
@@ -59,7 +61,7 @@ export const Ingredients = () => {
       debounce((value) => {
         setPagination((prev) => ({
           ...prev,
-          pageIndex: 0, 
+          pageIndex: 0,
         }));
 
         setSearch(value);
@@ -78,12 +80,14 @@ export const Ingredients = () => {
         description="Manage ingredients for items"
         actionTooltip="Create New Ingredient"
         onActionClick={() => setOpen(true)}
-      />
+      >
+        <CsvScanner type="ingredient" onSuccess={refetch} />
+      </SiteHeader>
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
 
         {isLoading ? (
-          <SkeletonLoader/>
+          <SkeletonLoader />
         ) : (
           <DataCard
             title="INGREDIENTS"

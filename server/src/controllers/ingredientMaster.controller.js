@@ -142,6 +142,220 @@ export const createIngredient = asyncHandler(async (req, res) => {
   );
 });
 
+export const createIngredientBulk = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403, "Only BRAND_ADMIN can create ingredients");
+  }
+
+  const tenantContext = req.user.tenant;
+
+  if (!tenantContext?.tenantId) {
+    throw new ApiError(400, "User not associated with tenant");
+  }
+
+  const payload = req.body;
+
+  if (!Array.isArray(payload) || !payload.length) {
+    throw new ApiError(400, "No ingredients provided");
+  }
+
+  const errors = [];
+  const docsToInsert = [];
+
+  /* ---------------------------
+     Step 1: Collect all unit names
+  ----------------------------*/
+  const allUnitNames = new Set();
+
+  payload.forEach(doc => {
+    (doc.unitNames || []).forEach(name => allUnitNames.add(name.trim()));
+    if (doc?.threshold?.unitName)
+      allUnitNames.add(doc.threshold.unitName.trim());
+  });
+
+  /* ---------------------------
+     Step 2: Fetch all units once by name
+  ----------------------------*/
+  const units = await Unit.find({
+    unit: { $in: [...allUnitNames] },
+    "tenant.tenantId": tenantContext.tenantId,
+  }).lean();
+
+  const unitMap = new Map(
+    units.map(u => [u.unit, u])
+  );
+
+  /* ---------------------------
+     Step 3: Fetch existing ingredients once
+  ----------------------------*/
+  const existingIngredients = await IngredientMaster.find({
+    "tenant.tenantId": tenantContext.tenantId,
+  })
+    .select("name")
+    .lean();
+
+  const existingNames = new Set(
+    existingIngredients.map(i => i.name.toLowerCase())
+  );
+
+  /* ---------------------------
+     Step 4: Validate rows
+  ----------------------------*/
+  for (const [index, doc] of payload.entries()) {
+    const rowNum = index + 1;
+    const { name, unitNames, threshold, baseUnit } = doc;
+
+    if (
+      !name ||
+      !Array.isArray(unitNames) ||
+      !unitNames.length ||
+      !threshold ||
+      !baseUnit
+    ) {
+      errors.push(`Row ${rowNum}: Missing fields`);
+      continue;
+    }
+
+    const normalizedName = name.trim().toLowerCase();
+
+    if (existingNames.has(normalizedName)) {
+      errors.push(`Row ${rowNum}: Ingredient '${name}' exists`);
+      continue;
+    }
+
+    const rowUnits = [];
+    const baseUnits = new Set();
+
+    let invalidUnit = false;
+
+    // Resolve units by name
+    for (const unitName of unitNames) {
+      const unit = unitMap.get(unitName.trim());
+
+      if (!unit) {
+        errors.push(`Row ${rowNum}: Unit '${unitName}' not found`);
+        invalidUnit = true;
+        break;
+      }
+
+      const unitBase = unit.baseUnit;
+      if (unitBase !== baseUnit.trim()) {
+        errors.push(`Row ${rowNum}: Unit '${unitName}' has base '${unitBase}', expected '${baseUnit}'`);
+        invalidUnit = true;
+        break;
+      }
+
+      baseUnits.add(unit.baseUnit);
+      rowUnits.push(unit);
+    }
+
+    if (invalidUnit) continue;
+
+    if (baseUnits.size > 1) {
+      errors.push(`Row ${rowNum}: Units must share base`);
+      continue;
+    }
+
+    const thresholdUnit = unitMap.get(
+      threshold.unitName.trim()
+    );
+
+    if (!thresholdUnit) {
+      errors.push(`Row ${rowNum}: Threshold unit '${threshold.unitName}' not found`);
+      continue;
+    }
+
+    // Validate threshold unit is in the list of selected units?
+    // The previous logic didn't explicitly enforce this, but usually threshold unit should be one of the ingredient's units.
+    // Let's enforce it to be safe, or at least consistent with single creation.
+    const isThresholdInUnits = rowUnits.some(u => String(u._id) === String(thresholdUnit._id));
+    if (!isThresholdInUnits) {
+      errors.push(`Row ${rowNum}: Threshold unit must be one of the selected units`);
+      continue;
+    }
+
+    if (Number(threshold.critical) > Number(threshold.low)) {
+      errors.push(`Row ${rowNum}: Critical > Low`);
+      continue;
+    }
+
+    existingNames.add(normalizedName);
+
+    docsToInsert.push({
+      tenant: {
+        tenantId: tenantContext.tenantId,
+        tenantName: tenantContext.tenantName,
+      },
+
+      name: name.trim(),
+
+      unit: rowUnits.map(u => ({
+        unitId: u._id,
+        unitName: u.unit,
+        baseUnit: u.baseUnit,
+        conversionRate: u.conversionRate,
+      })),
+
+      threshold: {
+        lowInBase:
+          Number(threshold.low) *
+          thresholdUnit.conversionRate,
+
+        criticalInBase:
+          Number(threshold.critical) *
+          thresholdUnit.conversionRate,
+
+        unit: {
+          unitId: thresholdUnit._id,
+          unitName: thresholdUnit.unit,
+          baseUnit: thresholdUnit.baseUnit,
+          conversionRate: thresholdUnit.conversionRate,
+        },
+      },
+    });
+  }
+
+  /* ---------------------------
+     Step 5: Bulk insert
+  ----------------------------*/
+  let insertedDocs = [];
+
+  if (docsToInsert.length) {
+    insertedDocs = await IngredientMaster.insertMany(
+      docsToInsert,
+      { ordered: false }
+    );
+  }
+
+  /* ---------------------------
+     Step 6: Async cache writes
+  ----------------------------*/
+  Promise.allSettled(
+    insertedDocs.map(doc => {
+      const key = cacheService.generateKey(
+        "ingredient",
+        tenantContext.tenantId,
+        doc._id
+      );
+      return cacheService.set(key, doc);
+    })
+  );
+
+  /* ---------------------------
+     Response
+  ----------------------------*/
+  return res.status(201).json(
+    new ApiResoponse(
+      201,
+      {
+        inserted: insertedDocs.length,
+        failed: errors.length,
+        errors,
+      },
+      "Bulk ingredient creation completed"
+    )
+  );
+});
 
 
 export const getAllIngredients = asyncHandler(async (req, res) => {
@@ -197,7 +411,7 @@ export const getAllIngredientsInOnce = asyncHandler(async (req, res) => {
   const ingredients = await IngredientMaster.find(filter)
     .sort({ createdAt: -1 });
 
- 
+
 
   return res.status(200).json(
     new ApiResoponse(

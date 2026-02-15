@@ -37,10 +37,10 @@ export function CreateItemModal({ open, onOpenChange, isUpdate=false }) {
     setMessage("")
 
     try {
-      await createItem({
+      await createItem([{
         itemName: form.itemName,
         price: Number(form.price),
-      }).unwrap()
+      }]).unwrap()
 
       setStatus("success")
       setMessage("Item created successfully")

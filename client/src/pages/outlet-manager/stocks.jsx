@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import CsvScanner from "@/components/common/CsvScanner";
 
 import DataCard from "@/components/data-card/data-card";
 import SiteHeader from "@/components/site-header";
@@ -16,7 +17,7 @@ import { CreateStockMovementForm } from "@/components/Form/outlet-manager-form/c
 import { ingredientColumn } from "@/utils/columns/outlet-manager";
 import { SkeletonLoader } from "@/components/laoder";
 
-import {debounce} from "lodash";
+import { debounce } from "lodash";
 
 export const Stocks = () => {
   const dispatch = useDispatch();
@@ -62,7 +63,7 @@ export const Stocks = () => {
       debounce((value) => {
         setPagination((prev) => ({
           ...prev,
-          pageIndex: 0, 
+          pageIndex: 0,
         }));
 
         setSearch(value);
@@ -83,10 +84,12 @@ export const Stocks = () => {
         isRefetch={true}
         onRefetch={refetch}
         actionTooltip="Refetch"
-      />
+      >
+        {/* <CsvScanner type="stock" onSuccess={refetch} outletId={user?.outlet?.outletId} /> */}
+      </SiteHeader>
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
-        {isLoading  ? (
+        {isLoading ? (
           <SkeletonLoader />
         ) : (
           <DataCard

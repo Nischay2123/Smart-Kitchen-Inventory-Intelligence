@@ -68,6 +68,7 @@ export function CreateIngredientModal({ open, onOpenChange }) {
         },
       }).unwrap()
 
+
       setStatus("success")
       setMessage("Ingredient created successfully")
 
@@ -250,7 +251,7 @@ export function CreateIngredientModal({ open, onOpenChange }) {
         )}
 
         {status === "error" && (
-          <Error setStatus={setStatus} />
+          <Error setStatus={setStatus} message={message}/>
         )}
 
       </DialogContent>

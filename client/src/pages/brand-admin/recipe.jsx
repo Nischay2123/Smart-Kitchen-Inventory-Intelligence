@@ -1,5 +1,6 @@
 import DataCard from '@/components/data-card/data-card'
 import SiteHeader from '@/components/site-header'
+import CsvScanner from '@/components/common/CsvScanner'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -20,11 +21,12 @@ export const Recipe = () => {
     pageSize: 10,
   })
   const [search, setSearch] = useState("");
-  
+
   const {
     data,
     isLoading,
     isError,
+    refetch
   } = useGetAllItemsQuery({
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
@@ -48,32 +50,34 @@ export const Recipe = () => {
     }
   }
   const debouncedSearch = React.useMemo(
-      () =>
-        debounce((value) => {
-          setPagination((prev) => ({
-            ...prev,
-            pageIndex: 0, 
-          }));
-  
-          setSearch(value);
-        }, 400),
-      []
-    );
-  
-    React.useEffect(() => {
-      return () => debouncedSearch.cancel();
-    }, [debouncedSearch]);
+    () =>
+      debounce((value) => {
+        setPagination((prev) => ({
+          ...prev,
+          pageIndex: 0,
+        }));
+
+        setSearch(value);
+      }, 400),
+    []
+  );
+
+  React.useEffect(() => {
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
   return (
     <div className='w-full bg-gray-50 min-h-screen'>
       <SiteHeader
         headerTitle={`Recipes`}
         description="Create and Edit Recipes Items For all Outlets"
         isTooltip={false}
-      />
+      >
+        {/* <CsvScanner type="recipe" onSuccess={refetch} /> */}
+      </SiteHeader>
       <div className="flex-1 min-h-0 p-4 lg:p-6">
         {
           isLoading ?
-            <SkeletonLoader/>:
+            <SkeletonLoader /> :
             <DataCard
               title={"Create and update Recipies for the items"}
               searchable

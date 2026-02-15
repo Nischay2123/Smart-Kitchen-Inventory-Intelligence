@@ -10,30 +10,30 @@ export const initSocket = (httpServer, corsOptions) => {
   io = new Server(httpServer, {
     cors: corsOptions,
   });
-  
+
   io.use((socket, next) => {
 
-  if (socket.handshake.auth?.service === "worker") {
-    return next(); 
-  }
-  try {
-    parser(socket.request, {}, () => {});
-
-    const { accessToken } = socket.request.cookies || {};
-
-    if (!accessToken) {
-      return next(new Error("Unauthorized"));
+    if (socket.handshake.auth?.service === "worker") {
+      return next();
     }
-    
-    const payload = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
+    try {
+      parser(socket.request, {}, () => { });
 
-    socket.user = payload;
-    next();
-  } catch (err) {
-    console.log("Socket auth error:", err.message);
-    next(new Error("Unauthorized"));
-  }
-});
+      const { accessToken } = socket.request.cookies || {};
+
+      if (!accessToken) {
+        return next(new Error("Unauthorized"));
+      }
+
+      const payload = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
+
+      socket.user = payload;
+      next();
+    } catch (err) {
+      console.log("Socket auth error:", err.message);
+      next(new Error("Unauthorized"));
+    }
+  });
 
 
   io.on("connection", (socket) => {
@@ -42,16 +42,30 @@ export const initSocket = (httpServer, corsOptions) => {
     socket.on("join_outlet", ({ tenantId, outletId }) => {
       if (!tenantId || !outletId) return;
       // console.log(socket.user);
-      
+
       if (socket.user.tenantId !== tenantId || socket.user.outletId !== outletId) {
         console.warn(`User ${socket.user._id} attempted unauthorized join to ${tenantId}`);
         return;
       }
-      
+
       const room = `tenant:${tenantId}:outlet:${outletId}`;
       socket.join(room);
 
       console.log(`Joined room ${room}`);
+    });
+
+    socket.on("join_tenant", ({ tenantId }) => {
+      if (!tenantId) return;
+
+      // Strict check: User must belong to this tenant
+      if (socket.user.tenantId !== tenantId) {
+        console.warn(`User ${socket.user._id} attempted unauthorized join to tenant ${tenantId}`);
+        return;
+      }
+
+      const room = `tenant:${tenantId}`;
+      socket.join(room);
+      console.log(`Joined tenant room ${room}`);
     });
 
     socket.on("disconnect", () => {
@@ -60,7 +74,7 @@ export const initSocket = (httpServer, corsOptions) => {
 
     socket.on("worker_emit", ({ room, event, payload }) => {
       // console.log("socket server",room);
-      
+
       io.to(room).emit(event, payload);
     });
 

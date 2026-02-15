@@ -1,11 +1,12 @@
 import express from "express";
 import { verifyJwt } from "../middlerwares/auth.middleware.js";
-import { createIngredient, deleteIngredient, getAllIngredients, getAllIngredientsInOnce } from "../controllers/ingredientMaster.controller.js";
+import { createIngredient, createIngredientBulk, deleteIngredient, getAllIngredients, getAllIngredientsInOnce } from "../controllers/ingredientMaster.controller.js";
 
 
 const router = express.Router();
 
 router.post("/", verifyJwt, createIngredient);
+router.post("/bulk", verifyJwt, createIngredientBulk);
 router.get("/", verifyJwt, getAllIngredients);
 router.get("/all", verifyJwt, getAllIngredientsInOnce);
 router.delete("/:ingredientId", verifyJwt, deleteIngredient);

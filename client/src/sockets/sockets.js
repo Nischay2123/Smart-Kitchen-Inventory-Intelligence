@@ -14,7 +14,7 @@ export const useStockSocket = ({ tenantId, outletId, onUpdate }) => {
 
     socket.on("stock_updated", onUpdate);
 
-    return () => { 
+    return () => {
       socket.off("stock_updated", onUpdate);
       socket.off("stock_alert");
     };
@@ -31,7 +31,7 @@ export const useStockMovementSocket = ({
   useEffect(() => {
     // console.log(tenantId, outletId);
     if (!tenantId || !outletId) return;
-    
+
     socket.emit("join_outlet", { tenantId, outletId });
 
     socket.on("STOCK_MOVEMENT_CREATED", onCreate);
@@ -52,10 +52,10 @@ export const useSalesSocket = ({
   onError,
 }) => {
   useEffect(() => {
-    
+
     // console.log(tenantId, outletId);
     if (!tenantId || !outletId) return;
-    
+
     socket.emit("join_outlet", { tenantId, outletId });
 
     socket.on("SALES_CREATED", onCreate);
@@ -69,3 +69,4 @@ export const useSalesSocket = ({
     };
   }, [tenantId, outletId, onCreate, onError]);
 };
+

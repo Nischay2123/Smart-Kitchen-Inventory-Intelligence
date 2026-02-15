@@ -7,60 +7,141 @@ import mongoose from "mongoose";
 import { paginate } from "../utils/pagination.js";
 
 
+// export const createMenuItem = asyncHandler(async (req, res) => {
+//   if (req.user.role !== "BRAND_ADMIN") {
+//     throw new ApiError(403, "Only BRAND_ADMIN can create menu items");
+//   }
+
+//   const { itemName, price } = req.body;
+
+//   if (!itemName || price === undefined) {
+//     throw new ApiError(400, "itemName and price are required");
+//   }
+
+//   if (price < 0) {
+//     throw new ApiError(400, "Price must be greater than or equal to 0");
+//   }
+
+//   const tenantContext = req.user.tenant;
+
+//   if (!tenantContext?.tenantId) {
+//     throw new ApiError(400, "User is not associated with any tenant");
+//   }
+
+
+//   const existingItem = await MenuItem.findOne({
+//     "tenant.tenantId": tenantContext.tenantId,
+//     itemName: itemName.trim(),
+//   });
+
+//   if (existingItem) {
+//     throw new ApiError(
+//       409,
+//       "Menu item with this name already exists for this tenant"
+//     );
+//   }
+
+//   const menuItem = await MenuItem.create({
+//     tenant: {
+//       tenantId: tenantContext.tenantId,
+//       tenantName: tenantContext.tenantName,
+//     },
+//     itemName: itemName.trim(),
+//     price,
+//   });
+
+//   return res.status(201).json(
+//     new ApiResoponse(
+//       201,
+//       {
+//         _id: menuItem._id,
+//         itemName: menuItem.itemName,
+//         price: menuItem.price,
+//         tenant: menuItem.tenant,
+//         createdAt: menuItem.createdAt,
+//       },
+//       "Menu item created successfully"
+//     )
+//   );
+// });
+
 export const createMenuItem = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
     throw new ApiError(403, "Only BRAND_ADMIN can create menu items");
   }
 
-  const { itemName, price } = req.body;
+  const items = req.body;
 
-  if (!itemName || price === undefined) {
-    throw new ApiError(400, "itemName and price are required");
-  }
-
-  if (price < 0) {
-    throw new ApiError(400, "Price must be greater than or equal to 0");
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new ApiError(400, "Request body must be an array");
   }
 
   const tenantContext = req.user.tenant;
 
   if (!tenantContext?.tenantId) {
-    throw new ApiError(400, "User is not associated with any tenant");
+    throw new ApiError(400, "User not associated with tenant");
   }
 
+  const errors = [];
+  const validItems = [];
 
-  const existingItem = await MenuItem.findOne({
+  const existingItems = await MenuItem.find({
     "tenant.tenantId": tenantContext.tenantId,
-    itemName: itemName.trim(),
+  }).select("itemName");
+
+  const existingNames = new Set(
+    existingItems.map(i => i.itemName.toLowerCase())
+  );
+
+  items.forEach((row, index) => {
+    const { itemName, price } = row;
+
+    if (!itemName || price === undefined) {
+      errors.push(`Row ${index + 1}: Missing itemName or price`);
+      return;
+    }
+
+    if (price < 0) {
+      errors.push(`Row ${index + 1}: Price must be >= 0`);
+      return;
+    }
+
+    const normalized = itemName.trim().toLowerCase();
+
+    if (existingNames.has(normalized)) {
+      errors.push(
+        `Row ${index + 1}: Item '${itemName}' already exists`
+      );
+      return;
+    }
+
+    existingNames.add(normalized);
+
+    validItems.push({
+      tenant: {
+        tenantId: tenantContext.tenantId,
+        tenantName: tenantContext.tenantName,
+      },
+      itemName: itemName.trim(),
+      price,
+    });
   });
 
-  if (existingItem) {
-    throw new ApiError(
-      409,
-      "Menu item with this name already exists for this tenant"
-    );
+  let insertedDocs = [];
+
+  if (validItems.length) {
+    insertedDocs = await MenuItem.insertMany(validItems);
   }
-
-  const menuItem = await MenuItem.create({
-    tenant: {
-      tenantId: tenantContext.tenantId,
-      tenantName: tenantContext.tenantName,
-    },
-    itemName: itemName.trim(),
-    price,
-  });
 
   return res.status(201).json(
     new ApiResoponse(
       201,
       {
-        _id: menuItem._id,
-        itemName: menuItem.itemName,
-        price: menuItem.price,
-        tenant: menuItem.tenant,
-        createdAt: menuItem.createdAt,
+        inserted: insertedDocs.length,
+        failed: errors.length,
+        errors,
       },
-      "Menu item created successfully"
+      "Bulk menu item creation completed"
     )
   );
 });
