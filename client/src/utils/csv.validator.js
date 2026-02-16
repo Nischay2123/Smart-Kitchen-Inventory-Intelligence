@@ -28,23 +28,13 @@ export const CSV_SCHEMAS = {
     },
     recipe: {
         headers: ["ItemName", "IngredientName", "Quantity", "Unit"],
-        required: ["ItemName", "IngredientName", "Quantity"],
+        required: ["ItemName", "IngredientName", "Quantity", "Unit"],
         validateRow: (row, index) => {
             const errors = [];
             if (!row.ItemName?.trim()) errors.push(`Row ${index + 1}: ItemName is required`);
             if (!row.IngredientName?.trim()) errors.push(`Row ${index + 1}: IngredientName is required`);
             if (!row.Quantity || isNaN(Number(row.Quantity))) errors.push(`Row ${index + 1}: Quantity must be a valid number`);
-            return errors;
-        }
-    },
-    stock: {
-        headers: ["IngredientName", "Quantity", "UnitCost", "AlertState"],
-        required: ["IngredientName", "Quantity"],
-        validateRow: (row, index) => {
-            const errors = [];
-            if (!row.IngredientName?.trim()) errors.push(`Row ${index + 1}: IngredientName is required`);
-            if (!row.Quantity || isNaN(Number(row.Quantity))) errors.push(`Row ${index + 1}: Quantity must be a valid number`);
-            if (row.UnitCost && isNaN(Number(row.UnitCost))) errors.push(`Row ${index + 1}: UnitCost must be a number`);
+            if (!row.Unit?.trim()) errors.push(`Row ${index + 1}: Unit is required`);
             return errors;
         }
     },

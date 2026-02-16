@@ -7,6 +7,7 @@ import { validateCsv } from '../../utils/csv.validator';
 import { useCreateItemMutation } from '../../redux/apis/brand-admin/itemApi';
 import { useCreateIngredientsBulkMutation } from '../../redux/apis/brand-admin/ingredientApi';
 import { useCreateBulkStockMovementMutation } from '../../redux/apis/outlet-manager/stockMovementApi';
+import { useCreateBulkRecipesMutation } from '../../redux/apis/brand-admin/recipeApi';
 import { useAuth } from "@/auth/auth";
 
 const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
@@ -21,9 +22,10 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
     const [createItems, { isLoading: isCreatingItems }] = useCreateItemMutation();
     const [createIngredients, { isLoading: isCreatingIngredients }] = useCreateIngredientsBulkMutation();
     const [createBulkStockMovement, { isLoading: isCreatingStockMovement }] = useCreateBulkStockMovementMutation();
+    const [createBulkRecipes, { isLoading: isCreatingRecipes }] = useCreateBulkRecipesMutation();
 
 
-    const loading = isUploading || isProcessing || isCreatingItems || isCreatingIngredients || isCreatingStockMovement;
+    const loading = isUploading || isProcessing || isCreatingItems || isCreatingIngredients || isCreatingStockMovement || isCreatingRecipes;
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -58,7 +60,7 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                             Price: row.Price
                         }));
 
-                        const response = await createBulkStockMovement( movements).unwrap();
+                        const response = await createBulkStockMovement(movements).unwrap();
 
                         const inserted = response.data.inserted || 0;
                         const failed = response.data.failed || 0;
@@ -166,6 +168,45 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                     return;
                 }
 
+                if (type === 'recipe') {
+                    try {
+                        const recipes = results.data.map(row => ({
+                            ItemName: row.ItemName,
+                            IngredientName: row.IngredientName,
+                            Quantity: row.Quantity,
+                            Unit: row.Unit
+                        }));
+
+                        const response = await createBulkRecipes(recipes).unwrap();
+
+                        const inserted = response.data.insertedCount || 0;
+                        const updated = response.data.updatedCount || 0;
+                        const failed = response.data.failed || 0;
+                        const errorList = response.data.errors || [];
+                        const totalProcessed = inserted + updated;
+
+                        if (totalProcessed > 0) {
+                            setSuccessMessage(`Successfully processed ${totalProcessed} recipes!`);
+                        } else {
+                            setSuccessMessage("");
+                        }
+
+                        setErrors(errorList);
+                        setDialogOpen(true);
+                        onSuccess();
+
+                    } catch (err) {
+                        console.error("Create Recipes Error", err);
+                        setErrors([err.data?.message || err.message || "Failed to create recipes"]);
+                        setSuccessMessage("");
+                        setDialogOpen(true);
+                    } finally {
+                        setIsUploading(false);
+                        e.target.value = null;
+                    }
+                    return;
+                }
+
             },
             error: (err) => {
                 setErrors(["Failed to parse CSV: " + err.message]);
@@ -187,7 +228,7 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
     };
 
     return (
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center pr-6">
             <input
                 type="file"
                 accept=".csv"

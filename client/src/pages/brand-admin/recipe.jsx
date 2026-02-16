@@ -72,7 +72,7 @@ export const Recipe = () => {
         description="Create and Edit Recipes Items For all Outlets"
         isTooltip={false}
       >
-        {/* <CsvScanner type="recipe" onSuccess={refetch} /> */}
+        <CsvScanner type="recipe" onSuccess={refetch} />
       </SiteHeader>
       <div className="flex-1 min-h-0 p-4 lg:p-6">
         {
