@@ -359,7 +359,191 @@ export const createStockMovement = asyncHandler(async (req, res) => {
   }
 });
 
+export const bulkCreateStockMovement = asyncHandler(async (req, res) => {
+  const { movements } = req.body;
 
+  if (!movements || !Array.isArray(movements) || movements.length === 0) {
+    throw new ApiError(400, "Movements array is required");
+  }
+
+  if (req.user.role !== "OUTLET_MANAGER") {
+    throw new ApiError(
+      401,
+      "Unauthorized Request, Only Outlet Manager can access"
+    );
+  }
+
+  const context = validateContext(req);
+
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    const VALID_REASONS = [
+      "PURCHASE",
+      "POSITIVE_ADJUSTMENT",
+      "NEGATIVE_ADJUSTMENT",
+    ];
+
+    const errors = [];
+    const movementDocs = [];
+
+    const ingredientNames = movements
+      .map((m) => m.IngredientName?.trim())
+      .filter(Boolean);
+
+    const ingredients = await IngredientMaster.find({
+      "tenant.tenantId": context.tenant.tenantId,
+      name: { $in: ingredientNames.map(n => new RegExp(`^${n}$`, "i")) }
+    }).session(session);
+
+    const ingredientMap = new Map(
+      ingredients.map((i) => [i.name.toLowerCase(), i])
+    );
+
+    for (const [index, row] of movements.entries()) {
+      const rowNum = index + 1;
+
+      const {
+        IngredientName,
+        Quantity,
+        Unit,
+        Reason,
+        Price,
+      } = row;
+
+      if (!IngredientName || !Quantity || !Unit || !Reason) {
+        errors.push(`Row ${rowNum}: Missing required fields`);
+        continue;
+      }
+
+      const quantityNum = Number(Quantity);
+      if (isNaN(quantityNum) || quantityNum <= 0) {
+        errors.push(`Row ${rowNum}: Invalid Quantity`);
+        continue;
+      }
+
+      if (!VALID_REASONS.includes(Reason)) {
+        errors.push(`Row ${rowNum}: Invalid Reason`);
+        continue;
+      }
+
+      const ingredient = ingredientMap.get(
+        IngredientName.toLowerCase()
+      );
+
+      if (!ingredient) {
+        errors.push(
+          `Row ${rowNum}: Ingredient '${IngredientName}' not found`
+        );
+        continue;
+      }
+
+      const unit = ingredient.unit.find(
+        u => u.unitName.toLowerCase() === Unit.toLowerCase()
+      );
+
+      if (!unit) {
+        errors.push(
+          `Row ${rowNum}: Unit '${Unit}' invalid`
+        );
+        continue;
+      }
+
+      const purchasePrice = Number(Price);
+
+      if (
+        Reason === "PURCHASE" &&
+        (isNaN(purchasePrice) || purchasePrice < 0)
+      ) {
+        errors.push(
+          `Row ${rowNum}: Price required for PURCHASE`
+        );
+        continue;
+      }
+
+      const payload = {
+        ingredientMasterId: ingredient._id,
+        quantity: quantityNum,
+        reason: Reason,
+        purchasePricePerUnit:
+          Reason === "PURCHASE" ? purchasePrice : undefined,
+        unitId: unit.unitId.toString(),
+      };
+
+      const calc = calculateQuantities({
+        quantity: payload.quantity,
+        unit,
+        reason: payload.reason,
+      });
+
+      let stock;
+      try {
+        stock = await upsertStock({
+          ingredient,
+          context,
+          payload,
+          calc,
+          session,
+          unit,
+        });
+      } catch (err) {
+        errors.push(`Row ${rowNum}: ${err.message}`);
+        continue;
+      }
+
+      movementDocs.push({
+        tenant: context.tenant,
+        outlet: context.outlet,
+        ingredient: {
+          ingredientMasterId: ingredient._id,
+          ingredientMasterName: ingredient.name,
+        },
+        quantity: payload.quantity,
+        unit: unit.unitName,
+        reason: payload.reason,
+        stockId: stock._id,
+        purchasePriceInUnit:
+          payload.reason === "PURCHASE"
+            ? payload.purchasePricePerUnit
+            : undefined,
+      });
+    }
+
+    if (movementDocs.length === 0) {
+      await session.abortTransaction();
+      return res.status(200).json(
+        new ApiResoponse(
+          200,
+          { inserted: 0, failed: errors.length, errors },
+          "Bulk import failed"
+        )
+      );
+    }
+
+    await StockMovement.insertMany(movementDocs, { session });
+
+    await session.commitTransaction();
+
+    return res.status(200).json(
+      new ApiResoponse(
+        200,
+        {
+          inserted: movementDocs.length,
+          failed: errors.length,
+          errors,
+        },
+        "Bulk stock movement processed"
+      )
+    );
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+});
 
 export const getAllStockMovementsForOrders = asyncHandler(async (req, res) => {
   if (req.user.role !== "OUTLET_MANAGER") {
@@ -445,8 +629,6 @@ export const getAllStockMovementsExceptOrders = asyncHandler(async (req, res) =>
     }, "Stock movements fetched")
   );
 });
-
-
 
 export const getOrderConsumptionSummary = asyncHandler(async (req, res) => {
   if (req.user.role !== "OUTLET_MANAGER") {

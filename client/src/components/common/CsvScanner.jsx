@@ -6,6 +6,7 @@ import { Upload, Download, FileSpreadsheet, Loader2 } from "lucide-react";
 import { validateCsv } from '../../utils/csv.validator';
 import { useCreateItemMutation } from '../../redux/apis/brand-admin/itemApi';
 import { useCreateIngredientsBulkMutation } from '../../redux/apis/brand-admin/ingredientApi';
+import { useCreateBulkStockMovementMutation } from '../../redux/apis/outlet-manager/stockMovementApi';
 import { useAuth } from "@/auth/auth";
 
 const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
@@ -19,10 +20,10 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
     const fileInputRef = useRef(null);
     const [createItems, { isLoading: isCreatingItems }] = useCreateItemMutation();
     const [createIngredients, { isLoading: isCreatingIngredients }] = useCreateIngredientsBulkMutation();
+    const [createBulkStockMovement, { isLoading: isCreatingStockMovement }] = useCreateBulkStockMovementMutation();
 
 
-
-    const loading = isUploading || isProcessing || isCreatingItems || isCreatingIngredients;
+    const loading = isUploading || isProcessing || isCreatingItems || isCreatingIngredients || isCreatingStockMovement;
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -44,6 +45,44 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                     setDialogOpen(true);
                     setIsUploading(false);
                     e.target.value = null;
+                    return;
+                }
+
+                if (type === 'stock-movement') {
+                    try {
+                        const movements = results.data.map(row => ({
+                            IngredientName: row.IngredientName,
+                            Quantity: row.Quantity,
+                            Unit: row.Unit,
+                            Reason: row.Reason,
+                            Price: row.Price
+                        }));
+
+                        const response = await createBulkStockMovement( movements).unwrap();
+
+                        const inserted = response.data.inserted || 0;
+                        const failed = response.data.failed || 0;
+                        const errorList = response.data.errors || [];
+
+                        if (inserted > 0) {
+                            setSuccessMessage(`Successfully processed ${inserted} movements!`);
+                        } else {
+                            setSuccessMessage("");
+                        }
+
+                        setErrors(errorList);
+                        setDialogOpen(true);
+                        onSuccess();
+
+                    } catch (err) {
+                        console.error("Create Stock Movement Error", err);
+                        setErrors([err.data?.message || err.message || "Failed to create stock movements"]);
+                        setSuccessMessage("");
+                        setDialogOpen(true);
+                    } finally {
+                        setIsUploading(false);
+                        e.target.value = null;
+                    }
                     return;
                 }
 
@@ -126,6 +165,7 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                     }
                     return;
                 }
+
             },
             error: (err) => {
                 setErrors(["Failed to parse CSV: " + err.message]);

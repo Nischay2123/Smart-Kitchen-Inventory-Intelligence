@@ -47,6 +47,28 @@ export const CSV_SCHEMAS = {
             if (row.UnitCost && isNaN(Number(row.UnitCost))) errors.push(`Row ${index + 1}: UnitCost must be a number`);
             return errors;
         }
+    },
+    "stock-movement": {
+        headers: ["IngredientName", "Quantity", "Unit", "Reason", "Price", "Date"],
+        required: ["IngredientName", "Quantity", "Unit", "Reason"],
+        validateRow: (row, index) => {
+            const errors = [];
+            if (!row.IngredientName?.trim()) errors.push(`Row ${index + 1}: IngredientName is required`);
+            if (!row.Quantity || isNaN(Number(row.Quantity)) || Number(row.Quantity) <= 0)
+                errors.push(`Row ${index + 1}: Quantity must be a valid positive number`);
+            if (!row.Unit?.trim()) errors.push(`Row ${index + 1}: Unit is required`);
+
+            const validReasons = ["PURCHASE", "POSITIVE_ADJUSTMENT", "NEGATIVE_ADJUSTMENT", "WASTAGE", "CONSUMPTION"];
+            if (!row.Reason || !validReasons.includes(row.Reason.trim()))
+                errors.push(`Row ${index + 1}: Invalid Reason. Allowed: ${validReasons.join(", ")}`);
+
+            if (row.Reason === "PURCHASE") {
+                if (!row.Price || isNaN(Number(row.Price)) || Number(row.Price) < 0)
+                    errors.push(`Row ${index + 1}: Price is required for PURCHASE`);
+            }
+
+            return errors;
+        }
     }
 };
 

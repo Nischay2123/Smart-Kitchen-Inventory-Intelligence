@@ -85,7 +85,7 @@ export const Stocks = () => {
         onRefetch={refetch}
         actionTooltip="Refetch"
       >
-        {/* <CsvScanner type="stock" onSuccess={refetch} outletId={user?.outlet?.outletId} /> */}
+        <CsvScanner type="stock-movement" onSuccess={refetch} outletId={user?.outlet?.outletId} />
       </SiteHeader>
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">

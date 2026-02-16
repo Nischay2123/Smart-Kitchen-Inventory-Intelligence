@@ -37,6 +37,15 @@ export const StockMovement = baseApi.injectEndpoints({
       invalidatesTags: ["Stocks"],
     }),
 
+    createBulkStockMovement: builder.mutation({
+      query: (movements) => ({
+        url: "stock-movements/bulk",
+        method: "POST",
+        body: { movements },
+      }),
+      invalidatesTags: ["Stocks"],
+    }),
+
 
 
   }),
@@ -45,6 +54,7 @@ export const StockMovement = baseApi.injectEndpoints({
 export const {
   useGetStockMovementDetailsQuery,
   useCreateStockMovementMutation,
+  useCreateBulkStockMovementMutation,
   useGetSaleStockMovementDetailsQuery,
   useGetSaleStockConsumptionQuery
 } = StockMovement;

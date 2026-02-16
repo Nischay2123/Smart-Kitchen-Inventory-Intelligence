@@ -163,7 +163,6 @@ export const getTemplate = async (req, res) => {
 
         switch (type) {
             case "ingredient":
-                // Headers: Name, Units, BaseUnit, Low, Critical, ThresholdUnit
                 csvStream.write({
                     Name: "Example Ingredient",
                     Units: "kg $$ g",
@@ -174,15 +173,38 @@ export const getTemplate = async (req, res) => {
                 });
                 break;
             case "menu-item":
-                // Headers: ItemName, Price
                 csvStream.write({ ItemName: "Example Item", Price: "100" });
                 break;
             case "recipe":
                 csvStream.write({ ItemName: "", IngredientName: "", Quantity: "", Unit: "" });
                 break;
-            case "stock":
-                csvStream.write({ IngredientName: "", Quantity: "", UnitCost: "", AlertState: "" });
+            case "stock-movement":
+                csvStream.write({
+                    IngredientName: "Tomato",
+                    Quantity: "10",
+                    Unit: "kg",
+                    Reason: "PURCHASE",
+                    Price: "30"
+                });
+
+                csvStream.write({
+                    IngredientName: "Tomato",
+                    Quantity: "2",
+                    Unit: "kg",
+                    Reason: "POSITIVE_ADJUSTMENT",
+                    Price: ""
+                });
+
+                csvStream.write({
+                    IngredientName: "Tomato",
+                    Quantity: "1",
+                    Unit: "kg",
+                    Reason: "NEGATIVE_ADJUSTMENT",
+                    Price: ""
+                });
+
                 break;
+
         }
         csvStream.end();
 
