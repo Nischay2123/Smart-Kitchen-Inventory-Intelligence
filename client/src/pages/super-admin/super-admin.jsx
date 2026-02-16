@@ -3,17 +3,18 @@ import { useNavigate } from "react-router-dom";
 import SiteHeader from "@/components/site-header";
 import BrandGrid from "@/components/card/grid";
 import { CreateBrandModal } from "@/components/Form/super-admin-form/create-brand-form";
-import { useGetAllTenantsQuery,useDeleteBrandMutation } from "@/redux/apis/super-admin/brandApi";
+import { useGetAllTenantsQuery, useDeleteBrandMutation } from "@/redux/apis/super-admin/brandApi";
 import { useLogoutMutation } from "@/redux/apis/userApi";
 import { useAuth } from "@/auth/auth";
+import { Button } from "@/components/ui/button";
 
 const SuperAdmin = () => {
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false);
   const [logoutUser] = useLogoutMutation();
   const { user, setUser } = useAuth();
-  
-  
+
+
 
   const {
     data,
@@ -32,7 +33,7 @@ const SuperAdmin = () => {
 
   const handleDeleteBrand = async (brand) => {
     try {
-      await deleteBrand({tenantId:brand.id}).unwrap();
+      await deleteBrand({ tenantId: brand.id }).unwrap();
     } catch (err) {
       console.error(err);
       alert(err?.data?.message || "Failed to delete brand");
@@ -42,7 +43,7 @@ const SuperAdmin = () => {
     try {
       await logoutUser().unwrap();
     } finally {
-      setUser(null);      
+      setUser(null);
     }
   };
 
@@ -55,7 +56,14 @@ const SuperAdmin = () => {
         onActionClick={() => setOpen(true)}
         isLogout={true}
         onLogOut={handleLogout}
-      />
+      >
+        <Button
+          variant="outline"
+          onClick={() => navigate("/scheduler-monitor")}
+        >
+          Scheduler Monitor
+        </Button>
+      </SiteHeader>
 
       <div className="px-4 lg:p-6">
         {isLoading && (
@@ -74,12 +82,12 @@ const SuperAdmin = () => {
           <BrandGrid
             brands={brands}
             onOpenBrand={(brand) =>
-              navigate(`/brand/${brand.id}`,{
+              navigate(`/brand/${brand.id}`, {
                 state: { name: brand.name },
               })
             }
             onDeleteBrand={handleDeleteBrand}
-            disabled={isDeleting} 
+            disabled={isDeleting}
           />
         )}
       </div>
