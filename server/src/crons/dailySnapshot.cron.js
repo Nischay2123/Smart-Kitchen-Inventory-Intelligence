@@ -19,7 +19,9 @@ export const runDailySnapshotJob = async () => {
           scheduledAt: new Date(),
         },
         lastError: err.message,
-        nextRetryAt: new Date(Date.now() + 10 * 60 * 1000) // Retry in 10 minutes
+        nextRetryAt: new Date(Date.now() + 10 * 60 * 1000),
+        status: "pending_retry",
+        source: "scheduler"
       });
       console.log("Failed Snapshot Job saved to QueueFail");
     } catch (saveErr) {

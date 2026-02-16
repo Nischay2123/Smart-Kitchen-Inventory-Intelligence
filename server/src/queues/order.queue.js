@@ -14,5 +14,6 @@ export const orderQueue = new Queue("orders", {
       delay: 1000,
     },
     removeOnComplete: 100,
+    removeOnFail: 1000, 
   },
 });

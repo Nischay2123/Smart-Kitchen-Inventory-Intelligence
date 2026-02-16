@@ -263,7 +263,7 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                         </DialogDescription>
                     </DialogHeader>
                     {errors.length > 0 && (
-                        <div className="max-h-[300px] overflow-y-auto bg-muted p-4 rounded text-sm text-destructive">
+                        <div className="max-h-75 overflow-y-auto bg-muted p-4 rounded text-sm text-destructive">
                             <ul className="list-disc pl-4 space-y-1">
                                 {errors.map((err, i) => (
                                     <li key={i}>{err}</li>

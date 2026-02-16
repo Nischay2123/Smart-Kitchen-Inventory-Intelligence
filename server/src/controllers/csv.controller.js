@@ -7,7 +7,6 @@ import Tenant from "../models/tenant.model.js";
 import Outlet from "../models/outlet.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
-import { ApiResoponse } from "../utils/apiResponse.js";
 import mongoose from "mongoose";
 
 
@@ -65,11 +64,11 @@ export const exportCsv = asyncHandler(async (req, res) => {
 
     switch (type) {
         case "ingredient": {
-            const ingredients = await IngredientMaster.find({
+            const ingredients = IngredientMaster.find({
                 "tenant.tenantId": tenant.tenantId,
-            }).lean();
+            }).lean().cursor();
 
-            for (const ing of ingredients) {
+            for await (const ing of ingredients) {
                 const thresholdUnit = ing.threshold?.unit;
                 const unitNames = (ing.unit || []).map(u => u.unitName).join(" $$ ");
 
@@ -152,64 +151,112 @@ export const exportCsv = asyncHandler(async (req, res) => {
 });
 
 
-export const getTemplate = async (req, res) => {
-    try {
-        const { type } = req.params;
-        res.setHeader("Content-Type", "text/csv");
-        res.setHeader("Content-Disposition", `attachment; filename=template-${type}.csv`);
+export const getTemplate = asyncHandler(async (req, res) => {
+    const { type } = req.params;
+    const { tenant, outlet } = req.user;
 
-        const csvStream = csv.format({ headers: true });
-        csvStream.pipe(res);
-
-        switch (type) {
-            case "ingredient":
-                csvStream.write({
-                    Name: "Example Ingredient",
-                    Units: "kg $$ g",
-                    BaseUnit: "g",
-                    Low: "10",
-                    Critical: "5",
-                    ThresholdUnit: "kg"
-                });
-                break;
-            case "menu-item":
-                csvStream.write({ ItemName: "Example Item", Price: "100" });
-                break;
-            case "recipe":
-                csvStream.write({ ItemName: "", IngredientName: "", Quantity: "", Unit: "" });
-                break;
-            case "stock-movement":
-                csvStream.write({
-                    IngredientName: "Tomato",
-                    Quantity: "10",
-                    Unit: "kg",
-                    Reason: "PURCHASE",
-                    Price: "30"
-                });
-
-                csvStream.write({
-                    IngredientName: "Tomato",
-                    Quantity: "2",
-                    Unit: "kg",
-                    Reason: "POSITIVE_ADJUSTMENT",
-                    Price: ""
-                });
-
-                csvStream.write({
-                    IngredientName: "Tomato",
-                    Quantity: "1",
-                    Unit: "kg",
-                    Reason: "NEGATIVE_ADJUSTMENT",
-                    Price: ""
-                });
-
-                break;
-
-        }
-        csvStream.end();
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Template failed" });
+    if (!tenant?.tenantId) {
+        throw new ApiError(400, "Tenant ID required");
     }
-};
+
+    await validateTenant(tenant.tenantId);
+
+    let targetOutletId = outlet?.outletId;
+
+    if (type === "stock-movement") {
+        if (!targetOutletId) {
+            throw new ApiError(400, "Outlet ID required");
+        }
+
+        await validateOutlet(tenant.tenantId, targetOutletId);
+    }
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=template-${type}.csv`
+    );
+
+    const csvStream = csv.format({ headers: true });
+    csvStream.pipe(res);
+
+    switch (type) {
+        case "ingredient":
+            if (req.user.role === "OUTLET_MANAGER") {
+                throw new ApiError(
+                    403,
+                    "Only OUTLET_MANAGER can download stock template"
+                );
+            }
+            csvStream.write({
+                Name: "Example Ingredient",
+                Units: "kg $$ g",
+                BaseUnit: "g",
+                Low: "10",
+                Critical: "5",
+                ThresholdUnit: "kg",
+            });
+            break;
+
+        case "menu-item":
+            if (req.user.role === "OUTLET_MANAGER") {
+                throw new ApiError(
+                    403,
+                    "Only OUTLET_MANAGER can download stock template"
+                );
+            }
+            csvStream.write({
+                ItemName: "Example Item",
+                Price: "100",
+            });
+            break;
+
+        case "recipe":
+            if (req.user.role === "OUTLET_MANAGER") {
+                throw new ApiError(
+                    403,
+                    "Only OUTLET_MANAGER can download stock template"
+                );
+            }
+            csvStream.write({
+                ItemName: "Burger",
+                IngredientName: "Cheese",
+                Quantity: "20",
+                Unit: "g",
+            });
+            break;
+
+        case "stock-movement":
+            csvStream.write({
+                IngredientName: "Tomato",
+                Quantity: "10",
+                Unit: "kg",
+                Reason: "PURCHASE",
+                Price: "30",
+            });
+
+            csvStream.write({
+                IngredientName: "Tomato",
+                Quantity: "2",
+                Unit: "kg",
+                Reason: "POSITIVE_ADJUSTMENT",
+                Price: "",
+            });
+
+            csvStream.write({
+                IngredientName: "Tomato",
+                Quantity: "1",
+                Unit: "kg",
+                Reason: "NEGATIVE_ADJUSTMENT",
+                Price: "",
+            });
+
+            break;
+
+        default:
+            throw new ApiError(400, "Invalid template type");
+    }
+
+    csvStream.end();
+});
+

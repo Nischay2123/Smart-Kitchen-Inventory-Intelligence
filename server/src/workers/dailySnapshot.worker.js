@@ -3,6 +3,7 @@ import { Worker } from "bullmq";
 import IORedis from "ioredis";
 import mongoose from "mongoose";
 import { processDailySnapshot } from "../proccessors/dailySnapshot.processor.js";
+import QueueFail from "../models/queueFail.model.js";
 
 const connectDB = async () => {
     try {
@@ -42,6 +43,22 @@ export const dailySnapshotWorker = new Worker(
     }
 );
 
-dailySnapshotWorker.on("failed", (job, err) => {
+dailySnapshotWorker.on("failed", async (job, err) => {
     console.error("Snapshot Job failed", job?.id, err);
+
+    if (job && job.attemptsMade >= job.opts.attempts) {
+        try {
+            await QueueFail.create({
+                eventType: "daily-snapshot",
+                payload: job.data,
+                lastError: `Worker Exhausted: ${err.message}`, 
+                status: "investigate",
+                source: "worker",
+                nextRetryAt: null
+            });
+            console.log(`💀 Snapshot Job ${job.id} moved to DLQ (QueueFail)`);
+        } catch (dbErr) {
+            console.error("CRITICAL: Failed to save Snapshot DLQ entry:", dbErr);
+        }
+    }
 });

@@ -6,6 +6,7 @@ import { processStockMovement } from "../proccessors/stockMovement.processor.js"
 import { processSalesSnapshot } from "../proccessors/salesSnapshot.processor.js";
 import { processAlerts } from "../proccessors/proccessAlerts.processor.js";
 import { ApiError } from "../utils/apiError.js";
+import QueueFail from "../models/queueFail.model.js";
 
 
 
@@ -62,12 +63,28 @@ export const orderWorker = new Worker(
         throw new ApiError(404, "UNKNOWN_JOB_TYPE");
     }
   },
-  { 
-    connection ,
+  {
+    connection,
     concurrency: 5,
   }
 );
 
-orderWorker.on("failed", (job, err) => {
+orderWorker.on("failed", async (job, err) => {
   console.error("Job failed", job?.id, err);
+
+  if (job && job.attemptsMade >= job.opts.attempts) {
+    try {
+      await QueueFail.create({
+        eventType: job.name,
+        payload: job.data,
+        lastError: `Worker Exhausted: ${err.message}`,
+        status: "investigate",
+        source: "worker",
+        nextRetryAt: null 
+      });
+      console.log(`💀 Job ${job.id} moved to DLQ (QueueFail)`);
+    } catch (dbErr) {
+      console.error("CRITICAL: Failed to save DLQ entry:", dbErr);
+    }
+  }
 });

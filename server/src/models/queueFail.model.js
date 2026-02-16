@@ -23,10 +23,22 @@ const QueueFailSchema = new mongoose.Schema(
     },
 
     nextRetryAt: {
-        type: Date,
-        required: true,
-        default: Date.now
-    }   
+      type: Date,
+      required: true,
+      default: Date.now
+    },
+
+    status: {
+      type: String,
+      enum: ["pending_retry", "investigate"],
+      default: "pending_retry",
+    },
+
+    source: {
+      type: String,
+      enum: ["scheduler", "worker"],
+      default: "worker"
+    }
 
   },
   { timestamps: true }

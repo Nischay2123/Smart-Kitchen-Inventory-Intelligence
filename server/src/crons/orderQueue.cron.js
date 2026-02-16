@@ -4,8 +4,11 @@ import { orderQueue } from "../queues/order.queue.js";
 
 cron.schedule("0 */1 * * * *", async () => {
   console.log("order queue cron started");
-  
-  const events = await QueueFail.find({nextRetryAt: { $lte: new Date() }})
+
+  const events = await QueueFail.find({
+    nextRetryAt: { $lte: new Date() },
+    status: "pending_retry"
+  })
     .sort({ createdAt: 1 })
     .limit(50);
 
@@ -19,11 +22,11 @@ cron.schedule("0 */1 * * * *", async () => {
         { _id: event._id },
         {
           $inc: { retryCount: 1 },
-          $set: { 
-            lastError: err.message ,
+          $set: {
+            lastError: err.message,
             nextRetryAt: new Date(Date.now() + 60 * 60 * 1000)
-        },
-          
+          },
+
         }
       );
     }
