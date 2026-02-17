@@ -21,10 +21,10 @@ export const Recipes = baseApi.injectEndpoints({
     }),
 
     createBulkRecipes: builder.mutation({
-      query: (recipes) => ({
+      query: (recipesByItem) => ({
         url: "recipes/bulk",
         method: "POST",
-        body: { recipes },
+        body: { recipesByItem },
       }),
       invalidatesTags: ["Ingredient"],
     }),

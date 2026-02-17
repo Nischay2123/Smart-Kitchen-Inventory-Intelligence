@@ -262,26 +262,13 @@ export const bulkCreateRecipes = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Only BRAND_ADMIN can manage recipes");
   }
 
-  const { recipes } = req.body;
+  const { recipesByItem } = req.body;
 
-  if (!recipes?.length) {
-    throw new ApiError(400, "Recipes array required");
+  if (!recipesByItem || Object.keys(recipesByItem).length === 0) {
+    throw new ApiError(400, "Recipes object required");
   }
 
   const tenantContext = req.user.tenant;
-
-  const recipesByItem = {};
-
-  for (const row of recipes) {
-    const itemName = row.ItemName?.trim();
-    if (!itemName) continue;
-
-    if (!recipesByItem[itemName]) {
-      recipesByItem[itemName] = [];
-    }
-
-    recipesByItem[itemName].push(row);
-  }
 
 
   const itemNames = Object.keys(recipesByItem);
@@ -297,7 +284,7 @@ export const bulkCreateRecipes = asyncHandler(async (req, res) => {
 
   const ingredientNames = [
     ...new Set(
-      recipes.map(r => r.IngredientName?.trim()).filter(Boolean)
+      Object.values(recipesByItem).flat().map(r => r.IngredientName?.trim()).filter(Boolean)
     ),
   ];
 
@@ -348,7 +335,7 @@ export const bulkCreateRecipes = asyncHandler(async (req, res) => {
           ingredientMasterId: ingredient._id,
           ingredientName: ingredient.name,
           qty: r.Quantity,
-          unitId: unit.unitId, 
+          unitId: unit.unitId,
           unit: unit.unitName,
         };
       });

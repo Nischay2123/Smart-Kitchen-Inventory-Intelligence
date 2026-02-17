@@ -170,14 +170,21 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
 
                 if (type === 'recipe') {
                     try {
-                        const recipes = results.data.map(row => ({
-                            ItemName: row.ItemName,
-                            IngredientName: row.IngredientName,
-                            Quantity: row.Quantity,
-                            Unit: row.Unit
-                        }));
+                        const recipes = results.data;
+                        const recipesByItem = {};
 
-                        const response = await createBulkRecipes(recipes).unwrap();
+                        for (const row of recipes) {
+                            const itemName = row.ItemName?.trim();
+                            if (!itemName) continue;
+
+                            if (!recipesByItem[itemName]) {
+                                recipesByItem[itemName] = [];
+                            }
+
+                            recipesByItem[itemName].push(row);
+                        }
+
+                        const response = await createBulkRecipes(recipesByItem).unwrap();
 
                         const inserted = response.data.insertedCount || 0;
                         const updated = response.data.updatedCount || 0;
