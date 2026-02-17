@@ -5,11 +5,11 @@ import mongoose from "mongoose";
 import { processDailySnapshot } from "../proccessors/dailySnapshot.processor.js";
 import QueueFail from "../models/queueFail.model.js";
 
+import config from "../utils/config.js";
+
 const connectDB = async () => {
     try {
-        // Ideally use env var, but matching existing hardcoded pattern in order.worker.js for now or use the one from env if available
-        const mongoUri = process.env.MONGO_URI || "mongodb+srv://nischaysharma04:Nischay123@cluster0.vbcoq8e.mongodb.net/SKII";
-        await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 3000 });
+        await mongoose.connect(config.MONGO_URI, { serverSelectionTimeoutMS: 3000 });
         console.log("MongoDB connected successfully (Snapshot Worker)");
     } catch (error) {
         console.error("MongoDB connection failed:", error.message);
@@ -19,7 +19,7 @@ const connectDB = async () => {
 
 connectDB();
 
-const connection = new IORedis({
+const connection = new IORedis(config.REDIS_URL, {
     maxRetriesPerRequest: null,
 });
 
@@ -51,7 +51,7 @@ dailySnapshotWorker.on("failed", async (job, err) => {
             await QueueFail.create({
                 eventType: "daily-snapshot",
                 payload: job.data,
-                lastError: `Worker Exhausted: ${err.message}`, 
+                lastError: `Worker Exhausted: ${err.message}`,
                 status: "investigate",
                 source: "worker",
                 nextRetryAt: null

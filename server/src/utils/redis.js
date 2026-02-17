@@ -1,6 +1,8 @@
 import IORedis from "ioredis";
 
-const REDIS_URL = process.env.REDIS_URI || "redis://localhost:6379";
+import config from "./config.js";
+
+const REDIS_URL = config.REDIS_URL;
 
 const redis = new IORedis(REDIS_URL, {
     maxRetriesPerRequest: null,

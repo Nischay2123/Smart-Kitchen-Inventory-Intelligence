@@ -10,12 +10,11 @@ import QueueFail from "../models/queueFail.model.js";
 
 
 
+import config from "../utils/config.js";
+
 const connectDB = async () => {
   try {
-    await mongoose.connect(
-      "mongodb+srv://nischaysharma04:Nischay123@cluster0.vbcoq8e.mongodb.net/SKII",
-      { serverSelectionTimeoutMS: 3000 }
-    );
+    await mongoose.connect(config.MONGO_URI, { serverSelectionTimeoutMS: 3000 });
     console.log("MongoDB connected successfully");
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);
@@ -27,7 +26,7 @@ connectDB();
 
 
 
-const connection = new IORedis({
+const connection = new IORedis(config.REDIS_URL, {
   maxRetriesPerRequest: null,
 });
 
@@ -80,7 +79,7 @@ orderWorker.on("failed", async (job, err) => {
         lastError: `Worker Exhausted: ${err.message}`,
         status: "investigate",
         source: "worker",
-        nextRetryAt: null 
+        nextRetryAt: null
       });
       console.log(`💀 Job ${job.id} moved to DLQ (QueueFail)`);
     } catch (dbErr) {

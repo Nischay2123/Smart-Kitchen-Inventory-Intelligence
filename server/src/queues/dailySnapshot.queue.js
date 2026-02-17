@@ -1,7 +1,9 @@
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 
-const connection = new IORedis({
+import config from "../utils/config.js";
+
+const connection = new IORedis(config.REDIS_URL, {
     maxRetriesPerRequest: null,
 });
 
