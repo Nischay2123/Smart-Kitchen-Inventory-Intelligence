@@ -3,7 +3,7 @@ import QueueFail from "../models/queueFail.model.js";
 import { orderQueue } from "../queues/order.queue.js";
 import SchedulerLog from "../models/schedulerLog.model.js";
 
-let isRunning = false; 
+let isRunning = false;
 
 const task = cron.schedule(
   "0 */1 * * * *",
@@ -49,7 +49,7 @@ const task = cron.schedule(
       return { processedCount, failedCount };
     } catch (err) {
       console.error("order-queue-retry fatal error:", err);
-      throw err; 
+      throw err;
     } finally {
       isRunning = false;
     }
@@ -64,7 +64,7 @@ task.on("execution:started", async (ctx) => {
     await SchedulerLog.updateOne(
       { runId: ctx.execution.id },
       {
-        $set: {
+        $setOnInsert: {
           eventType: "order-queue-retry",
           status: "started",
           startTime: ctx.date,

@@ -11,8 +11,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { SkeletonLoader } from "@/components/laoder";
+import DashboardDateRangePicker from "@/components/data-range-picker";
+import { useDispatch, useSelector } from "react-redux";
+import { setDateRange } from "@/redux/reducers/brand-admin/dashboardFilters";
 
 const SchedulerMonitor = () => {
+    const dispatch = useDispatch();
+    const { dateRange } = useSelector((state) => state.dashboardFilters);
+
     const [page, setPage] = useState({
         pageIndex: 0,
         pageSize: 20
@@ -25,6 +31,8 @@ const SchedulerMonitor = () => {
         limit: page.pageSize,
         ...(status !== "all" && { status }),
         ...(eventType !== "all" && { eventType }),
+        startDate: dateRange?.from,
+        endDate: dateRange?.to,
     };
 
     const { data, isLoading, isError, refetch } = useGetSchedulerLogsQuery(queryParams);
@@ -41,7 +49,12 @@ const SchedulerMonitor = () => {
                 isRefetch={true}
                 onRefetch={refetch}
             >
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-end">
+                    <DashboardDateRangePicker
+                        value={dateRange}
+                        onChange={(range) => dispatch(setDateRange(range))}
+                        className="flex-row"
+                    />
                     <Select value={status} onValueChange={setStatus}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Filter by Status" />

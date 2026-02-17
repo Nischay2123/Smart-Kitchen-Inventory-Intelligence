@@ -26,7 +26,7 @@ const task = cron.schedule(
         console.error("CRITICAL: Failed to save QueueFail doc:", saveErr);
       }
 
-      throw err; 
+      throw err;
     }
   },
   {
@@ -38,7 +38,7 @@ task.on("execution:started", async (ctx) => {
   await SchedulerLog.updateOne(
     { runId: ctx.execution.id },
     {
-      $set: {
+      $setOnInsert: {
         eventType: "daily-snapshot",
         status: "started",
         startTime: ctx.date,

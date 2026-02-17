@@ -2,7 +2,7 @@ import SchedulerLog from "../models/schedulerLog.model.js";
 
 export const getSchedulerLogs = async (req, res) => {
     try {
-        const { page = 1, limit = 20, status, eventType } = req.query;
+        const { page = 1, limit = 20, status, eventType, startDate, endDate } = req.query;
 
         const query = {};
         if (status) {
@@ -10,6 +10,16 @@ export const getSchedulerLogs = async (req, res) => {
         }
         if (eventType) {
             query.eventType = eventType;
+        }
+        if (startDate && endDate) {
+            query.startTime = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
+            };
+        } else if (startDate) {
+            query.startTime = { $gte: new Date(startDate) };
+        } else if (endDate) {
+            query.startTime = { $lte: new Date(endDate) };
         }
 
         const logs = await SchedulerLog.find(query)
