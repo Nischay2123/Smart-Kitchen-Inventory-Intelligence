@@ -79,12 +79,15 @@ export const BrandAdminApp = () => {
   };
 
   const handleLogout = async () => {
-  try {
-    await logoutUser().unwrap();
-  } finally {
-    setUser(null);      
-  }
-};
+    try {
+      const res = confirm("Do you want to Log Out")
+      if(!res) return ;
+      await logoutUser().unwrap();
+       setUser(null);
+    } catch(e) {
+      console.log("Failed to LogOut: ",e?.message);
+    }
+  };
 
 
   return (

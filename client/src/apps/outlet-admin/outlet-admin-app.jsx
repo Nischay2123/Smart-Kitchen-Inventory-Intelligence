@@ -56,9 +56,12 @@ export const OutletAdminApp = () => {
 
   const handleLogout = async () => {
     try {
+      const res = confirm("Do you want to Log Out")
+      if(!res) return ;
       await logoutUser().unwrap();
-    } finally {
-      setUser(null);
+       setUser(null);
+    } catch(e) {
+      console.log("Failed to LogOut: ",e?.message);
     }
   };  
   // console.log(user);

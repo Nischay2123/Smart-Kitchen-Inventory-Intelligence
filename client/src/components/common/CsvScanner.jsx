@@ -14,18 +14,67 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
     const { user } = useAuth();
     const [isUploading, setIsUploading] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [processedCount, setProcessedCount] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
+    const [statusText, setStatusText] = useState("");
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [errors, setErrors] = useState([]);
     const [successMessage, setSuccessMessage] = useState("");
     const fileInputRef = useRef(null);
-    const [createItems, { isLoading: isCreatingItems }] = useCreateItemMutation();
-    const [createIngredients, { isLoading: isCreatingIngredients }] = useCreateIngredientsBulkMutation();
-    const [createBulkStockMovement, { isLoading: isCreatingStockMovement }] = useCreateBulkStockMovementMutation();
-    const [createBulkRecipes, { isLoading: isCreatingRecipes }] = useCreateBulkRecipesMutation();
+    const [createItems] = useCreateItemMutation();
+    const [createIngredients] = useCreateIngredientsBulkMutation();
+    const [createBulkStockMovement] = useCreateBulkStockMovementMutation();
+    const [createBulkRecipes] = useCreateBulkRecipesMutation();
 
 
-    const loading = isUploading || isProcessing || isCreatingItems || isCreatingIngredients || isCreatingStockMovement || isCreatingRecipes;
+    const loading = isUploading || isProcessing;
+
+    const processChunks = async (data, batchSize, processFunction) => {
+        setIsProcessing(true);
+        setProgress(0);
+        setProcessedCount(0);
+        const total = data.length;
+        setTotalCount(total);
+
+        let successCount = 0;
+        let failureCount = 0;
+        let allErrors = [];
+
+        const totalBatches = Math.ceil(total / batchSize);
+
+        for (let i = 0; i < totalBatches; i++) {
+            const start = i * batchSize;
+            const end = Math.min(start + batchSize, total);
+            const chunk = data.slice(start, end);
+
+            setStatusText(`Processing batch ${i + 1} of ${totalBatches}...`);
+
+            try {
+                const response = await processFunction(chunk);
+
+                if (response?.data) {
+                    successCount += (response.data.inserted || response.data.insertedCount || 0) + (response.data.updatedCount || 0);
+                    failureCount += (response.data.failed || 0);
+                    if (response.data.errors && Array.isArray(response.data.errors)) {
+                        allErrors = [...allErrors, ...response.data.errors];
+                    }
+                }
+
+            } catch (err) {
+                console.error(`Error processing batch ${i + 1}`, err);
+                failureCount += chunk.length;
+                allErrors.push(err.data?.message || err.message || `Failed batch ${i + 1}`);
+            }
+
+            setProcessedCount(end);
+            setProgress(Math.round(((i + 1) / totalBatches) * 100));
+        }
+
+        setIsProcessing(false);
+        return { inserted: successCount, failed: failureCount, errors: allErrors };
+    };
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -33,6 +82,9 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
 
         setIsUploading(true);
         setErrors([]);
+        setSuccessMessage("");
+        setProgress(0);
+        setStatusText("Parsing CSV...");
 
         Papa.parse(file, {
             header: true,
@@ -50,8 +102,10 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                     return;
                 }
 
-                if (type === 'stock-movement') {
-                    try {
+                try {
+                    let finalResult = { inserted: 0, failed: 0, errors: [] };
+
+                    if (type === 'stock-movement') {
                         const movements = results.data.map(row => ({
                             IngredientName: row.IngredientName,
                             Quantity: row.Quantity,
@@ -60,74 +114,25 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                             Price: row.Price
                         }));
 
-                        const response = await createBulkStockMovement(movements).unwrap();
-
-                        const inserted = response.data.inserted || 0;
-                        const failed = response.data.failed || 0;
-                        const errorList = response.data.errors || [];
-
-                        if (inserted > 0) {
-                            setSuccessMessage(`Successfully processed ${inserted} movements!`);
-                        } else {
-                            setSuccessMessage("");
-                        }
-
-                        setErrors(errorList);
-                        setDialogOpen(true);
-                        onSuccess();
-
-                    } catch (err) {
-                        console.error("Create Stock Movement Error", err);
-                        setErrors([err.data?.message || err.message || "Failed to create stock movements"]);
-                        setSuccessMessage("");
-                        setDialogOpen(true);
-                    } finally {
-                        setIsUploading(false);
-                        e.target.value = null;
+                        finalResult = await processChunks(movements, 100, async (chunk) => {
+                            return await createBulkStockMovement(chunk).unwrap();
+                        });
                     }
-                    return;
-                }
 
-                if (type === 'menu-item') {
-                    try {
+                    else if (type === 'menu-item') {
                         const items = results.data.map(row => ({
                             itemName: row.ItemName,
                             price: Number(row.Price)
                         }));
 
-                        const response = await createItems(items).unwrap();
-
-                        const inserted = response.data.inserted || 0;
-                        const failed = response.data.failed || 0;
-                        const errorList = response.data.errors || [];
-
-                        if (inserted > 0) {
-                            setSuccessMessage(`Successfully created ${inserted} items!`);
-                        } else {
-                            setSuccessMessage("");
-                        }
-
-                        setErrors(errorList);
-                        setDialogOpen(true);
-                        onSuccess();
-
-                    } catch (err) {
-                        console.error("Create Items Error", err);
-                        setErrors([err.data?.message || err.message || "Failed to create items"]);
-                        setSuccessMessage("");
-                        setDialogOpen(true);
-                    } finally {
-                        setIsUploading(false);
-                        e.target.value = null;
+                        finalResult = await processChunks(items, 100, async (chunk) => {
+                            return await createItems(chunk).unwrap();
+                        });
                     }
-                    return;
-                }
 
-                if (type === 'ingredient') {
-                    try {
-                        const ingredients = results.data.map((row, index) => {
+                    else if (type === 'ingredient') {
+                        const ingredients = results.data.map((row) => {
                             const unitNames = (row.Units || "").split("$$").map(u => u.trim()).filter(Boolean);
-
                             return {
                                 name: row.Name,
                                 unitNames,
@@ -140,80 +145,55 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                             };
                         });
 
-                        const response = await createIngredients(ingredients).unwrap();
-
-                        const inserted = response.data.inserted || 0;
-                        const failed = response.data.failed || 0;
-                        const errorList = response.data.errors || [];
-
-                        if (inserted > 0) {
-                            setSuccessMessage(`Successfully created ${inserted} ingredients!`);
-                        } else {
-                            setSuccessMessage("");
-                        }
-
-                        setErrors(errorList);
-                        setDialogOpen(true);
-                        onSuccess();
-
-                    } catch (err) {
-                        console.error("Create Ingredients Error", err);
-                        setErrors([err.data?.message || err.message || "Failed to create ingredients"]);
-                        setSuccessMessage("");
-                        setDialogOpen(true);
-                    } finally {
-                        setIsUploading(false);
-                        e.target.value = null;
+                        finalResult = await processChunks(ingredients, 100, async (chunk) => {
+                            return await createIngredients(chunk).unwrap();
+                        });
                     }
-                    return;
-                }
 
-                if (type === 'recipe') {
-                    try {
+                    else if (type === 'recipe') {
                         const recipes = results.data;
                         const recipesByItem = {};
 
                         for (const row of recipes) {
                             const itemName = row.ItemName?.trim();
                             if (!itemName) continue;
-
                             if (!recipesByItem[itemName]) {
                                 recipesByItem[itemName] = [];
                             }
-
                             recipesByItem[itemName].push(row);
                         }
 
-                        const response = await createBulkRecipes(recipesByItem).unwrap();
+                        const itemNames = Object.keys(recipesByItem);
 
-                        const inserted = response.data.insertedCount || 0;
-                        const updated = response.data.updatedCount || 0;
-                        const failed = response.data.failed || 0;
-                        const errorList = response.data.errors || [];
-                        const totalProcessed = inserted + updated;
+                        finalResult = await processChunks(itemNames, 50, async (chunkKeys) => {
+                            const chunkPayload = {};
+                            chunkKeys.forEach(key => {
+                                chunkPayload[key] = recipesByItem[key];
+                            });
 
-                        if (totalProcessed > 0) {
-                            setSuccessMessage(`Successfully processed ${totalProcessed} recipes!`);
-                        } else {
-                            setSuccessMessage("");
-                        }
-
-                        setErrors(errorList);
-                        setDialogOpen(true);
-                        onSuccess();
-
-                    } catch (err) {
-                        console.error("Create Recipes Error", err);
-                        setErrors([err.data?.message || err.message || "Failed to create recipes"]);
-                        setSuccessMessage("");
-                        setDialogOpen(true);
-                    } finally {
-                        setIsUploading(false);
-                        e.target.value = null;
+                            return await createBulkRecipes(chunkPayload).unwrap();
+                        });
                     }
-                    return;
-                }
 
+                    if (finalResult.inserted > 0) {
+                        setSuccessMessage(`Successfully processed ${finalResult.inserted} records!`);
+                    } else {
+                        setSuccessMessage("");
+                    }
+
+                    setErrors(finalResult.errors);
+                    setDialogOpen(true);
+                    onSuccess();
+
+                } catch (err) {
+                    console.error("Global Processing Error", err);
+                    setErrors([err.message || "An unexpected error occurred during processing."]);
+                    setDialogOpen(true);
+                } finally {
+                    setIsUploading(false);
+                    setIsProcessing(false);
+                    e.target.value = null; // Reset input
+                }
             },
             error: (err) => {
                 setErrors(["Failed to parse CSV: " + err.message]);
@@ -235,28 +215,45 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
     };
 
     return (
-        <div className="flex gap-2 items-center pr-6">
-            <input
-                type="file"
-                accept=".csv"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleFileChange}
-            />
+        <div className="flex flex-col gap-2 pr-6">
+            <div className="flex gap-2 items-center">
+                <input
+                    type="file"
+                    accept=".csv"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                />
 
-            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                Import CSV
-            </Button>
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={loading}>
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    Import CSV
+                </Button>
 
-            <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-            </Button>
+                <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export CSV
+                </Button>
 
-            <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} title="Download Template">
-                <FileSpreadsheet className="h-4 w-4" />
-            </Button>
+                <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} title="Download Template" disabled={loading}>
+                    <FileSpreadsheet className="h-4 w-4" />
+                </Button>
+            </div>
+
+            {loading && (
+                <div className="w-full max-w-sm mt-2 space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{statusText || "Processing..."}</span>
+                        <span>{progress}%</span>c
+                    </div>
+                    <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-primary transition-all duration-300 ease-in-out"
+                            style={{ width: `${progress}%` }}
+                        />
+                    </div>
+                </div>
+            )}
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent>
@@ -264,10 +261,19 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                         <DialogTitle className={errors.length > 0 && !successMessage ? "text-destructive" : (errors.length > 0 ? "text-orange-500" : "text-green-600")}>
                             {errors.length > 0 && successMessage ? "Import Completed with Errors" : (errors.length > 0 ? "Validation Errors" : "Import Successful")}
                         </DialogTitle>
-                        <DialogDescription className="space-y-2">
-                            {successMessage && <div className="text-green-600 font-semibold">{successMessage}</div>}
-                            {errors.length > 0 && <div>The following items failed to import:</div>}
+                        <DialogDescription asChild>
+                            <div className="space-y-2 text-muted-foreground text-sm">
+                                {successMessage && (
+                                    <div className="text-green-600 font-semibold">
+                                        {successMessage}
+                                    </div>
+                                )}
+                                {errors.length > 0 && (
+                                    <div>The following items failed to import:</div>
+                                )}
+                            </div>
                         </DialogDescription>
+
                     </DialogHeader>
                     {errors.length > 0 && (
                         <div className="max-h-75 overflow-y-auto bg-muted p-4 rounded text-sm text-destructive">

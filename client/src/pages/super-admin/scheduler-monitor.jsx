@@ -35,7 +35,9 @@ const SchedulerMonitor = () => {
         endDate: dateRange?.to,
     };
 
-    const { data, isLoading, isError, refetch } = useGetSchedulerLogsQuery(queryParams);
+    const { data, isLoading, isError, refetch } = useGetSchedulerLogsQuery(queryParams,{
+        skip: !dateRange?.from || !dateRange?.to, 
+    });
 
     const logs = data?.data || [];
     const totalPages = data?.totalPages || 0;
@@ -56,7 +58,7 @@ const SchedulerMonitor = () => {
                         className="flex-row"
                     />
                     <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-45">
                             <SelectValue placeholder="Filter by Status" />
                         </SelectTrigger>
                         <SelectContent>
@@ -68,7 +70,7 @@ const SchedulerMonitor = () => {
                     </Select>
 
                     <Select value={eventType} onValueChange={setEventType}>
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-45">
                             <SelectValue placeholder="Filter by Event" />
                         </SelectTrigger>
                         <SelectContent>
