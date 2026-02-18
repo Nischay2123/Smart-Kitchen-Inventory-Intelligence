@@ -57,7 +57,6 @@ export const initSocket = (httpServer, corsOptions) => {
     socket.on("join_tenant", ({ tenantId }) => {
       if (!tenantId) return;
 
-      // Strict check: User must belong to this tenant
       if (socket.user.tenantId !== tenantId) {
         console.warn(`User ${socket.user._id} attempted unauthorized join to tenant ${tenantId}`);
         return;

@@ -16,13 +16,11 @@ export const processAlerts = async ({ outlet, tenant, requirementList }) => {
           req.ingredientMasterId,
       }).lean();
 
-      if (!stock) continue;
 
       const ingredient = await IngredientMaster.findById(
         req.ingredientMasterId
       ).lean();
 
-      if (!ingredient) continue;
 
       const { lowInBase, criticalInBase } =
         ingredient.threshold;

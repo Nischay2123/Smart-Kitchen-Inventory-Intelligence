@@ -126,7 +126,7 @@
 
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import TenantDailySnapshot from "../src/models/tenantDailySnapshot.model.js";
+import TenantDailySnapshot from "../../server/src/models/tenantDailySnapshot.model.js";
 
 dotenv.config();
 

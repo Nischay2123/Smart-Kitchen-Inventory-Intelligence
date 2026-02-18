@@ -15,7 +15,6 @@ export const processSalesSnapshot = async (data) => {
 
   try {
     const sale = await Sales.findById(orderId);
-    if (!sale) return;
 
     const itemIds = items.map((i) => i.itemId);
 
