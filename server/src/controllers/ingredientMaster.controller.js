@@ -308,7 +308,7 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
     );
   }
 
-  Promise.allSettled(
+  await Promise.allSettled(
     insertedDocs.map(doc => {
       const key = cacheService.generateKey(
         "ingredient",

@@ -275,7 +275,7 @@ export const bulkCreateRecipes = asyncHandler(async (req, res) => {
 
   const menuItems = await MenuItem.find({
     "tenant.tenantId": tenantContext.tenantId,
-    itemName: { $in: itemNames.map(n => new RegExp(`^${n}$`, "i")) },
+    itemName: { $in: itemNames },
   }).lean();
 
   const itemMap = new Map(
@@ -290,7 +290,7 @@ export const bulkCreateRecipes = asyncHandler(async (req, res) => {
 
   const ingredients = await IngredientMaster.find({
     "tenant.tenantId": tenantContext.tenantId,
-    name: { $in: ingredientNames.map(n => new RegExp(`^${n}$`, "i")) },
+    name: { $in: ingredientNames },
   }).lean();
 
   const ingredientMap = new Map(

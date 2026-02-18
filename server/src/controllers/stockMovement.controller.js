@@ -395,7 +395,7 @@ export const bulkCreateStockMovement = asyncHandler(async (req, res) => {
 
     const ingredients = await IngredientMaster.find({
       "tenant.tenantId": context.tenant.tenantId,
-      name: { $in: ingredientNames.map(n => new RegExp(`^${n}$`, "i")) }
+      name: { $in: ingredientNames }
     }).session(session);
 
     const ingredientMap = new Map(

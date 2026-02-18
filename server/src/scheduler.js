@@ -23,7 +23,6 @@ connectDB();
 
 console.log("🚀 Scheduler Service Started");
 
-// Keep the process alive
 process.on("SIGINT", async () => {
     console.log("Scheduler shutting down...");
     await mongoose.connection.close();
