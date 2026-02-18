@@ -1,42 +1,64 @@
 import SchedulerLog from "../models/schedulerLog.model.js";
+import { ApiError } from "../utils/apiError.js";
+import { ApiResoponse } from "../utils/apiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-export const getSchedulerLogs = async (req, res) => {
-    try {
-        const { page = 1, limit = 20, status, eventType, startDate, endDate } = req.query;
+export const getSchedulerLogs = asyncHandler(async (req, res) => {
+  const {
+    page = 1,
+    limit = 20,
+    status,
+    eventType,
+    startDate,
+    endDate,
+  } = req.query;
 
-        const query = {};
-        if (status) {
-            query.status = status;
-        }
-        if (eventType) {
-            query.eventType = eventType;
-        }
-        if (startDate && endDate) {
-            query.startTime = {
-                $gte: new Date(startDate),
-                $lte: new Date(endDate),
-            };
-        } else if (startDate) {
-            query.startTime = { $gte: new Date(startDate) };
-        } else if (endDate) {
-            query.startTime = { $lte: new Date(endDate) };
-        }
+  const pageNumber = parseInt(page);
+  const limitNumber = parseInt(limit);
 
-        const logs = await SchedulerLog.find(query)
-            .sort({ startTime: -1 })
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit));
+  if (pageNumber < 1 || limitNumber < 1) {
+    throw new ApiError(400, "Page and limit must be positive numbers");
+  }
 
-        const total = await SchedulerLog.countDocuments(query);
+  const query = {};
 
-        res.status(200).json({
-            success: true,
-            data: logs,
-            total,
-            page: parseInt(page),
-            totalPages: Math.ceil(total / limit),
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
+  if (status) {
+    query.status = status;
+  }
+
+  if (eventType) {
+    query.eventType = eventType;
+  }
+
+  if (startDate && isNaN(new Date(startDate))) {
+    throw new ApiError(400, "Invalid startDate format");
+  }
+
+  if (endDate && isNaN(new Date(endDate))) {
+    throw new ApiError(400, "Invalid endDate format");
+  }
+
+  if (startDate && endDate) {
+    query.startTime = {
+      $gte: new Date(startDate),
+      $lte: new Date(endDate),
+    };
+  }
+
+  const logs = await SchedulerLog.find(query)
+    .sort({ startTime: -1 })
+    .skip((pageNumber - 1) * limitNumber)
+    .limit(limitNumber);
+
+  const total = await SchedulerLog.countDocuments(query);
+
+  return res.status(200).json(
+    new ApiResoponse(200, {
+      logs,
+      total,
+      page: pageNumber,
+      totalPages: Math.ceil(total / limitNumber),
+    },
+    "Scheduler logs fetched successfully")
+  );
+});

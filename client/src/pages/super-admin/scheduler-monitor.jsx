@@ -39,8 +39,8 @@ const SchedulerMonitor = () => {
         skip: !dateRange?.from || !dateRange?.to, 
     });
 
-    const logs = data?.data || [];
-    const totalPages = data?.totalPages || 0;
+    const logs = data?.data?.logs || [];
+    const totalPages = data?.data?.totalPages || 0;
 
     return (
         <div className="w-full bg-gray-50 min-h-screen">

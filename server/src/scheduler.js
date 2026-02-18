@@ -3,7 +3,7 @@ env.config();
 
 import mongoose from "mongoose";
 import "./crons/dailySnapshot.cron.js";
-import "./crons/orderQueue.cron.js";
+import "./crons/retryQueue.cron.js";
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://nischaysharma04:Nischay123@cluster0.vbcoq8e.mongodb.net/SKII";
 

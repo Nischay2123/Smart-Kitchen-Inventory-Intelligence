@@ -8,9 +8,9 @@ const SchedulerLogSchema = new mongoose.Schema(
             index: true,
         },
         status: {
-            type: String, // "started", "success", "failed", "running"
+            type: String, 
             required: true,
-            enum: ["started", "success", "failed", "running"],
+            enum: ["started", "success", "failed"],
         },
         runId: {
             type: String,
@@ -25,13 +25,13 @@ const SchedulerLogSchema = new mongoose.Schema(
             type: Date,
         },
         duration: {
-            type: Number, // in milliseconds
+            type: Number, 
         },
         error: {
             type: String,
         },
         details: {
-            type: Object, // Any additional info needed
+            type: Object, 
         },
     },
     { timestamps: true }

@@ -162,9 +162,6 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
   const errors = [];
   const docsToInsert = [];
 
-  /* ---------------------------
-     Step 1: Collect all unit names
-  ----------------------------*/
   const allUnitNames = new Set();
 
   payload.forEach(doc => {
@@ -173,9 +170,6 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
       allUnitNames.add(doc.threshold.unitName.trim());
   });
 
-  /* ---------------------------
-     Step 2: Fetch all units once by name
-  ----------------------------*/
   const units = await Unit.find({
     unit: { $in: [...allUnitNames] },
     "tenant.tenantId": tenantContext.tenantId,
@@ -185,9 +179,6 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
     units.map(u => [u.unit, u])
   );
 
-  /* ---------------------------
-     Step 3: Fetch existing ingredients once
-  ----------------------------*/
   const existingIngredients = await IngredientMaster.find({
     "tenant.tenantId": tenantContext.tenantId,
   })
@@ -198,9 +189,6 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
     existingIngredients.map(i => i.name.toLowerCase())
   );
 
-  /* ---------------------------
-     Step 4: Validate rows
-  ----------------------------*/
   for (const [index, doc] of payload.entries()) {
     const rowNum = index + 1;
     const { name, unitNames, threshold, baseUnit } = doc;
@@ -228,7 +216,6 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
 
     let invalidUnit = false;
 
-    // Resolve units by name
     for (const unitName of unitNames) {
       const unit = unitMap.get(unitName.trim());
 
@@ -265,9 +252,6 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
       continue;
     }
 
-    // Validate threshold unit is in the list of selected units?
-    // The previous logic didn't explicitly enforce this, but usually threshold unit should be one of the ingredient's units.
-    // Let's enforce it to be safe, or at least consistent with single creation.
     const isThresholdInUnits = rowUnits.some(u => String(u._id) === String(thresholdUnit._id));
     if (!isThresholdInUnits) {
       errors.push(`Row ${rowNum}: Threshold unit must be one of the selected units`);
@@ -315,9 +299,6 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
     });
   }
 
-  /* ---------------------------
-     Step 5: Bulk insert
-  ----------------------------*/
   let insertedDocs = [];
 
   if (docsToInsert.length) {
@@ -327,9 +308,6 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
     );
   }
 
-  /* ---------------------------
-     Step 6: Async cache writes
-  ----------------------------*/
   Promise.allSettled(
     insertedDocs.map(doc => {
       const key = cacheService.generateKey(
@@ -341,9 +319,6 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
     })
   );
 
-  /* ---------------------------
-     Response
-  ----------------------------*/
   return res.status(201).json(
     new ApiResoponse(
       201,
