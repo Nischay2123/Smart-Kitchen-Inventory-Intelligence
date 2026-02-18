@@ -24,7 +24,6 @@ const QueueFailSchema = new mongoose.Schema(
 
     nextRetryAt: {
       type: Date,
-      required: true,
       default: Date.now
     },
 

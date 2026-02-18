@@ -54,7 +54,6 @@ dailySnapshotWorker.on("failed", async (job, err) => {
                 lastError: `Worker Exhausted: ${err.message}`,
                 status: "investigate",
                 source: "worker",
-                nextRetryAt: null
             });
             console.log(`💀 Snapshot Job ${job.id} moved to DLQ (QueueFail)`);
         } catch (dbErr) {
