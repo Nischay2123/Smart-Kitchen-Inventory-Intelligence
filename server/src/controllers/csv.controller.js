@@ -94,11 +94,40 @@ export const exportCsv = asyncHandler(async (req, res) => {
                 "tenant.tenantId": tenant.tenantId,
             }).lean();
 
+            // Fetch all recipes for this tenant to join inline
+            const recipes = await Recipe.find({
+                "tenant.tenantId": tenant.tenantId,
+            }).lean();
+
+            // Build a map: itemId -> recipeItems[]
+            const recipeMap = new Map(
+                recipes.map(r => [r.item.itemId.toString(), r.recipeItems || []])
+            );
+
             for (const item of items) {
-                csvStream.write({
-                    ItemName: item.itemName,
-                    Price: item.price,
-                });
+                const recipeItems = recipeMap.get(item._id.toString()) || [];
+
+                if (recipeItems.length === 0) {
+                    // Item with no recipe — write one row, recipe columns empty
+                    csvStream.write({
+                        ItemName: item.itemName,
+                        Price: item.price,
+                        IngredientName: "",
+                        Quantity: "",
+                        Unit: "",
+                    });
+                } else {
+                    // One row per ingredient (tall format)
+                    for (const ri of recipeItems) {
+                        csvStream.write({
+                            ItemName: item.itemName,
+                            Price: item.price,
+                            IngredientName: ri.ingredientName,
+                            Quantity: ri.qty,
+                            Unit: ri.unit,
+                        });
+                    }
+                }
             }
             break;
         }
@@ -205,9 +234,29 @@ export const getTemplate = asyncHandler(async (req, res) => {
                     "Only OUTLET_MANAGER can download stock template"
                 );
             }
+            // Row 1: item with a recipe ingredient
             csvStream.write({
-                ItemName: "Example Item",
-                Price: "100",
+                ItemName: "Burger",
+                Price: "150",
+                IngredientName: "Cheese",
+                Quantity: "20",
+                Unit: "g",
+            });
+            // Row 2: same item, second ingredient
+            csvStream.write({
+                ItemName: "Burger",
+                Price: "150",
+                IngredientName: "Bun",
+                Quantity: "1",
+                Unit: "pcs",
+            });
+            // Row 3: item without recipe (leave recipe columns empty)
+            csvStream.write({
+                ItemName: "Plain Tea",
+                Price: "30",
+                IngredientName: "",
+                Quantity: "",
+                Unit: "",
             });
             break;
 

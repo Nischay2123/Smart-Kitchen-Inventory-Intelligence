@@ -7,10 +7,10 @@ import {
   useGetAllItemsQuery,
   useDeleteItemsMutation,
 } from "@/redux/apis/brand-admin/itemApi"
-import { CreateItemModal } from '@/components/Form/brand-admin-form/create-item-form'
 import { menuColumns } from '@/utils/columns/brand-admin'
 import { SkeletonLoader } from '@/components/laoder'
 import { debounce } from 'lodash'
+import { CreateItemModal } from '@/components/Form/brand-admin-form/create-item-form/create-item-form'
 
 
 const Item = () => {

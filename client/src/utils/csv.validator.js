@@ -17,15 +17,24 @@ export const CSV_SCHEMAS = {
         }
     },
     "menu-item": {
-        headers: ["ItemName", "Price"],
+        headers: ["ItemName", "Price", "IngredientName", "Quantity", "Unit"],
         required: ["ItemName", "Price"],
         validateRow: (row, index) => {
             const errors = [];
             if (!row.ItemName?.trim()) errors.push(`Row ${index + 1}: ItemName is required`);
             if (!row.Price || isNaN(Number(row.Price))) errors.push(`Row ${index + 1}: Price must be a valid number`);
+
+            const hasIngredient = !!row.IngredientName?.trim();
+            if (hasIngredient) {
+                if (!row.Quantity || isNaN(Number(row.Quantity)) || Number(row.Quantity) <= 0)
+                    errors.push(`Row ${index + 1}: Quantity must be a positive number when IngredientName is set`);
+                if (!row.Unit?.trim())
+                    errors.push(`Row ${index + 1}: Unit is required when IngredientName is set`);
+            }
             return errors;
         }
     },
+
     recipe: {
         headers: ["ItemName", "IngredientName", "Quantity", "Unit"],
         required: ["ItemName", "IngredientName", "Quantity", "Unit"],

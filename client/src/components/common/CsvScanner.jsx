@@ -120,15 +120,41 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                     }
 
                     else if (type === 'menu-item') {
-                        const items = results.data.map(row => ({
-                            itemName: row.ItemName,
-                            price: Number(row.Price)
-                        }));
+                        const itemMap = new Map(); 
+                        for (const row of results.data) {
+                            const itemName = row.ItemName?.trim();
+                            if (!itemName) continue;
+
+                            if (!itemMap.has(itemName)) {
+                                itemMap.set(itemName, {
+                                    itemName,
+                                    price: Number(row.Price),
+                                    recipeItems: [],
+                                });
+                            }
+
+                            if (row.IngredientName?.trim()) {
+                                itemMap.get(itemName).recipeItems.push({
+                                    ingredientName: row.IngredientName.trim(),
+                                    qty: Number(row.Quantity),
+                                    unit: row.Unit?.trim(),
+                                });
+                            }
+                        }
+
+                        const items = Array.from(itemMap.values()).map(item => {
+                            const payload = { itemName: item.itemName, price: item.price };
+                            if (item.recipeItems.length > 0) {
+                                payload.recipeItems = item.recipeItems;
+                            }
+                            return payload;
+                        });
 
                         finalResult = await processChunks(items, 100, async (chunk) => {
                             return await createItems(chunk).unwrap();
                         });
                     }
+
 
                     else if (type === 'ingredient') {
                         const ingredients = results.data.map((row) => {

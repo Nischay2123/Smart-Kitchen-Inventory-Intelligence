@@ -1,69 +1,74 @@
 import MenuItem from "../models/menuItem.model.js";
-import Tenant from "../models/tenant.model.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import mongoose from "mongoose";
 import { paginate } from "../utils/pagination.js";
+import Recipe from "../models/recipes.model.js";
+import IngredientMaster from "../models/ingredientMaster.model.js";
+import {
+  normalizeRecipeItems,
+  updateRecipeCache,
+} from "./recipe.controller.js";
 
 
-// export const createMenuItem = asyncHandler(async (req, res) => {
-//   if (req.user.role !== "BRAND_ADMIN") {
-//     throw new ApiError(403, "Only BRAND_ADMIN can create menu items");
-//   }
 
-//   const { itemName, price } = req.body;
+const resolveRecipeItems = async (recipeItems, tenantId) => {
+  const alreadyResolved = recipeItems.every(
+    (r) => r.ingredientMasterId && r.unitId
+  );
+  if (alreadyResolved) return recipeItems;
 
-//   if (!itemName || price === undefined) {
-//     throw new ApiError(400, "itemName and price are required");
-//   }
+  const ingredientNames = [
+    ...new Set(
+      recipeItems
+        .map((r) => r.ingredientName?.trim())
+        .filter(Boolean)
+    ),
+  ];
 
-//   if (price < 0) {
-//     throw new ApiError(400, "Price must be greater than or equal to 0");
-//   }
+  const ingredients = await IngredientMaster.find({
+    "tenant.tenantId": tenantId,
+    name: { $in: ingredientNames },
+  }).lean();
 
-//   const tenantContext = req.user.tenant;
+  const ingredientMap = new Map(
+    ingredients.map((i) => [i.name.toLowerCase(), i])
+  );
 
-//   if (!tenantContext?.tenantId) {
-//     throw new ApiError(400, "User is not associated with any tenant");
-//   }
+  return recipeItems.map((r) => {
+    const ingredient = ingredientMap.get(
+      r.ingredientName?.trim().toLowerCase()
+    );
 
+    if (!ingredient) {
+      throw new ApiError(
+        400,
+        `Ingredient '${r.ingredientName}' not found`
+      );
+    }
 
-//   const existingItem = await MenuItem.findOne({
-//     "tenant.tenantId": tenantContext.tenantId,
-//     itemName: itemName.trim(),
-//   });
+    const unit = ingredient.unit?.find(
+      (u) => u.unitName.toLowerCase() === r.unit?.trim().toLowerCase()
+    );
 
-//   if (existingItem) {
-//     throw new ApiError(
-//       409,
-//       "Menu item with this name already exists for this tenant"
-//     );
-//   }
+    if (!unit) {
+      throw new ApiError(
+        400,
+        `Unit '${r.unit}' not found for ingredient '${r.ingredientName}'`
+      );
+    }
 
-//   const menuItem = await MenuItem.create({
-//     tenant: {
-//       tenantId: tenantContext.tenantId,
-//       tenantName: tenantContext.tenantName,
-//     },
-//     itemName: itemName.trim(),
-//     price,
-//   });
+    return {
+      ingredientMasterId: ingredient._id,
+      ingredientName: ingredient.name,
+      qty: Number(r.qty),
+      unitId: unit.unitId,
+      unit: unit.unitName,
+    };
+  });
+};
 
-//   return res.status(201).json(
-//     new ApiResoponse(
-//       201,
-//       {
-//         _id: menuItem._id,
-//         itemName: menuItem.itemName,
-//         price: menuItem.price,
-//         tenant: menuItem.tenant,
-//         createdAt: menuItem.createdAt,
-//       },
-//       "Menu item created successfully"
-//     )
-//   );
-// });
 
 export const createMenuItem = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
@@ -83,68 +88,117 @@ export const createMenuItem = asyncHandler(async (req, res) => {
   }
 
   const errors = [];
-  const validItems = [];
+  let inserted = 0;
+  let recipeCreated = 0;
 
   const existingItems = await MenuItem.find({
     "tenant.tenantId": tenantContext.tenantId,
   }).select("itemName");
 
   const existingNames = new Set(
-    existingItems.map(i => i.itemName.toLowerCase())
+    existingItems.map(i => i.itemName.trim().toLowerCase())
   );
 
-  items.forEach((row, index) => {
-    const { itemName, price } = row;
+  for (let index = 0; index < items.length; index++) {
+    const row = items[index];
+    const { itemName, price, recipeItems } = row;
 
     if (!itemName || price === undefined) {
       errors.push(`Row ${index + 1}: Missing itemName or price`);
-      return;
+      continue;
     }
 
     if (price < 0) {
       errors.push(`Row ${index + 1}: Price must be >= 0`);
-      return;
+      continue;
     }
 
-    const normalized = itemName.trim().toLowerCase();
+    const trimmedName = itemName.trim();
+    const normalizedName = trimmedName.toLowerCase();
 
-    if (existingNames.has(normalized)) {
-      errors.push(
-        `Row ${index + 1}: Item '${itemName}' already exists`
-      );
-      return;
+    if (existingNames.has(normalizedName)) {
+      errors.push(`Row ${index + 1}: Item '${trimmedName}' already exists`);
+      continue;
     }
 
-    existingNames.add(normalized);
+    const session = await mongoose.startSession();
 
-    validItems.push({
-      tenant: {
-        tenantId: tenantContext.tenantId,
-        tenantName: tenantContext.tenantName,
-      },
-      itemName: itemName.trim(),
-      price,
-    });
-  });
+    try {
+      await session.withTransaction(async () => {
+        const [menuItem] = await MenuItem.create(
+          [
+            {
+              tenant: {
+                tenantId: tenantContext.tenantId,
+                tenantName: tenantContext.tenantName,
+              },
+              itemName: trimmedName,
+              price,
+            },
+          ],
+          { session }
+        );
 
-  let insertedDocs = [];
+        inserted++;
+        existingNames.add(normalizedName);
 
-  if (validItems.length) {
-    insertedDocs = await MenuItem.insertMany(validItems);
+        if (recipeItems?.length) {
+          const resolvedItems = await resolveRecipeItems(
+            recipeItems,
+            tenantContext.tenantId
+          );
+
+          const normalizedRecipeItems = await normalizeRecipeItems({
+            recipeItems: resolvedItems,
+            tenantId: tenantContext.tenantId,
+          });
+
+          const recipe = await Recipe.findOneAndUpdate(
+            {
+              "tenant.tenantId": tenantContext.tenantId,
+              "item.itemId": menuItem._id,
+            },
+            {
+              tenant: tenantContext,
+              item: {
+                itemId: menuItem._id,
+                itemName: menuItem.itemName,
+              },
+              recipeItems: normalizedRecipeItems,
+            },
+            { new: true, upsert: true, session }
+          );
+
+          await updateRecipeCache(
+            tenantContext.tenantId,
+            menuItem._id,
+            recipe
+          );
+
+          recipeCreated++;
+        }
+      });
+    } catch (err) {
+      errors.push(`Row ${index + 1}: ${err.message}`);
+    } finally {
+      session.endSession();
+    }
   }
 
   return res.status(201).json(
     new ApiResoponse(
       201,
       {
-        inserted: insertedDocs.length,
+        inserted,
         failed: errors.length,
+        recipeCreated,
         errors,
       },
       "Bulk menu item creation completed"
     )
   );
 });
+
 
 
 export const getAllMenuItems = asyncHandler(async (req, res) => {
@@ -158,18 +212,17 @@ export const getAllMenuItems = asyncHandler(async (req, res) => {
     throw new ApiError(400, "User is not associated with any tenant");
   }
 
-  const { search="", page = 1, limit = 10 } = req.query;
+  const { search = "", page = 1, limit = 10 } = req.query;
 
   const filter = {
     "tenant.tenantId": tenantContext.tenantId,
   };
 
-  // const menuItems = await MenuItem.find(filter).sort({ createdAt: -1 });
   const { data: menuItems, meta } = await paginate(MenuItem, filter, {
     page,
     limit,
     search,
-    searchField:"itemName",
+    searchField: "itemName",
     sort: { createdAt: -1 }
   });
 
@@ -188,43 +241,64 @@ export const getAllMenuItems = asyncHandler(async (req, res) => {
 
 
 export const deleteMenuItem = asyncHandler(async (req, res) => {
-  if (req.user.role !== "BRAND_ADMIN") {
-    throw new ApiError(403, "Only BRAND_ADMIN can delete menu items");
-  }
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  const { menuItemId } = req.params;
+  try {
+    const { menuItemId } = req.params;
 
-  const menuItemObjectId = new mongoose.Types.ObjectId(menuItemId)
-  const tenantContext = req.user.tenant;
-  // console.log(req.params, tenantContext);
+    if (!mongoose.Types.ObjectId.isValid(menuItemId)) {
+      throw new ApiError(400, "Invalid menuItemId");
+    }
 
-  if (!tenantContext?.tenantId) {
-    throw new ApiError(400, "User is not associated with any tenant");
-  }
+    const tenantContext = req.user.tenant;
 
-  if (!mongoose.Types.ObjectId.isValid(menuItemObjectId)) {
-    throw new ApiError(400, "Invalid menuItemId");
-  }
-
-  const menuItem = await MenuItem.findOne({
-    _id: menuItemObjectId,
-    "tenant.tenantId": tenantContext.tenantId,
-  });
-
-  if (!menuItem) {
-    throw new ApiError(
-      404,
-      "Menu item not found or does not belong to your tenant"
+    const menuItem = await MenuItem.findOne(
+      {
+        _id: menuItemId,
+        "tenant.tenantId": tenantContext.tenantId,
+      },
+      null,
+      { session }
     );
+
+    if (!menuItem) {
+      throw new ApiError(404, "Menu item not found");
+    }
+
+    await MenuItem.deleteOne(
+      { _id: menuItem._id },
+      { session }
+    );
+
+    await Recipe.deleteOne(
+      {
+        "tenant.tenantId": tenantContext.tenantId,
+        "item.itemId": menuItem._id,
+      },
+      { session }
+    );
+
+    await updateRecipeCache(
+      tenantContext.tenantId,
+      menuItem._id,
+      null
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json(
+      new ApiResoponse(
+        200,
+        { menuItemId: menuItem._id },
+        "Deleted successfully"
+      )
+    );
+  } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+    throw err;
   }
-
-  await MenuItem.deleteOne({ _id: menuItem._id });
-
-  return res.status(200).json(
-    new ApiResoponse(
-      200,
-      { menuItemId: menuItem._id },
-      "Menu item deleted successfully"
-    )
-  );
 });
+

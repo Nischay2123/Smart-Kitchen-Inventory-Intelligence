@@ -19,8 +19,9 @@ export const items = baseApi.injectEndpoints({
         method: "POST",
         body: items,
       }),
-      invalidatesTags: ["Items"],
+      invalidatesTags: ["Items", "Recipes"],
     }),
+
 
     deleteItems: builder.mutation({
       query: ({ itemId }) => ({

@@ -5,7 +5,6 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import {
     useGetRecipeQuery,
 } from "@/redux/apis/brand-admin/recipeApi"
-import { CreateItemModal } from '@/components/Form/brand-admin-form/create-item-form'
 import { recipeColumn } from '@/utils/columns/brand-admin'
 import { GridLoader } from '@/components/laoder'
 
@@ -48,11 +47,6 @@ const MenuItem = () => {
 
             </div>
 
-            <CreateItemModal
-                open={open}
-                onOpenChange={setOpen}
-                isUpdate={true}
-            />
         </div>
     )
 }
