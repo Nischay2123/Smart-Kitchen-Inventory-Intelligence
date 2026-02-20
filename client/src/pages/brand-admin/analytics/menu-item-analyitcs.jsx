@@ -1,8 +1,9 @@
 import { useSelector } from "react-redux";
 import AnalyticsHeader from "@/components/AnalyticsHeader";
-import { useGetMenuMatrixDataQuery ,useGetMenuItemDataQuery} from "@/redux/apis/brand-admin/analyticsApi";
+import { useGetMenuMatrixDataQuery, useGetMenuItemDataQuery } from "@/redux/apis/brand-admin/analyticsApi";
 import MenuEngineeringMatrix from "@/components/menu-matrix";
 import DataCard from "@/components/data-card/data-card";
+import { SkeletonLoader, GridLoader } from '@/components/laoder';
 
 const outletColumns = [
   {
@@ -40,36 +41,44 @@ export const MenuItemAnalysis = () => {
   const outletId = useSelector((state) => state.dashboardFilters.outletId);
   const { data, isLoading, isError, refetch } = useGetMenuMatrixDataQuery(
     { from, to },
-    { skip: !from || !to}
+    { skip: !from || !to }
   );
-  const { data:outletData, isLoading:outletDataLoading, isError:isOutletDataError, refetch:outletDataRefetch } = useGetMenuItemDataQuery(
-    { from, to,outletId},
-    { skip: !from || !to || !outletId}
+  const { data: outletData, isLoading: outletDataLoading, isError: isOutletDataError, refetch: outletDataRefetch } = useGetMenuItemDataQuery(
+    { from, to, outletId },
+    { skip: !from || !to || !outletId }
   );
 
-  
+
 
   return (
     <div className="w-full bg-gray-50 min-h-screen pb-4">
       <AnalyticsHeader
         headerTitle="Sales Analytics"
         description="Live performance insights across all outlets"
-        onRefresh={()=>{
-            refetch()
-            outletDataRefetch()
+        isRefreshing={isLoading || outletDataLoading}
+        onRefresh={() => {
+          refetch()
+          outletDataRefetch()
         }}
       />
       <div className="px-6">
-        <MenuEngineeringMatrix data={data?.data ?? []} />
+        {isLoading ? (
+          <SkeletonLoader />
+        ) : (
+          <MenuEngineeringMatrix data={data?.data ?? []} />
+        )}
       </div>
       <div className="flex flex-col gap-4 px-4 lg:px-6 lg:flex-row pt-4">
-       <DataCard
+        {outletDataLoading ? (
+          <SkeletonLoader />
+        ) : (
+          <DataCard
             description="Per outlet sales and contribution"
             title={"Outlet Data"}
             data={outletData?.data ?? []}
             columns={outletColumns}
-            loading={outletDataLoading}
           />
+        )}
       </div>
     </div>
   );

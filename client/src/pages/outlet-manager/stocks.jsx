@@ -15,7 +15,7 @@ import { useAuth } from "@/auth/auth";
 import { useStockSocket } from "@/sockets/sockets";
 import { CreateStockMovementForm } from "@/components/Form/outlet-manager-form/create-stock-movement";
 import { ingredientColumn } from "@/utils/columns/outlet-manager";
-import { SkeletonLoader } from "@/components/laoder";
+import { SkeletonLoader, TableOverlayLoader } from "@/components/laoder";
 
 import { debounce } from "lodash";
 
@@ -83,6 +83,7 @@ export const Stocks = () => {
         isTooltip={false}
         isRefetch={true}
         onRefetch={refetch}
+        isFetching={isFetching}
         actionTooltip="Refetch"
       >
         <CsvScanner type="stock-movement" onSuccess={refetch} outletId={user?.outlet?.outletId} />
@@ -92,25 +93,28 @@ export const Stocks = () => {
         {isLoading ? (
           <SkeletonLoader />
         ) : (
-          <DataCard
-            title="Available Stock"
-            searchable
-            columns={ingredientColumn(
-              setOpen,
-              setSelectedIngredient
-            )}
-            data={ingredientStocks ?? []}
-            titleWhenEmpty="No ingredients found"
-            descriptionWhenEmpty="We couldn’t find any ingredients here."
-            pagination={true}
-            manualPagination={true}
-            pageCount={
-              data?.data?.pagination?.totalPages || 0
-            }
-            onPaginationChange={setPagination}
-            paginationState={pagination}
-            onGlobalFilterChange={debouncedSearch}
-          />
+          <div className="relative">
+            {isFetching && <TableOverlayLoader />}
+            <DataCard
+              title="Available Stock"
+              searchable
+              columns={ingredientColumn(
+                setOpen,
+                setSelectedIngredient
+              )}
+              data={ingredientStocks ?? []}
+              titleWhenEmpty="No ingredients found"
+              descriptionWhenEmpty="We couldn't find any ingredients here."
+              pagination={true}
+              manualPagination={true}
+              pageCount={
+                data?.data?.pagination?.totalPages || 0
+              }
+              onPaginationChange={setPagination}
+              paginationState={pagination}
+              onGlobalFilterChange={debouncedSearch}
+            />
+          </div>
         )}
       </div>
 

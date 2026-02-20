@@ -10,7 +10,7 @@ import {
 } from "@/redux/apis/brand-admin/ingredientApi"
 
 import { CreateIngredientModal } from '@/components/Form/brand-admin-form/create-ingredient-form'
-import { SkeletonLoader } from '@/components/laoder'
+import { SkeletonLoader, TableOverlayLoader } from '@/components/laoder'
 import { debounce } from 'lodash'
 
 
@@ -29,6 +29,7 @@ export const Ingredients = () => {
     data,
     isLoading,
     isError,
+    isFetching,
     refetch,
   } = useGetAllIngredientsQuery({
     page: pagination.pageIndex + 1,
@@ -89,23 +90,25 @@ export const Ingredients = () => {
         {isLoading ? (
           <SkeletonLoader />
         ) : (
-          <DataCard
-            title="INGREDIENTS"
-            searchable
-            loading={isLoading || isDeleting}
-            columns={ingredientColumn(handleDeleteItem)}
-            data={data?.data.ingredients ?? []}
-            titleWhenEmpty="No ingredients found"
-            descriptionWhenEmpty="
-              We couldn’t find any ingredients here.
-              Try adding a new one.
-            "
-            manualPagination={true}
-            pageCount={data?.data?.pagination?.totalPages || 0}
-            onPaginationChange={setPagination}
-            paginationState={pagination}
-            onGlobalFilterChange={debouncedSearch}
-          />
+          <div className="relative">
+            {(isFetching && !isLoading) && <TableOverlayLoader />}
+            <DataCard
+              title="INGREDIENTS"
+              searchable
+              columns={ingredientColumn(handleDeleteItem)}
+              data={data?.data.ingredients ?? []}
+              titleWhenEmpty="No ingredients found"
+              descriptionWhenEmpty="
+                We couldn’t find any ingredients here.
+                Try adding a new one.
+              "
+              manualPagination={true}
+              pageCount={data?.data?.pagination?.totalPages || 0}
+              onPaginationChange={setPagination}
+              paginationState={pagination}
+              onGlobalFilterChange={debouncedSearch}
+            />
+          </div>
         )}
       </div>
 

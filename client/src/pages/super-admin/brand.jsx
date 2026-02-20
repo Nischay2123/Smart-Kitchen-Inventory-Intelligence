@@ -2,17 +2,18 @@ import SiteHeader from '@/components/site-header'
 import React, { useState } from 'react'
 import DataCard from '@/components/data-card/data-card'
 import { CreateBrandManagerModal } from '@/components/Form/super-admin-form/create-brand-manager-form'
-import { useLocation,useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 import {
   useGetAllBrandManagersQuery,
   useDeleteBrandManagerMutation,
-} from "@/redux/apis/super-admin/brandApi" 
+} from "@/redux/apis/super-admin/brandApi"
 import { brandManagerColumns } from '@/utils/columns/super-admin.jsx';
+import { SkeletonLoader } from '@/components/laoder';
 
 
 export const Brand = () => {
-  const {id} = useParams()
+  const { id } = useParams()
   const location = useLocation();
   const brandName = location.state?.name;
   const [open, setOpen] = useState(false)
@@ -20,24 +21,24 @@ export const Brand = () => {
     data,
     isLoading,
     isError,
-  } = useGetAllBrandManagersQuery({tenantId:id})
-  
+  } = useGetAllBrandManagersQuery({ tenantId: id })
+
   const [deleteBrandManager, { isLoading: isDeleting }] =
     useDeleteBrandManagerMutation()
 
   const handleDeleteBrandManager = async (manager) => {
-  const result = window.confirm(
-    `Are you sure you want to delete the Brand Manager "${manager.userName}"?`
-  )
+    const result = window.confirm(
+      `Are you sure you want to delete the Brand Manager "${manager.userName}"?`
+    )
 
-  if (!result) return
+    if (!result) return
 
-  try {
-    await deleteBrandManager({ managerId: manager._id }).unwrap()
-  } catch (error) {
-    console.error("Failed to delete brand manager", error)
+    try {
+      await deleteBrandManager({ managerId: manager._id }).unwrap()
+    } catch (error) {
+      console.error("Failed to delete brand manager", error)
+    }
   }
-}
 
 
   return (
@@ -50,13 +51,16 @@ export const Brand = () => {
       />
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
-        <DataCard
-          title="Brand Managers"
-          searchable
-          loading={isLoading || isDeleting}
-          columns={brandManagerColumns(handleDeleteBrandManager)}
-          data={data?.data ?? []}
-        />
+        {isLoading ? (
+          <SkeletonLoader />
+        ) : (
+          <DataCard
+            title="Brand Managers"
+            searchable
+            columns={brandManagerColumns(handleDeleteBrandManager)}
+            data={data?.data ?? []}
+          />
+        )}
       </div>
 
       <CreateBrandManagerModal

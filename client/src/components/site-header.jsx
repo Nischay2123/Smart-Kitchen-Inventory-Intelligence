@@ -16,6 +16,7 @@ const SiteHeader = ({
   isTooltip = true,
   onRefetch,
   isRefetch = false,
+  isFetching = false,
   onLogOut,
   isLogout = false,
   children
@@ -99,20 +100,22 @@ const SiteHeader = ({
                   <TooltipTrigger asChild>
                     <Button
                       onClick={onRefetch}
+                      disabled={isFetching}
                       className="
                     bg-red-500 
                     hover:bg-red-600 
                     active:scale-95
                     transition-all
                     duration-200
+                    disabled:opacity-70
                   "
                       size="icon"
                     >
-                      <RefreshCcw className="h-4 w-4" strokeWidth={3} />
+                      <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} strokeWidth={3} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    <p>{actionTooltip}</p>
+                    <p>{isFetching ? 'Refreshing…' : actionTooltip}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

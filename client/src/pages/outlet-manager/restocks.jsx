@@ -5,7 +5,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardDateRangePicker from "@/components/data-range-picker";
 import { restockColumn } from '@/utils/columns/outlet-manager'
-import { SkeletonLoader } from '@/components/laoder'
+import { SkeletonLoader, TableOverlayLoader } from '@/components/laoder'
 import { debounce } from 'lodash'
 
 export const Restocks = () => {
@@ -17,7 +17,7 @@ export const Restocks = () => {
     pageSize: 10,
   })
   const [search, setSearch] = useState("");
-  
+
 
   const {
     data,
@@ -25,29 +25,29 @@ export const Restocks = () => {
     isError,
     isFetching
   } = useGetStockMovementDetailsQuery({
-      fromDate: dateRange?.from,
-      toDate: dateRange?.to,
-      page: pagination.pageIndex + 1,
-      limit: pagination.pageSize,
-      search
-    },{skip:!dateRange})
+    fromDate: dateRange?.from,
+    toDate: dateRange?.to,
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+    search
+  }, { skip: !dateRange })
 
-    const debouncedSearch = React.useMemo(
-        () =>
-          debounce((value) => {
-            setPagination((prev) => ({
-              ...prev,
-              pageIndex: 0, 
-            }));
-    
-            setSearch(value);
-          }, 400),
-        []
-      );
-    
-      React.useEffect(() => {
-        return () => debouncedSearch.cancel();
-      }, [debouncedSearch]);
+  const debouncedSearch = React.useMemo(
+    () =>
+      debounce((value) => {
+        setPagination((prev) => ({
+          ...prev,
+          pageIndex: 0,
+        }));
+
+        setSearch(value);
+      }, 400),
+    []
+  );
+
+  React.useEffect(() => {
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
 
   return (
     <div className="w-full bg-gray-50 min-h-screen">
@@ -63,27 +63,28 @@ export const Restocks = () => {
       />
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
-        {(isLoading ) ? (
+        {(isLoading) ? (
           <SkeletonLoader />
         ) : (
-          <DataCard
-            title="Stock Movement Entries"
-            searchable
-            loading={isLoading}
-            columns={restockColumn(navigate)}
-            data={data?.data.movements ?? []}
-            titleWhenEmpty="No ingredients found"
-            descriptionWhenEmpty="We couldn’t find any ingredients here."
-            pagination={true}
-            manualPagination={true}
-            pageCount={data?.data?.pagination?.totalPages || 0}
-            onPaginationChange={setPagination}
-            paginationState={pagination}
-            onGlobalFilterChange={debouncedSearch}
-          />
+          <div className="relative">
+            {isFetching && <TableOverlayLoader />}
+            <DataCard
+              title="Stock Movement Entries"
+              searchable
+              columns={restockColumn(navigate)}
+              data={data?.data.movements ?? []}
+              titleWhenEmpty="No ingredients found"
+              descriptionWhenEmpty="We couldn't find any ingredients here."
+              pagination={true}
+              manualPagination={true}
+              pageCount={data?.data?.pagination?.totalPages || 0}
+              onPaginationChange={setPagination}
+              paginationState={pagination}
+              onGlobalFilterChange={debouncedSearch}
+            />
+          </div>
         )}
       </div>
     </div>
   )
 }
-

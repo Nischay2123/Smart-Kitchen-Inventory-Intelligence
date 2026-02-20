@@ -30,10 +30,11 @@ const AnalyticsHeader = ({
   headerTitle = "Dashboard Overview",
   description = "Real-time aggregated analytics",
   onRefresh,
-  isOutlet=true
+  isRefreshing = false,
+  isOutlet = true
 }) => {
   const dispatch = useDispatch();
-  const {data,isLoading,error} = useGetAllOutletsQuery(undefined, {
+  const { data, isLoading, error } = useGetAllOutletsQuery(undefined, {
     skip: !isOutlet,
   });
 
@@ -44,13 +45,13 @@ const AnalyticsHeader = ({
   useEffect(() => {
     if (!outletId && data?.data?.length) {
       dispatch(setOutletId(data.data[0]._id));
-    } 
+    }
   }, [data, outletId, dispatch]);
 
   return (
     <div className="w-full ">
       <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-4 py-4 lg:px-6">
-        
+
         <div className="flex flex-col">
           <h1 className="text-xl font-semibold leading-tight lg:text-2xl">
             {headerTitle}
@@ -62,12 +63,12 @@ const AnalyticsHeader = ({
 
         {/* Right Section */}
         <div className="flex flex-wrap items-end gap-3">
-          
+
           {/* Date Picker */}
           <DashboardDateRangePicker
             value={dateRange}
-            onChange={(range) =>{ 
-              
+            onChange={(range) => {
+
               dispatch(setDateRange(range))
             }}
             className="flex-row"
@@ -76,22 +77,22 @@ const AnalyticsHeader = ({
           {/* Outlet Selector */}
           {
             isOutlet
-            && 
+            &&
             <Select
-            value={outletId}
-            onValueChange={(id) => dispatch(setOutletId(id))}
-          >
-            <SelectTrigger className="w-50 h-9.5">
-              <SelectValue placeholder="Select outlet" />
-            </SelectTrigger>
-            <SelectContent>
-              {data?.data.map((o) => (
-                <SelectItem key={o._id} value={o._id}>
-                  {o.outletName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              value={outletId}
+              onValueChange={(id) => dispatch(setOutletId(id))}
+            >
+              <SelectTrigger className="w-50 h-9.5">
+                <SelectValue placeholder="Select outlet" />
+              </SelectTrigger>
+              <SelectContent>
+                {data?.data.map((o) => (
+                  <SelectItem key={o._id} value={o._id}>
+                    {o.outletName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           }
 
           {/* Refresh */}
@@ -100,15 +101,16 @@ const AnalyticsHeader = ({
               <TooltipTrigger asChild>
                 <Button
                   onClick={onRefresh}
+                  disabled={isRefreshing}
                   size="icon"
                   variant="outline"
-                  className="h-9.5 w-9.5"
+                  className="h-9.5 w-9.5 disabled:opacity-70"
                 >
-                  <RefreshCcw className="h-4 w-4" />
+                  <RefreshCcw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                Refresh Data
+                {isRefreshing ? 'Refreshing…' : 'Refresh Data'}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

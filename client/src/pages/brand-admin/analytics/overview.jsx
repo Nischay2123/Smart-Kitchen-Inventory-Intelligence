@@ -8,6 +8,7 @@ import {
   AnalyticsCards,
   SecondaryMetrics,
 } from "@/components/site-card/site-cards";
+import { GridLoader, SkeletonLoader } from '@/components/laoder';
 
 import {
   useGetLiveDeploymentDataMutation,
@@ -156,13 +157,20 @@ export const Overview = () => {
         headerTitle="Sales Analytics"
         description="Live performance insights across all outlets"
         onRefresh={load}
+        isRefreshing={loading}
         isOutlet={false}
       />
 
       <div className="@container/main flex flex-col gap-2 pt-4 pb-4">
         <p className="text-md text-gray-500 px-6">{headerText}</p>
-        <AnalyticsCards data={displayedData} />
-        <SecondaryMetrics data={displayedData} />
+        {loading ? (
+          <div className="px-4 lg:px-6"><GridLoader /></div>
+        ) : (
+          <>
+            <AnalyticsCards data={displayedData} />
+            <SecondaryMetrics data={displayedData} />
+          </>
+        )}
       </div>
 
       <section>
@@ -171,24 +179,31 @@ export const Overview = () => {
         </h2>
 
         <div className="flex flex-col gap-4 px-4 lg:px-6 lg:flex-row">
-          <TabSalesBarChart
-            title="Top Outlets"
-            description="Top performing deployments as per sales"
-            data={data ?? []}
-            xKey="outletName"
-            yKey="totalSale"
-            onBarClick={() => { }}
-            loading={loading}
-          />
+          {loading ? (
+            <>
+              <div className="flex-1"><SkeletonLoader /></div>
+              <div className="flex-1"><SkeletonLoader /></div>
+            </>
+          ) : (
+            <>
+              <TabSalesBarChart
+                title="Top Outlets"
+                description="Top performing deployments as per sales"
+                data={data ?? []}
+                xKey="outletName"
+                yKey="totalSale"
+                onBarClick={() => { }}
+              />
 
-          <DataCard
-            description="Per outlet sales and contribution"
-            title={"Outlet Data"}
-            data={data ?? []}
-            columns={outletColumns}
-            loading={loading}
-            onRowClick={handleRowClick}
-          />
+              <DataCard
+                description="Per outlet sales and contribution"
+                title={"Outlet Data"}
+                data={data ?? []}
+                columns={outletColumns}
+                onRowClick={handleRowClick}
+              />
+            </>
+          )}
         </div>
       </section>
     </div>

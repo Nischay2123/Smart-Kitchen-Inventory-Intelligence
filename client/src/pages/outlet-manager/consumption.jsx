@@ -17,9 +17,11 @@ import { SkeletonLoader } from "@/components/laoder";
 
 const ingredientColumn = () => [
   { accessorKey: "ingredientName", header: "Ingredient" },
-  { accessorKey: "totalCost", header: "Total Cost" ,cell:({row})=>(
-    <span>{row.original.totalCost.toFixed(3)}</span>
-  )},
+  {
+    accessorKey: "totalCost", header: "Total Cost", cell: ({ row }) => (
+      <span>{row.original.totalCost.toFixed(3)}</span>
+    )
+  },
   { accessorKey: "noOfOrders", header: "Used In Orders" },
   { accessorKey: "avgQtyPerOrder", header: "Average Quantity Used Per Order" },
   { accessorKey: "avgCostPerOrder", header: "Average Cost Per Order" },
@@ -37,13 +39,13 @@ export const Consumption = () => {
     useGetSaleStockConsumptionQuery({
       fromDate: dateRange?.from,
       toDate: dateRange?.to,
-    },{skip:!dateRange});
+    }, { skip: !dateRange });
 
-    React.useEffect(() => {
-      if (data?.data) {
-        dispatch(setStocks(data.data));
-      }
-    }, [data, dispatch]);
+  React.useEffect(() => {
+    if (data?.data) {
+      dispatch(setStocks(data.data));
+    }
+  }, [data, dispatch]);
 
   useStockSocket({
     tenantId: user?.tenant?.tenantId,
@@ -61,6 +63,7 @@ export const Consumption = () => {
         isTooltip={false}
         isRefetch={true}
         onRefetch={refetch}
+        isFetching={isFetching}
         actionTooltip="Refetch"
       />
 

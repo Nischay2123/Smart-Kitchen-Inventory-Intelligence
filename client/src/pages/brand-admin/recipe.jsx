@@ -7,7 +7,7 @@ import {
   useGetAllItemsQuery,
   useDeleteItemsMutation,
 } from "@/redux/apis/brand-admin/itemApi"
-import { SkeletonLoader } from '@/components/laoder'
+import { SkeletonLoader, TableOverlayLoader } from '@/components/laoder'
 import { createRecipeColumn } from '@/utils/columns/brand-admin'
 import { debounce } from 'lodash'
 
@@ -26,6 +26,7 @@ export const Recipe = () => {
     data,
     isLoading,
     isError,
+    isFetching,
     refetch
   } = useGetAllItemsQuery({
     page: pagination.pageIndex + 1,
@@ -78,24 +79,25 @@ export const Recipe = () => {
         {
           isLoading ?
             <SkeletonLoader /> :
-            <DataCard
-              title={"Create and update Recipies for the items"}
-              searchable
-              loading={isLoading || isDeleting}
-              columns={createRecipeColumn(handleDeleteItem, Navigate)}
-              data={data?.data.menuItems ?? []}
-              titleWhenEmpty={"No items found to create recipes"}
-              descriptionWhenEmpty={"We couldn’t find any items here. Try adding a new one or adjust your filters."}
-              manualPagination={true}
-              pageCount={data?.data?.pagination?.totalPages || 0}
-              onPaginationChange={setPagination}
-              paginationState={pagination}
-              onGlobalFilterChange={debouncedSearch}
-            />
+            <div className="relative">
+              {(isFetching && !isLoading) && <TableOverlayLoader />}
+              <DataCard
+                title={"Create and update Recipies for the items"}
+                searchable
+                columns={createRecipeColumn(handleDeleteItem, Navigate)}
+                data={data?.data.menuItems ?? []}
+                titleWhenEmpty={"No items found to create recipes"}
+                descriptionWhenEmpty={"We couldn't find any items here. Try adding a new one or adjust your filters."}
+                manualPagination={true}
+                pageCount={data?.data?.pagination?.totalPages || 0}
+                onPaginationChange={setPagination}
+                paginationState={pagination}
+                onGlobalFilterChange={debouncedSearch}
+              />
+            </div>
         }
 
       </div>
     </div>
   )
 }
-

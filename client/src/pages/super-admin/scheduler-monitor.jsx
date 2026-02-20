@@ -35,8 +35,8 @@ const SchedulerMonitor = () => {
         endDate: dateRange?.to,
     };
 
-    const { data, isLoading, isError, refetch } = useGetSchedulerLogsQuery(queryParams,{
-        skip: !dateRange?.from || !dateRange?.to, 
+    const { data, isLoading, isError, isFetching, refetch } = useGetSchedulerLogsQuery(queryParams, {
+        skip: !dateRange?.from || !dateRange?.to,
     });
 
     const logs = data?.data?.logs || [];
@@ -50,6 +50,7 @@ const SchedulerMonitor = () => {
                 isTooltip={false}
                 isRefetch={true}
                 onRefetch={refetch}
+                isFetching={isFetching}
             >
                 <div className="flex gap-2 items-end">
                     <DashboardDateRangePicker

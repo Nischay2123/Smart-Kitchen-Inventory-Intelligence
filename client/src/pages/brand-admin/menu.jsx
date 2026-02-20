@@ -8,7 +8,7 @@ import {
   useDeleteItemsMutation,
 } from "@/redux/apis/brand-admin/itemApi"
 import { menuColumns } from '@/utils/columns/brand-admin'
-import { SkeletonLoader } from '@/components/laoder'
+import { SkeletonLoader, TableOverlayLoader } from '@/components/laoder'
 import { debounce } from 'lodash'
 import { CreateItemModal } from '@/components/Form/brand-admin-form/create-item-form/create-item-form'
 
@@ -27,6 +27,7 @@ const Item = () => {
     data,
     isLoading,
     isError,
+    isFetching,
     refetch,
   } = useGetAllItemsQuery({
     page: pagination.pageIndex + 1,
@@ -80,20 +81,23 @@ const Item = () => {
         {
           isLoading ?
             <SkeletonLoader /> :
-            <DataCard
-              title={"MENU ITEMS"}
-              searchable
-              loading={isLoading || isDeleting}
-              columns={menuColumns(handleDeleteItem, Navigate)}
-              data={data?.data.menuItems ?? []}
-              titleWhenEmpty={"No items found"}
-              descriptionWhenEmpty={"We couldn’t find any items here. Try adding a new one or adjust your filters."}
-              manualPagination={true}
-              pageCount={data?.data?.pagination?.totalPages || 0}
-              onPaginationChange={setPagination}
-              paginationState={pagination}
-              onGlobalFilterChange={debouncedSearch}
-            />
+            <div className="relative">
+              {(isFetching && !isLoading) && <TableOverlayLoader />}
+              <DataCard
+                title={"MENU ITEMS"}
+                searchable
+                columns={menuColumns(handleDeleteItem, Navigate)}
+                data={data?.data.menuItems ?? []}
+                titleWhenEmpty={"No items found"}
+                descriptionWhenEmpty={"We couldn't find any items here. Try adding a new one or adjust your filters."}
+                manualPagination={true}
+                pageCount={data?.data?.pagination?.totalPages || 0}
+                onPaginationChange={setPagination}
+                paginationState={pagination}
+                onGlobalFilterChange={debouncedSearch}
+              />
+            </div>
+
         }
 
       </div>

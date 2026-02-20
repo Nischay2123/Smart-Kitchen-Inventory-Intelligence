@@ -7,6 +7,7 @@ import { useGetAllTenantsQuery, useDeleteBrandMutation } from "@/redux/apis/supe
 import { useLogoutMutation } from "@/redux/apis/userApi";
 import { useAuth } from "@/auth/auth";
 import { Button } from "@/components/ui/button";
+import { GridLoader } from '@/components/laoder';
 
 const SuperAdmin = () => {
   const navigate = useNavigate();
@@ -42,11 +43,11 @@ const SuperAdmin = () => {
   const handleLogout = async () => {
     try {
       const res = confirm("Do you want to Log Out")
-      if(!res) return ;
+      if (!res) return;
       await logoutUser().unwrap();
-       setUser(null);
-    } catch(e) {
-      console.log("Failed to LogOut: ",e?.message);
+      setUser(null);
+    } catch (e) {
+      console.log("Failed to LogOut: ", e?.message);
     }
   };
 
@@ -70,9 +71,7 @@ const SuperAdmin = () => {
 
       <div className="px-4 lg:p-6">
         {isLoading && (
-          <p className="text-sm text-muted-foreground">
-            Loading brands...
-          </p>
+          <GridLoader />
         )}
 
         {isError && (
