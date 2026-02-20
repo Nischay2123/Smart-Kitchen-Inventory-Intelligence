@@ -36,7 +36,16 @@ export function CreateOutletManagerModal({ open, onOpenChange, id }) {
     () => isValidPassword(password),
     [password]
   );
-  
+
+  const resetForm = () => {
+    setUserName("");
+    setEmail("");
+    setPassword("");
+    setStatus("idle");
+    setMessage("");
+    setIsVerified(false);
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -59,7 +68,10 @@ export function CreateOutletManagerModal({ open, onOpenChange, id }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(val) => {
+      if (!val) resetForm();
+      onOpenChange(val);
+    }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create New Outlet Manager</DialogTitle>
@@ -112,6 +124,7 @@ export function CreateOutletManagerModal({ open, onOpenChange, id }) {
           <Success
             message={message}
             onOpenChange={onOpenChange}
+            resetForm={resetForm}
             setStatus={setStatus}
           />
         )}

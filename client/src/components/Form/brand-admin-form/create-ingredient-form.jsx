@@ -99,6 +99,15 @@ export function CreateIngredientModal({ open, onOpenChange }) {
         if (!val) {
           setStatus("idle")
           setMessage("")
+          setForm({
+            name: "",
+            unitIds: [],
+            threshold: {
+              low: "",
+              critical: "",
+              unitId: "",
+            },
+          })
         }
         onOpenChange(val)
       }}
@@ -178,11 +187,10 @@ export function CreateIngredientModal({ open, onOpenChange }) {
 
                         className={`
                           px-3 py-1 rounded border text-sm
-                          ${
-                            form.threshold.unitId ===
+                          ${form.threshold.unitId ===
                             unit._id
-                              ? "bg-primary text-white"
-                              : "bg-background"
+                            ? "bg-primary text-white"
+                            : "bg-background"
                           }
                         `}
                       >
@@ -251,7 +259,7 @@ export function CreateIngredientModal({ open, onOpenChange }) {
         )}
 
         {status === "error" && (
-          <Error setStatus={setStatus} message={message}/>
+          <Error setStatus={setStatus} message={message} />
         )}
 
       </DialogContent>

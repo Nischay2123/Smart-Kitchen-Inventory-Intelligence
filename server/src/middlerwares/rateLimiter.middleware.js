@@ -25,7 +25,7 @@ export const generalRateLimit = rateLimit({
 
 export const authRateLimit = rateLimit({
     windowMs: 10 * 60 * 1000,
-    max: 5,
+    max: 20,
     keyGenerator: (req) => ipKeyGenerator(req),
     store: makeStore("rl:auth:"),
     handler,

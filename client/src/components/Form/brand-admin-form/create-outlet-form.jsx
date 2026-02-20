@@ -8,15 +8,15 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {  XCircle } from "lucide-react"
+import { XCircle } from "lucide-react"
 import { useCreateOutletMutation } from "@/redux/apis/brand-admin/outletApi"
 import { Success } from "@/components/success"
 import { Error } from "@/components/error"
 
 export function CreateOutletModal({ open, onOpenChange }) {
-  const [status, setStatus] = React.useState("idle") 
+  const [status, setStatus] = React.useState("idle")
   const [message, setMessage] = React.useState("")
-  const [createOutlet ] = useCreateOutletMutation()
+  const [createOutlet] = useCreateOutletMutation()
   const [form, setForm] = React.useState({
     outletName: "",
     address: {
@@ -51,7 +51,7 @@ export function CreateOutletModal({ open, onOpenChange }) {
     setMessage("")
 
     try {
-      await createOutlet({outletName:form.outletName, address:form.address})
+      await createOutlet({ outletName: form.outletName, address: form.address })
 
       setStatus("success")
       setMessage("Outlet payload logged successfully")
@@ -79,6 +79,15 @@ export function CreateOutletModal({ open, onOpenChange }) {
         if (!val) {
           setStatus("idle")
           setMessage("")
+          setForm({
+            outletName: "",
+            address: {
+              line: "",
+              city: "",
+              state: "",
+              pincode: "",
+            },
+          })
         }
         onOpenChange(val)
       }}
@@ -153,7 +162,7 @@ export function CreateOutletModal({ open, onOpenChange }) {
         )}
 
         {status === "error" && (
-            <Error message={message} setStatus={setStatus} />
+          <Error message={message} setStatus={setStatus} />
         )}
       </DialogContent>
     </Dialog>

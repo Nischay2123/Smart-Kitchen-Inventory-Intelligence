@@ -81,6 +81,11 @@ export function CreateUnitModal({ open, onOpenChange }) {
         if (!val) {
           setStatus("idle")
           setMessage("")
+          setForm({
+            unit: "",
+            baseUnit: "",
+            conversionRate: "",
+          })
         }
         onOpenChange(val)
       }}
@@ -156,7 +161,7 @@ export function CreateUnitModal({ open, onOpenChange }) {
         )}
 
         {status === "error" && (
-            <Error message={message} setStatus={setStatus} />
+          <Error message={message} setStatus={setStatus} />
         )}
       </DialogContent>
     </Dialog>

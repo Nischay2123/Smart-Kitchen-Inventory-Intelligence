@@ -52,6 +52,14 @@ const UserSchema = new Schema(
     password: {
       type: String,
       select: false,
+      minlength: 8,
+      validate: {
+        validator: function (value) {
+          return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(value);
+        },
+        message:
+          "Password must be at least 8 characters long and contain at least one letter and one number",
+      },
     },
 
     role: {
