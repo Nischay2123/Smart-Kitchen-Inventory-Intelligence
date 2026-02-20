@@ -124,6 +124,8 @@ export const createMenuItem = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession();
 
     try {
+      let createdMenuItem = null;
+      let recipeWasCreated = false;
       await session.withTransaction(async () => {
         const [menuItem] = await MenuItem.create(
           [
@@ -139,9 +141,7 @@ export const createMenuItem = asyncHandler(async (req, res) => {
           { session }
         );
 
-        inserted++;
-        existingNames.add(normalizedName);
-
+        createdMenuItem = menuItem;
         if (recipeItems?.length) {
           const resolvedItems = await resolveRecipeItems(
             recipeItems,
@@ -169,15 +169,24 @@ export const createMenuItem = asyncHandler(async (req, res) => {
             { new: true, upsert: true, session }
           );
 
+          recipeWasCreated = true;
+
           await updateRecipeCache(
             tenantContext.tenantId,
             menuItem._id,
             recipe
           );
 
-          recipeCreated++;
         }
       });
+      if (createdMenuItem) {
+        inserted++;
+        existingNames.add(normalizedName);
+      }
+
+      if (recipeWasCreated) {
+        recipeCreated++;
+      }
     } catch (err) {
       errors.push(`Row ${index + 1}: ${err.message}`);
     } finally {

@@ -8,6 +8,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser'
 import morgan from "morgan"
 import apiRoutes from "./src/routes/index.js";
+import { generalRateLimit } from "./src/middlerwares/rateLimiter.middleware.js";
 import http from "http";
 import { initSocket } from "./src/sockets/socket.js";
 
@@ -44,7 +45,7 @@ app.use(cookieParser());
 app.use(morgan("tiny"))
 
 
-app.use("/api/v1", apiRoutes);
+app.use("/api/v1", generalRateLimit, apiRoutes);
 
 
 

@@ -76,7 +76,7 @@ const SchedulerMonitor = () => {
                         <SelectContent>
                             <SelectItem value="all">All Events</SelectItem>
                             <SelectItem value="daily-snapshot">Daily Snapshot</SelectItem>
-                            <SelectItem value="order-queue-retry">Order Queue Retry</SelectItem>
+                            <SelectItem value="queue-retry">Queue Retry</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
