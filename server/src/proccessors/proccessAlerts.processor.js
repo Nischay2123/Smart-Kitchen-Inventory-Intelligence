@@ -7,23 +7,31 @@ import { sendStockAlertEmail } from "../utils/emailAlert.js";
 
 export const processAlerts = async ({ outlet, tenant, requirementList }) => {
   try {
+    if (!requirementList || requirementList.length === 0) return;
+
+    const ingredientIds = requirementList.map(r => r.ingredientMasterId);
+
+    const [stockDocs, ingredientDocs] = await Promise.all([
+      Stock.find({
+        "outlet.outletId": outlet.outletId,
+        "masterIngredient.ingredientMasterId": { $in: ingredientIds },
+      }).lean(),
+      IngredientMaster.find({ _id: { $in: ingredientIds } }).lean(),
+    ]);
+
+    if (!stockDocs.length || !ingredientDocs.length) return;
+
+    const stockMap = new Map(stockDocs.map(s => [s.masterIngredient.ingredientMasterId.toString(), s]));
+    const ingredientMap = new Map(ingredientDocs.map(i => [i._id.toString(), i]));
+
     const alertItems = [];
 
     for (const req of requirementList) {
-      const stock = await Stock.findOne({
-        "outlet.outletId": outlet.outletId,
-        "masterIngredient.ingredientMasterId":
-          req.ingredientMasterId,
-      }).lean();
+      const stock = stockMap.get(req.ingredientMasterId.toString());
+      const ingredient = ingredientMap.get(req.ingredientMasterId.toString());
+      if (!stock || !ingredient) continue;
 
-
-      const ingredient = await IngredientMaster.findById(
-        req.ingredientMasterId
-      ).lean();
-
-
-      const { lowInBase, criticalInBase } =
-        ingredient.threshold;
+      const { lowInBase, criticalInBase } = ingredient.threshold;
 
       const newState = resolveAlertState({
         currentStockInBase: stock.currentStockInBase,
@@ -34,9 +42,7 @@ export const processAlerts = async ({ outlet, tenant, requirementList }) => {
       if (stock.alertState === newState) continue;
 
       alertItems.push({
-        ingredientName:
-          stock.masterIngredient
-            .ingredientMasterName,
+        ingredientName: stock.masterIngredient.ingredientMasterName,
         currentStock: stock.currentStockInBase,
         baseUnit: stock.baseUnit,
         lowInBase,
@@ -49,25 +55,18 @@ export const processAlerts = async ({ outlet, tenant, requirementList }) => {
 
     if (!alertItems.length) return;
 
-    await Stock.bulkWrite(
-      alertItems.map((item) => ({
+    const bulkResult = await Stock.bulkWrite(
+      alertItems.map(item => ({
         updateOne: {
-          filter: {
-            _id: item.stockId,
-            alertState: item.prevAlert,
-          },
-          update: {
-            $set: { alertState: item.alertState },
-          },
+          filter: { _id: item.stockId, alertState: item.prevAlert },
+          update: { $set: { alertState: item.alertState } },
         },
       }))
     );
 
-    const emails = await getOutletManagersEmails(
-      tenant.tenantId,
-      outlet.outletId
-    );
+    if (bulkResult.modifiedCount === 0) return;
 
+    const emails = await getOutletManagersEmails(tenant.tenantId, outlet.outletId);
     if (emails.length > 0) {
       await sendStockAlertEmail({
         to: emails,
@@ -75,12 +74,12 @@ export const processAlerts = async ({ outlet, tenant, requirementList }) => {
         alerts: alertItems,
       });
     }
+
   } catch (err) {
     console.error(
       `processAlerts failed tenant=${tenant?.tenantId} outlet=${outlet?.outletId}`,
       err
     );
-
     throw err;
   }
 };
