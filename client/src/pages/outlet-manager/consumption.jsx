@@ -79,7 +79,7 @@ export const Consumption = () => {
         ) : (
           <DataCard
             title="Available Stock"
-            searchable={false}
+            searchable={true}
             columns={ingredientColumn()}
             data={data?.data ?? []}
             titleWhenEmpty="No ingredients found"
