@@ -11,23 +11,35 @@ import { SkeletonLoader, TableOverlayLoader } from '@/components/laoder'
 
 
 
+const STATUS_OPTIONS = [
+  { value: null, label: "All", color: "bg-gray-200 text-gray-700", activeColor: "bg-gray-700 text-white" },
+  { value: "PENDING", label: "Pending", color: "bg-yellow-50 text-yellow-700", activeColor: "bg-yellow-500 text-white" },
+  { value: "CONFIRMED", label: "Confirmed", color: "bg-green-50 text-green-700", activeColor: "bg-green-600 text-white" },
+  { value: "CANCELED", label: "Canceled", color: "bg-red-50 text-red-500", activeColor: "bg-red-500 text-white" },
+];
+
 export const Orders = () => {
   const user = JSON.parse(localStorage.getItem("user"))
   const tenantId = user.tenant.tenantId
   const outletId = user.outlet.outletId
   const [dateRange, setDateRange] = React.useState(null);
+  const [statusFilter, setStatusFilter] = useState(null);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   })
 
-
+  const handleStatusChange = (value) => {
+    setStatusFilter(value);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  };
 
   const { data, isLoading, refetch, isFetching } = useGetSaleDetailsQuery({
     fromDate: dateRange?.from,
     toDate: dateRange?.to,
     page: pagination.pageIndex + 1,
-    limit: pagination.pageSize
+    limit: pagination.pageSize,
+    state: statusFilter,
   }, { skip: !dateRange })
   const [orders, setOrders] = useState([])
 
@@ -91,6 +103,19 @@ export const Orders = () => {
         onChange={setDateRange}
         className="px-4 lg:px-6 mt-4"
       />
+
+      <div className="flex items-center gap-2 px-4 lg:px-6 mt-4">
+        {STATUS_OPTIONS.map((opt) => (
+          <button
+            key={opt.label}
+            onClick={() => handleStatusChange(opt.value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${statusFilter === opt.value ? opt.activeColor : opt.color
+              }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
         {(isLoading || isFetching) ? (

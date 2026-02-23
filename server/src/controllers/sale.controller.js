@@ -332,13 +332,18 @@ export const getAllSales = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Access denied");
   }
 
-  const { fromDate, toDate, page = 1, limit = 10 } = req.query;
+  const { fromDate, toDate, page = 1, limit = 10, state } = req.query;
 
 
   const filter = {
     "tenant.tenantId": req.user.tenant.tenantId,
     "outlet.outletId": req.user.outlet.outletId,
   };
+  console.log(state);
+  
+  if (state) {
+    filter.state = state;
+  }
 
   if (fromDate || toDate) {
     filter.createdAt = {};

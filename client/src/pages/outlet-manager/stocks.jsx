@@ -19,11 +19,20 @@ import { SkeletonLoader, TableOverlayLoader } from "@/components/laoder";
 
 import { debounce } from "lodash";
 
+const ALERT_OPTIONS = [
+  { value: null, label: "All", color: "bg-gray-200 text-gray-700", activeColor: "bg-gray-700 text-white" },
+  { value: "OK", label: "OK", color: "bg-green-50 text-green-700", activeColor: "bg-green-600 text-white" },
+  { value: "LOW", label: "Low", color: "bg-yellow-50 text-yellow-700", activeColor: "bg-yellow-500 text-white" },
+  { value: "CRITICAL", label: "Critical", color: "bg-red-50 text-red-700", activeColor: "bg-red-500 text-white" },
+  { value: "NOT_INITIALIZED", label: "Not Initialized", color: "bg-gray-200 text-gray-600", activeColor: "bg-gray-500 text-white" },
+];
+
 export const Stocks = () => {
   const dispatch = useDispatch();
   const { user } = useAuth();
 
   const [search, setSearch] = useState("");
+  const [alertFilter, setAlertFilter] = useState(null);
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -34,11 +43,17 @@ export const Stocks = () => {
     (state) => state.Stock.list
   );
 
+  const handleAlertFilterChange = (value) => {
+    setAlertFilter(value);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  };
+
   const { data, isLoading, isFetching, refetch } =
     useGetStockDetailsQuery({
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
       search,
+      alertState: alertFilter,
     });
 
   const [open, setOpen] = useState(false);
@@ -88,6 +103,19 @@ export const Stocks = () => {
       >
         <CsvScanner type="stock-movement" onSuccess={refetch} outletId={user?.outlet?.outletId} />
       </SiteHeader>
+
+      <div className="flex items-center gap-2 px-4 lg:px-6 mt-4">
+        {ALERT_OPTIONS.map((opt) => (
+          <button
+            key={opt.label}
+            onClick={() => handleAlertFilterChange(opt.value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${alertFilter === opt.value ? opt.activeColor : opt.color
+              }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
         {isLoading ? (
