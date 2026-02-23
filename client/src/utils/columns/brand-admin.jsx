@@ -234,7 +234,7 @@ export const ingredientColumn = (onDelete) => [
           </div>
 
           <div className="text-muted-foreground">
-            unit: {t.unit?.unitName}
+            unit: {t.unit?.baseUnit}
           </div>
 
         </div>

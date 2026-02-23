@@ -92,5 +92,21 @@ export const validateCsv = (data, type) => {
         }
     });
 
+    if (type === "menu-item" && errors.length === 0) {
+        const priceByItem = {};
+        data.forEach((row, index) => {
+            const itemName = row.ItemName?.trim();
+            if (!itemName) return;
+            const price = Number(row.Price);
+            if (priceByItem[itemName] === undefined) {
+                priceByItem[itemName] = { price, firstRow: index + 1 };
+            } else if (priceByItem[itemName].price !== price) {
+                errors.push(
+                    `Row ${index + 1}: Price ${price} for '${itemName}' does not match price ${priceByItem[itemName].price} from Row ${priceByItem[itemName].firstRow}`
+                );
+            }
+        });
+    }
+
     return errors;
 };
