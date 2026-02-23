@@ -11,6 +11,7 @@ import apiRoutes from "./src/routes/index.js";
 import { generalRateLimit } from "./src/middlerwares/rateLimiter.middleware.js";
 import http from "http";
 import { initSocket } from "./src/sockets/socket.js";
+import passport from "./src/utils/passport.js";
 
 
 const port = process.env.PORT ?? 8000
@@ -42,6 +43,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(cookieParser());
+app.use(passport.initialize());
 app.use(morgan("tiny"))
 
 
