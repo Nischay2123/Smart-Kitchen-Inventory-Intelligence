@@ -167,7 +167,7 @@ export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
   const to = new Date(toDate);
 
   const snapshotStart = new Date(from.setUTCHours(0, 0, 0, 0));
-  const snapshotEnd = new Date(to.setUTCHours(23, 59, 59, 999));
+  const snapshotEnd = new Date(to.setUTCHours(0, 0, 0, 0));
   const outletObjectIds = outletIds.map((i) => new mongoose.Types.ObjectId(i))
 
 
@@ -176,7 +176,7 @@ export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
       $match: {
         "tenant.tenantId": tenantContext.tenantId,
         "outlet.outletId": { $in: outletObjectIds },
-        date: { $gte: snapshotStart, $lte: snapshotEnd }
+        date: { $gte: snapshotStart, $lt: snapshotEnd }
       }
     },
     {
