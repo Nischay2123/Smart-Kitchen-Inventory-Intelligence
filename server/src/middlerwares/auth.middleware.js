@@ -9,7 +9,7 @@ export const verifyJwt = (req, res, next) => {
         info?.name === "JsonWebTokenError" || info?.name === "TokenExpiredError"
           ? "Invalid or expired access token"
           : "Access token missing";
-      throw new ApiError(401, message);
+      return next(new ApiError(401, message));
     }
     req.user = user;
     return next();

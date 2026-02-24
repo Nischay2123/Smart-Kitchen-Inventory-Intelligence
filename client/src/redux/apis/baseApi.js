@@ -1,6 +1,9 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-
+const AUTH_ERRORS = [
+  "Access token missing",
+  "Invalid or expired access token",
+];
 const baseQuery = fetchBaseQuery({
   baseUrl: "http://localhost:8000/api/v1/",
   credentials: "include",
@@ -11,15 +14,17 @@ export const baseApi = createApi({
 
     // console.log("args apis", args, api, extraOption)
     const result = await baseQuery(args, api, extraOption)
+    console.log(result);
     
-    if (result.error?.status === 401 && (result.error?.data?.message=="Access token missing" || result.error?.data?.message=="Invalid or expired access token")) {
+    if (result.error?.status === 401) {
+    const message = result.error?.data?.message;
+    
+    if (AUTH_ERRORS.includes(message)) {
       localStorage.removeItem("user");
-
       api.dispatch(baseApi.util.resetApiState());
-
-      window.location.href = "/";
+      window.location.replace("/");
     }
-    return result
+  }
 
   },
   endpoints: () => ({
