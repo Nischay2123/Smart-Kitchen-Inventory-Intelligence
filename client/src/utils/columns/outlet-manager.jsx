@@ -56,26 +56,20 @@ export const ingredientColumn = (setOpen, setSelectedIngredient) => [
     cell: ({ row }) => {
       const state = row.original.alertState;
 
-      const statusColor = {
-        OK: "text-green-700",
-        LOW: "text-yellow-700",
-        CRITICAL: "text-red-700",
-        NOT_INITIALIZED: "text-gray-600",
-      };
-
-      const statusBg = {
-        OK: "bg-green-200",
-        LOW: "bg-yellow-200",
-        CRITICAL: "bg-red-200",
-        NOT_INITIALIZED: "bg-gray-200",
+      const dotStyles = {
+        OK: "bg-green-500 ring-green-500/30",
+        LOW: "bg-yellow-500 ring-yellow-500/30",
+        CRITICAL: "bg-red-500 ring-red-500/30",
+        NOT_INITIALIZED: "bg-gray-400 ring-gray-400/30",
       };
 
       return (
-        <span
-          className={`font-medium px-2 py-1 rounded ${statusColor[state]} ${statusBg[state]}`}
-        >
-          {state}
-        </span>
+        <div className="flex pl-2">
+          <div
+            className={`h-2.5 w-2.5 rounded-full ring-4 ${dotStyles[state] || dotStyles.NOT_INITIALIZED
+              }`}
+          />
+        </div>
       );
     },
   },
@@ -247,7 +241,7 @@ export const orderColumns = (onView) => [
   {
     header: "Order Price",
     accessorFn: (row) =>
-    row.items.reduce((sum, item) => sum + item.totalAmount, 0),
+      row.items.reduce((sum, item) => sum + item.totalAmount, 0),
     cell: ({ row }) => {
       const total = row.original.items.reduce(
         (sum, item) => sum + item.totalAmount,
@@ -260,7 +254,7 @@ export const orderColumns = (onView) => [
   {
     header: "Making Cost",
     accessorFn: (row) =>
-    row.items.reduce((sum, item) => sum + item.makingCost, 0),
+      row.items.reduce((sum, item) => sum + item.makingCost, 0),
     cell: ({ row }) => {
       const cost = row.original.items.reduce(
         (sum, item) => sum + item.makingCost,

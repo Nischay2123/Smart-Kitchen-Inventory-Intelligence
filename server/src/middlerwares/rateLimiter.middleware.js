@@ -1,10 +1,14 @@
-import rateLimit,{ ipKeyGenerator } from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
 import redis from "../utils/redis.js";
 import { ApiError } from "../utils/apiError.js";
 
-const handler = (req, res, next) =>
-    next(new ApiError(429, "Too many requests. Please slow down."));
+const handler = (req, res, next) => {
+    const retryAfter = parseInt(res.getHeader("Retry-After") || "60", 10);
+    next(
+        new ApiError(429, `Too many requests. Please try again after ${retryAfter} seconds.`, [], retryAfter)
+    );
+};
 
 const makeStore = (prefix) =>
     new RedisStore({
@@ -14,12 +18,12 @@ const makeStore = (prefix) =>
     });
 
 export const generalRateLimit = rateLimit({
-    windowMs: 60 * 1000,
-    max: 100,
+    windowMs: 60*1000,
+    max: 1000,
     keyGenerator: (req) => req.user?._id?.toString() ?? ipKeyGenerator(req),
     store: makeStore("rl:general:"),
     handler,
-    standardHeaders: true,  
+    standardHeaders: true,
     legacyHeaders: false,
 });
 

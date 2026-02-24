@@ -146,7 +146,7 @@ export const exportCsv = asyncHandler(async (req, res) => {
             break;
         }
 
-        case "stock": {
+        case "stock-movement": {
             const stocks = await Stock.find({
                 "outlet.outletId": targetOutletId,
             }).lean();

@@ -12,8 +12,6 @@ const DataCard = ({
   onRowSelectionChange,
   searchable,
   pagination,
-  titleWhenEmpty,
-  descriptionWhenEmpty,
   manualPagination,
   pageCount,
   onPaginationChange,
@@ -35,22 +33,22 @@ const DataCard = ({
 
       {/* Body */}
       <div className="flex-1 min-h-0 p-4 bg-white">
-        
-          <DataTable
-            searchable={searchable}
-            pagination={pagination}
-            columns={columns}
-            data={data}
-            onRowClick={onRowClick}
-            selectedRowId={selectedRowId}
-            rowSelection={rowSelection}
-            onRowSelectionChange={onRowSelectionChange}
-            manualPagination={manualPagination}
-            pageCount={pageCount}
-            onPaginationChange={onPaginationChange}
-            paginationState={paginationState}
-            onGlobalFilterChange={onGlobalFilterChange}
-          />
+
+        <DataTable
+          searchable={searchable}
+          pagination={pagination}
+          columns={columns}
+          data={data}
+          onRowClick={onRowClick}
+          selectedRowId={selectedRowId}
+          rowSelection={rowSelection}
+          onRowSelectionChange={onRowSelectionChange}
+          manualPagination={manualPagination}
+          pageCount={pageCount}
+          onPaginationChange={onPaginationChange}
+          paginationState={paginationState}
+          onGlobalFilterChange={onGlobalFilterChange}
+        />
       </div>
 
     </section>
