@@ -1,5 +1,6 @@
 import SiteHeader from '@/components/site-header'
-import React, {  useState } from 'react'
+import React, { useState } from 'react'
+import { toast } from 'sonner'
 import DataCard from '@/components/data-card/data-card'
 
 import {
@@ -9,52 +10,57 @@ import {
 import { useLocation, useParams } from 'react-router-dom'
 import { CreateOutletManagerModal } from '@/components/Form/brand-admin-form/create-outlet-manager-form'
 import { outletManagerColumns } from '@/utils/columns/brand-admin'
-import {  SkeletonLoader } from '@/components/laoder'
+import { SkeletonLoader } from '@/components/laoder'
+import { ConfirmModal } from '@/components/common/ConfirmModal'
 
 
 
 
 export const Outlet = () => {
-  const {id} = useParams()
+  const { id } = useParams()
   const location = useLocation();
   const outletName = location.state?.name;
-  const [open , setOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [managerToDelete, setManagerToDelete] = useState(null);
 
   const {
     data,
     isLoading,
     isError,
-  } = useGetAllOutletManagersQuery({outletId:id})
-  
+  } = useGetAllOutletManagersQuery({ outletId: id })
+
   const [deleteOutletManager, { isLoading: isDeleting }] =
-      useDeleteOutletManagerMutation()
+    useDeleteOutletManagerMutation()
 
-      const handleDeleteBrandManager = async(manager) => {
-      const result = window.confirm(
-      `Are you sure you want to delete the Outlet Manager "${manager.userName}"?`
-    )
+  const handleDeleteBrandManager = (manager) => {
+    setManagerToDelete(manager);
+  };
 
-    if (!result) return
-
+  const confirmDelete = async () => {
     try {
-      await deleteOutletManager({ managerId: manager._id }).unwrap()
+      if (!managerToDelete) return;
+      await deleteOutletManager({ managerId: managerToDelete._id }).unwrap();
+      toast.success("Outlet manager deleted successfully");
     } catch (error) {
-      console.error("Failed to delete outlet manager", error)
+      console.error("Failed to delete outlet manager", error);
+      toast.error(error?.data?.message || "Failed to delete outlet manager");
+    } finally {
+      setManagerToDelete(null);
     }
-    }
+  };
 
   return (
     <div className='w-full bg-gray-50 min-h-screen'>
-        <SiteHeader
+      <SiteHeader
         headerTitle={`Outlet: ${outletName}`}
         description="Manage outlet managers"
         actionTooltip="Create outlet Manager"
-        onActionClick={()=>setOpen(true)}
-        />
-        <div className="flex-1 min-h-0 p-4 lg:p-6">
-          {
-            isLoading?
-            <SkeletonLoader/>:
+        onActionClick={() => setOpen(true)}
+      />
+      <div className="flex-1 min-h-0 p-4 lg:p-6">
+        {
+          isLoading ?
+            <SkeletonLoader /> :
             <DataCard
               title={"Outlet Managers"}
               searchable
@@ -64,15 +70,26 @@ export const Outlet = () => {
               titleWhenEmpty={"No outlets found"}
               descriptionWhenEmpty={"We couldn’t find any outlets here. Try adding a new one or adjust your filters."}
             />
-          }
-            
-        </div>
+        }
 
-        <CreateOutletManagerModal
-          open={open}
-          onOpenChange={setOpen}
-          id={id}
-        />
+      </div>
+
+      <CreateOutletManagerModal
+        open={open}
+        onOpenChange={setOpen}
+        id={id}
+      />
+
+      <ConfirmModal
+        isOpen={!!managerToDelete}
+        onClose={() => setManagerToDelete(null)}
+        onConfirm={confirmDelete}
+        title={`Delete Outlet Manager "${managerToDelete?.userName}"?`}
+        description="This action cannot be undone. This manager will be permanently removed."
+        confirmText="Delete"
+        isDanger={true}
+        loading={isDeleting}
+      />
     </div>
   )
 }

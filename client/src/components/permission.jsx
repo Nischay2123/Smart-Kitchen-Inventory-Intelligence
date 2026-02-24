@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useUpdatePermissionMutation } from "@/redux/apis/brand-admin/outletApi"
-// import { toast } from "sonner"
+import { toast } from "sonner"
 
 export default function TickModal({
   open,
@@ -34,11 +34,12 @@ export default function TickModal({
         permissions,
       }).unwrap()
 
-      alert("Permissions updated successfully")
+      toast.success("Permissions updated successfully")
       setOpen(false)
 
     } catch (error) {
       console.error("Permission update failed", error)
+      toast.error("Failed to update permissions")
     }
   }
 
@@ -47,7 +48,7 @@ export default function TickModal({
       <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader>
           <DialogTitle>Outlet Manager Permissions</DialogTitle>
-          <DialogDescription/>
+          <DialogDescription />
         </DialogHeader>
 
         <div className="flex flex-col gap-4 mt-4">

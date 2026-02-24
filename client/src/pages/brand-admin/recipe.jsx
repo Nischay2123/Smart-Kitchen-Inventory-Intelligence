@@ -5,7 +5,6 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   useGetAllItemsQuery,
-  useDeleteItemsMutation,
 } from "@/redux/apis/brand-admin/itemApi"
 import { SkeletonLoader, TableOverlayLoader } from '@/components/laoder'
 import { createRecipeColumn } from '@/utils/columns/brand-admin'
@@ -34,22 +33,7 @@ export const Recipe = () => {
     search
   })
 
-  const [deleteItem, { isLoading: isDeleting }] =
-    useDeleteItemsMutation()
 
-  const handleDeleteItem = async (item) => {
-    const result = window.confirm(
-      `Are you sure you want to delete the Outlet Manager "${item.itemName}"?`
-    )
-
-    if (!result) return
-
-    try {
-      await deleteItem({ itemId: item._id }).unwrap()
-    } catch (error) {
-      console.error("Failed to delete outlet manager", error)
-    }
-  }
   const debouncedSearch = React.useMemo(
     () =>
       debounce((value) => {
@@ -84,7 +68,7 @@ export const Recipe = () => {
               <DataCard
                 title={"Create and update Recipies for the items"}
                 searchable
-                columns={createRecipeColumn(handleDeleteItem, Navigate)}
+                columns={createRecipeColumn( Navigate)}
                 data={data?.data.menuItems ?? []}
                 titleWhenEmpty={"No items found to create recipes"}
                 descriptionWhenEmpty={"We couldn't find any items here. Try adding a new one or adjust your filters."}

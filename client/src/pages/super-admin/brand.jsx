@@ -1,5 +1,6 @@
 import SiteHeader from '@/components/site-header'
 import React, { useState } from 'react'
+import { toast } from 'sonner'
 import DataCard from '@/components/data-card/data-card'
 import { CreateBrandManagerModal } from '@/components/Form/super-admin-form/create-brand-manager-form'
 import { useLocation, useParams } from "react-router-dom";
@@ -10,6 +11,7 @@ import {
 } from "@/redux/apis/super-admin/brandApi"
 import { brandManagerColumns } from '@/utils/columns/super-admin.jsx';
 import { SkeletonLoader } from '@/components/laoder';
+import { ConfirmModal } from '@/components/common/ConfirmModal'
 
 
 export const Brand = () => {
@@ -17,6 +19,7 @@ export const Brand = () => {
   const location = useLocation();
   const brandName = location.state?.name;
   const [open, setOpen] = useState(false)
+  const [managerToDelete, setManagerToDelete] = useState(null);
   const {
     data,
     isLoading,
@@ -26,19 +29,22 @@ export const Brand = () => {
   const [deleteBrandManager, { isLoading: isDeleting }] =
     useDeleteBrandManagerMutation()
 
-  const handleDeleteBrandManager = async (manager) => {
-    const result = window.confirm(
-      `Are you sure you want to delete the Brand Manager "${manager.userName}"?`
-    )
+  const handleDeleteBrandManager = (manager) => {
+    setManagerToDelete(manager);
+  };
 
-    if (!result) return
-
+  const confirmDelete = async () => {
     try {
-      await deleteBrandManager({ managerId: manager._id }).unwrap()
+      if (!managerToDelete) return;
+      await deleteBrandManager({ managerId: managerToDelete._id }).unwrap();
+      toast.success("Brand Manager deleted successfully");
     } catch (error) {
-      console.error("Failed to delete brand manager", error)
+      console.error("Failed to delete brand manager", error);
+      toast.error(error?.data?.message || "Failed to delete brand manager");
+    } finally {
+      setManagerToDelete(null);
     }
-  }
+  };
 
 
   return (
@@ -67,6 +73,16 @@ export const Brand = () => {
         open={open}
         onOpenChange={setOpen}
         id={id}
+      />
+      <ConfirmModal
+        isOpen={!!managerToDelete}
+        onClose={() => setManagerToDelete(null)}
+        onConfirm={confirmDelete}
+        title={`Delete Brand Manager "${managerToDelete?.userName}"?`}
+        description="This action cannot be undone. This manager will be permanently removed."
+        confirmText="Delete"
+        isDanger={true}
+        loading={isDeleting}
       />
     </div>
   )

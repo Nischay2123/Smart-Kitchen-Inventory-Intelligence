@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   useGetAllIngredientsInOnceQuery,
@@ -26,11 +27,11 @@ const CreateRecipeForm = ({
   data = {},
   isUpdate = false,
 }) => {
-  
+
   const navigate = useNavigate();
   const { itemId } = useParams();
   // console.log(itemId);
-  
+
   const {
     data: ingredientOptions = { data: [] },
     isLoading,
@@ -124,7 +125,7 @@ const CreateRecipeForm = ({
         quantity: "",
         unitId: "",
         unitName: "",
-        units: selected.unit || [],  
+        units: selected.unit || [],
       };
 
       return updated;
@@ -166,7 +167,7 @@ const CreateRecipeForm = ({
       ingredients.length;
 
     if (hasDuplicate) {
-      alert("Duplicate ingredients not allowed");
+      toast.error("Duplicate ingredients not allowed");
       return;
     }
 
@@ -175,7 +176,7 @@ const CreateRecipeForm = ({
     );
 
     if (invalid) {
-      alert("Please select ingredient, unit and quantity for all rows");
+      toast.error("Please select ingredient, unit and quantity for all rows");
       return;
     }
 
@@ -194,7 +195,7 @@ const CreateRecipeForm = ({
         })),
       }).unwrap();
 
-      alert(
+      toast.success(
         isUpdate
           ? "Recipe Updated Successfully"
           : "Recipe Created Successfully"
@@ -204,7 +205,7 @@ const CreateRecipeForm = ({
 
     } catch (error) {
       console.error(error);
-      alert("Error saving recipe");
+      toast.error("Error saving recipe");
     }
   };
 
@@ -367,8 +368,8 @@ const CreateRecipeForm = ({
                     ? "Updating..."
                     : "Creating..."
                   : isUpdate
-                  ? "Update Recipe"
-                  : "Create Recipe"}
+                    ? "Update Recipe"
+                    : "Create Recipe"}
               </Button>
             </div>
 

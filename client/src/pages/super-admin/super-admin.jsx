@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from 'sonner';
 import { useNavigate } from "react-router-dom";
 import SiteHeader from "@/components/site-header";
 import BrandGrid from "@/components/card/grid";
@@ -8,12 +9,14 @@ import { useLogoutMutation } from "@/redux/apis/userApi";
 import { useAuth } from "@/auth/auth";
 import { Button } from "@/components/ui/button";
 import { GridLoader } from '@/components/laoder';
+import { ConfirmModal } from '@/components/common/ConfirmModal'
 
 const SuperAdmin = () => {
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(false);
-  const [logoutUser] = useLogoutMutation();
+  const [logoutUser, { isLoading: isLoggingOut }] = useLogoutMutation();
   const { user, setUser } = useAuth();
+  const [isLogoutOpen, setIsLogoutOpen] = React.useState(false);
 
 
 
@@ -35,19 +38,26 @@ const SuperAdmin = () => {
   const handleDeleteBrand = async (brand) => {
     try {
       await deleteBrand({ tenantId: brand.id }).unwrap();
+      toast.success("Brand deleted successfully");
     } catch (err) {
       console.error(err);
-      alert(err?.data?.message || "Failed to delete brand");
+      toast.error(err?.data?.message || "Failed to delete brand");
     }
   };
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    setIsLogoutOpen(true);
+  };
+
+  const confirmLogout = async () => {
     try {
-      const res = confirm("Do you want to Log Out")
-      if (!res) return;
       await logoutUser().unwrap();
       setUser(null);
+      toast.success("Logged out successfully");
     } catch (e) {
       console.log("Failed to LogOut: ", e?.message);
+      toast.error("Failed to LogOut");
+    } finally {
+      setIsLogoutOpen(false);
     }
   };
 
@@ -97,6 +107,15 @@ const SuperAdmin = () => {
       <CreateBrandModal
         open={open}
         onOpenChange={setOpen}
+      />
+      <ConfirmModal
+        isOpen={isLogoutOpen}
+        onClose={() => setIsLogoutOpen(false)}
+        onConfirm={confirmLogout}
+        title="Log Out?"
+        description="Are you sure you want to log out of your session?"
+        confirmText="Log Out"
+        loading={isLoggingOut}
       />
     </div>
   );

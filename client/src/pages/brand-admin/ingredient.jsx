@@ -2,6 +2,7 @@ import DataCard from '@/components/data-card/data-card'
 import SiteHeader from '@/components/site-header'
 import CsvScanner from '@/components/common/CsvScanner'
 import React, { useState } from 'react'
+import { toast } from 'sonner'
 import { ingredientColumn } from "../../utils/columns/brand-admin"
 
 import {
@@ -12,6 +13,7 @@ import {
 import { CreateIngredientModal } from '@/components/Form/brand-admin-form/create-ingredient-form'
 import { SkeletonLoader, TableOverlayLoader } from '@/components/laoder'
 import { debounce } from 'lodash'
+import { ConfirmModal } from '@/components/common/ConfirmModal'
 
 
 export const Ingredients = () => {
@@ -22,6 +24,7 @@ export const Ingredients = () => {
     pageSize: 10,
   })
   const [search, setSearch] = useState("");
+  const [ingredientToDelete, setIngredientToDelete] = useState(null);
 
 
 
@@ -40,23 +43,24 @@ export const Ingredients = () => {
   const [deleteIngredient, { isLoading: isDeleting }] =
     useDeleteIngredientMutation()
 
-  const handleDeleteItem = async (ingredient) => {
+  const handleDeleteItem = (ingredient) => {
+    setIngredientToDelete(ingredient);
+  };
 
-    const result = window.confirm(
-      `Are you sure you want to delete ingredient "${ingredient.name}"?`
-    )
-
-    if (!result) return
-
+  const confirmDelete = async () => {
     try {
+      if (!ingredientToDelete) return;
       await deleteIngredient({
-        ingredientId: ingredient._id,
-      }).unwrap()
-
+        ingredientId: ingredientToDelete._id,
+      }).unwrap();
+      toast.success("Ingredient deleted successfully");
     } catch (error) {
-      console.error("Failed to delete ingredient", error)
+      console.error("Failed to delete ingredient", error);
+      toast.error(error?.data?.message || "Failed to delete ingredient");
+    } finally {
+      setIngredientToDelete(null);
     }
-  }
+  };
   const debouncedSearch = React.useMemo(
     () =>
       debounce((value) => {
@@ -115,6 +119,17 @@ export const Ingredients = () => {
       <CreateIngredientModal
         open={open}
         onOpenChange={setOpen}
+      />
+
+      <ConfirmModal
+        isOpen={!!ingredientToDelete}
+        onClose={() => setIngredientToDelete(null)}
+        onConfirm={confirmDelete}
+        title={`Delete Ingredient "${ingredientToDelete?.name}"?`}
+        description="This action cannot be undone. This ingredient will be permanently removed."
+        confirmText="Delete"
+        isDanger={true}
+        loading={isDeleting}
       />
 
     </div>

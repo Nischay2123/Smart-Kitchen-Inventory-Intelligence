@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { AppSidebar } from "@/components/side-bar/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -20,13 +21,15 @@ import { useLogoutMutation } from "@/redux/apis/userApi";
 import { useAuth } from "@/auth/auth";
 import PermissionDenied from "@/components/permission-denied";
 import NotFound from "@/components/not-found";
+import { ConfirmModal } from '@/components/common/ConfirmModal'
 
 
 
 export const BrandAdminApp = () => {
   const navigate = useNavigate();
-  const [logoutUser] = useLogoutMutation();
+  const [logoutUser, { isLoading: isLoggingOut }] = useLogoutMutation();
   const { user, setUser } = useAuth();
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
 
 
@@ -78,26 +81,41 @@ export const BrandAdminApp = () => {
     ],
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    setIsLogoutOpen(true);
+  };
+
+  const confirmLogout = async () => {
     try {
-      const res = confirm("Do you want to Log Out")
-      if(!res) return ;
       await logoutUser().unwrap();
-       setUser(null);
-    } catch(e) {
-      console.log("Failed to LogOut: ",e?.message);
+      setUser(null);
+      toast.success("Logged out successfully");
+    } catch (e) {
+      console.log("Failed to LogOut: ", e?.message);
+      toast.error("Failed to LogOut");
+    } finally {
+      setIsLogoutOpen(false);
     }
   };
 
 
   return (
     <SidebarProvider>
-        <AppSidebar handleLogout={handleLogout} data={data} />
+      <AppSidebar handleLogout={handleLogout} data={data} />
       <Routes>{
-        renderRoutes(brandAdminRoutes,["BRAND_ADMIN"])}
+        renderRoutes(brandAdminRoutes, ["BRAND_ADMIN"])}
         <Route path="/403" element={<PermissionDenied />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <ConfirmModal
+        isOpen={isLogoutOpen}
+        onClose={() => setIsLogoutOpen(false)}
+        onConfirm={confirmLogout}
+        title="Log Out?"
+        description="Are you sure you want to log out of your session?"
+        confirmText="Log Out"
+        loading={isLoggingOut}
+      />
     </SidebarProvider>
   );
 };

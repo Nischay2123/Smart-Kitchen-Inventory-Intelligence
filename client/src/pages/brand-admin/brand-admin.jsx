@@ -1,4 +1,5 @@
 import React from 'react'
+import { toast } from 'sonner'
 import BrandGrid from '@/components/card/grid'
 import { useNavigate } from "react-router-dom";
 import SiteHeader from '@/components/site-header'
@@ -25,14 +26,13 @@ const BrandAdmin = () => {
       name: outlet.outletName,
     })) ?? [];
 
-    const handleDeleteOutlet = async (outlet) => {
-      
+  const handleDeleteOutlet = async (outlet) => {
+
     try {
-      
-      await deleteOutlet({outletId:outlet.id}).unwrap();
+      await deleteOutlet({ outletId: outlet.id }).unwrap();
     } catch (err) {
       console.error(err);
-      alert(err?.data?.message || "Failed to delete brand");
+      toast.error(err?.data?.message || "Failed to delete outlet");
     }
   };
 
@@ -64,7 +64,7 @@ const BrandAdmin = () => {
               })
             }
             onDeleteBrand={handleDeleteOutlet}
-            disabled={isDeleting} 
+            disabled={isDeleting}
           />
         )}
       </div>

@@ -2,6 +2,7 @@ import DataCard from '@/components/data-card/data-card'
 import SiteHeader from '@/components/site-header'
 import CsvScanner from '@/components/common/CsvScanner'
 import React, { useState } from 'react'
+import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import {
   useGetAllItemsQuery,
@@ -11,6 +12,7 @@ import { menuColumns } from '@/utils/columns/brand-admin'
 import { SkeletonLoader, TableOverlayLoader } from '@/components/laoder'
 import { debounce } from 'lodash'
 import { CreateItemModal } from '@/components/Form/brand-admin-form/create-item-form/create-item-form'
+import { ConfirmModal } from '@/components/common/ConfirmModal'
 
 
 const Item = () => {
@@ -21,6 +23,7 @@ const Item = () => {
     pageSize: 10,
   })
   const [search, setSearch] = useState("");
+  const [itemToDelete, setItemToDelete] = useState(null);
 
 
   const {
@@ -38,19 +41,22 @@ const Item = () => {
   const [deleteItem, { isLoading: isDeleting }] =
     useDeleteItemsMutation()
 
-  const handleDeleteItem = async (item) => {
-    const result = window.confirm(
-      `Are you sure you want to delete the item "${item.itemName}"?`
-    )
+  const handleDeleteItem = (item) => {
+    setItemToDelete(item);
+  };
 
-    if (!result) return
-
+  const confirmDelete = async () => {
     try {
-      await deleteItem({ itemId: item._id }).unwrap()
+      if (!itemToDelete) return;
+      await deleteItem({ itemId: itemToDelete._id }).unwrap();
+      toast.success("Item deleted successfully");
     } catch (error) {
-      console.error("Failed to delete outlet manager", error)
+      console.error("Failed to delete item", error);
+      toast.error(error?.data?.message || "Failed to delete item");
+    } finally {
+      setItemToDelete(null);
     }
-  }
+  };
   const debouncedSearch = React.useMemo(
     () =>
       debounce((value) => {
@@ -105,6 +111,16 @@ const Item = () => {
       <CreateItemModal
         open={open}
         onOpenChange={setOpen}
+      />
+      <ConfirmModal
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={confirmDelete}
+        title={`Delete Item "${itemToDelete?.itemName}"?`}
+        description="This action cannot be undone. This item will be permanently removed."
+        confirmText="Delete"
+        isDanger={true}
+        loading={isDeleting}
       />
     </div>
   )
