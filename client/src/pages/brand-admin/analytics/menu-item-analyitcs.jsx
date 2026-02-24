@@ -62,7 +62,7 @@ export const MenuItemAnalysis = () => {
         }}
       />
       <div className="px-6">
-        {isLoading ? (
+        {isLoading || !data ? (
           <SkeletonLoader />
         ) : (
           <MenuEngineeringMatrix data={data?.data ?? []} />

@@ -1,6 +1,7 @@
 import { setDateRange } from "@/redux/reducers/brand-admin/dashboardFilters";
 import React from "react";
 import { useDispatch } from "react-redux";
+import { toast } from "sonner";
 
 const formatDate = (date) => {
   return date.toISOString().split("T")[0];
@@ -38,7 +39,10 @@ const DashboardDateRangePicker = ({
     const next = { ...range, [key]: val };
 
     // safety: avoid invalid ranges
-    if (new Date(next.from) > new Date(next.to)) return;
+    if (new Date(next.from) > new Date(next.to)){
+      toast.error("Invalid date range: 'From' date cannot be later than 'To' date.")
+      return;
+    }
     
     onChange(next);
   };

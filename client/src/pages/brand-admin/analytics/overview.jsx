@@ -20,8 +20,11 @@ import {
   chunkArray,
   mergeAnalytics,
 } from "@/utils/analyitcs/overviewUtil";
+import noDataAnimation from "@/assets/no-data.json"
+
 
 import { useGetAllOutletsQuery } from "@/redux/apis/brand-admin/outletApi";
+import Lottie from "lottie-react";
 
 const isTodayInRange = (from, to) => {
   const today = new Date();
@@ -33,7 +36,20 @@ const isTodayInRange = (from, to) => {
   t.setHours(0, 0, 0, 0);
   today.setHours(0, 0, 0, 0);
 
-  return today >= f && today < t;
+  return today >= f && today <= t;
+};
+
+const isPastInRange = (from, to) => {
+  const today = new Date();
+
+  const f = new Date(from);
+  const t = new Date(to);
+
+  f.setHours(0, 0, 0, 0);
+  t.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return f < today;
 };
 
 const outletColumns = [
@@ -61,6 +77,168 @@ const outletColumns = [
   },
 ];
 
+// export const Overview = () => {
+//   const { from, to } = useSelector(
+//     (state) => state.dashboardFilters.dateRange
+//   );
+
+//   const { data: outlets } = useGetAllOutletsQuery();
+
+//   const [snapshotApi] = useGetSnapshotDeploymentDataMutation();
+//   const [liveApi] = useGetLiveDeploymentDataMutation();
+
+//   const [data, setData] = useState([]);
+//   const [loading, setLoading] = useState(false);
+
+//   const load = async () => {
+//     try {
+//       setLoading(true);
+
+//       const outletIds = outlets.data.map((o) => o._id);
+//       const batches = chunkArray(outletIds, 250);
+
+//       let finalResult = [];
+
+//       const includeLive = isTodayInRange(from, to);
+//       const includePast = isPastInRange(from, to);
+
+//       for (const batch of batches) {
+//         let snapshotData = [];
+//         let liveData = [];
+
+//         if (includePast) {
+//           const snapshot = await snapshotApi({
+//             outletIds: batch,
+//             from,
+//             to,
+//           }).unwrap();
+//           snapshotData = snapshot.data;
+//         }
+
+//         if (includeLive) {
+//           const live = await liveApi({
+//             outletIds: batch,
+//           }).unwrap();
+//           liveData = live.data;
+//         }
+
+//         let merged = [];
+//         if (includePast && includeLive) {
+//           merged = mergeAnalytics(snapshotData, liveData);
+//         } else if (includePast) {
+//           merged = mergeAnalytics(snapshotData);
+//         } else if (includeLive) {
+//           merged = mergeAnalytics([], liveData);
+//         }
+
+//         finalResult = finalResult.concat(merged);
+//       }
+
+//       // console.log("ghjk",finalResult);
+
+//       setData(finalResult);
+//     } catch (err) {
+//       console.error("Analytics loading failed", err);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     if (!outlets?.data || !from || !to) return;
+
+//     load();
+//   }, [outlets, from, to]);
+//   const aggregated = aggregateData(data);
+
+//   const [focusedDeployment, setFocusedDeployment] = useState(null);
+
+//   const displayedData = focusedDeployment
+//     ? {
+//       ...focusedDeployment,
+//       totalOrder: focusedDeployment.confirmedOrders,
+//       totalBillCanceled: focusedDeployment.canceledOrders,
+//     }
+//     : aggregated;
+
+
+//   const handleRowClick = (row) => {
+//     setFocusedDeployment((prev) =>
+//       prev?.outletId === row.outletId ? null : row
+//     );
+//   };
+
+//   const headerText = focusedDeployment
+//     ? `Showing data for outlet: ${focusedDeployment.outletName}`
+//     : "Showing aggregated data across all outlets";
+
+//   return (
+//     <div className="w-full bg-gray-50 min-h-screen pb-4">
+//       <AnalyticsHeader
+//         headerTitle="Sales Analytics"
+//         description="Live performance insights across all outlets"
+//         onRefresh={load}
+//         isRefreshing={loading}
+//         isOutlet={false}
+//       />
+
+//       {displayedData ? <div className="@container/main flex flex-col gap-2 pt-4 pb-4">
+//         <p className="text-md text-gray-500 px-6">{headerText}</p>
+//         {loading || !data ? (
+//           <div className="px-4 lg:px-6"><GridLoader /></div>
+//         ) : (
+//           <>
+//             <AnalyticsCards data={displayedData} />
+//             <SecondaryMetrics data={displayedData} />
+//           </>
+//         )}
+//       </div> 
+//       <section>
+//         <h2 className="mb-4 text-sm text-gray-400 px-4 lg:px-6">
+//           Outlets Insights: click on a table row to see the outlet data
+//         </h2>
+
+//         <div className="flex flex-col gap-4 px-4 lg:px-6 lg:flex-row">
+//           {loading ? (
+//             <>
+//               <div className="flex-1"><SkeletonLoader /></div>
+//               <div className="flex-1"><SkeletonLoader /></div>
+//             </>
+//           ) : (
+//             <>
+//               <TabSalesBarChart
+//                 title="Top Outlets"
+//                 description="Top performing deployments as per sales"
+//                 data={data ?? []}
+//                 xKey="outletName"
+//                 yKey="totalSale"
+//                 onBarClick={() => { }}
+//               />
+
+//               <DataCard
+//                 description="Per outlet sales and contribution"
+//                 title={"Outlet Data"}
+//                 data={data ?? []}
+//                 columns={outletColumns}
+//                 onRowClick={handleRowClick}
+//               />
+//             </>
+//           )}
+//         </div>
+//       </section>:
+//       <div className="flex flex-col items-center gap-4 py-20">
+//         <Lottie
+//           animationData={noDataAnimation}
+//           loop={true}
+//           className="w-40 h-40"
+//         />
+//         </div>
+//       }
+
+//     </div>
+//   );
+// };
+
 export const Overview = () => {
   const { from, to } = useSelector(
     (state) => state.dashboardFilters.dateRange
@@ -73,9 +251,12 @@ export const Overview = () => {
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [focusedDeployment, setFocusedDeployment] = useState(null);
 
   const load = async () => {
     try {
+      if (!outlets?.data?.length) return;
+
       setLoading(true);
 
       const outletIds = outlets.data.map((o) => o._id);
@@ -84,36 +265,42 @@ export const Overview = () => {
       let finalResult = [];
 
       const includeLive = isTodayInRange(from, to);
+      const includePast = isPastInRange(from, to);
 
       for (const batch of batches) {
-        const snapshot = await snapshotApi({
-          outletIds: batch,
-          from,
-          to,
-        }).unwrap();
+        let snapshotData = [];
+        let liveData = [];
 
-        let merged;
+        if (includePast) {
+          const snapshot = await snapshotApi({
+            outletIds: batch,
+            from,
+            to,
+          }).unwrap();
+
+          snapshotData = snapshot?.data ?? [];
+        }
 
         if (includeLive) {
           const live = await liveApi({
             outletIds: batch,
           }).unwrap();
 
-          merged = mergeAnalytics(
-            snapshot.data,
-            live.data
-          );
-        } else {
-          merged = mergeAnalytics(
-            snapshot.data
-          )
+          liveData = live?.data ?? [];
         }
 
+        let merged = [];
+
+        if (includePast && includeLive) {
+          merged = mergeAnalytics(snapshotData, liveData);
+        } else if (includePast) {
+          merged = mergeAnalytics(snapshotData);
+        } else if (includeLive) {
+          merged = mergeAnalytics([], liveData);
+        }
 
         finalResult = finalResult.concat(merged);
       }
-
-      // console.log("ghjk",finalResult);
 
       setData(finalResult);
     } catch (err) {
@@ -125,21 +312,18 @@ export const Overview = () => {
 
   useEffect(() => {
     if (!outlets?.data || !from || !to) return;
-
     load();
   }, [outlets, from, to]);
-  const aggregated = aggregateData(data);
 
-  const [focusedDeployment, setFocusedDeployment] = useState(null);
+  const aggregated = aggregateData(data);
 
   const displayedData = focusedDeployment
     ? {
-      ...focusedDeployment,
-      totalOrder: focusedDeployment.confirmedOrders,
-      totalBillCanceled: focusedDeployment.canceledOrders,
-    }
+        ...focusedDeployment,
+        totalOrder: focusedDeployment.confirmedOrders,
+        totalBillCanceled: focusedDeployment.canceledOrders,
+      }
     : aggregated;
-
 
   const handleRowClick = (row) => {
     setFocusedDeployment((prev) =>
@@ -151,6 +335,8 @@ export const Overview = () => {
     ? `Showing data for outlet: ${focusedDeployment.outletName}`
     : "Showing aggregated data across all outlets";
 
+  const hasData = data.length > 0;
+
   return (
     <div className="w-full bg-gray-50 min-h-screen pb-4">
       <AnalyticsHeader
@@ -161,51 +347,54 @@ export const Overview = () => {
         isOutlet={false}
       />
 
-      <div className="@container/main flex flex-col gap-2 pt-4 pb-4">
-        <p className="text-md text-gray-500 px-6">{headerText}</p>
-        {loading ? (
-          <div className="px-4 lg:px-6"><GridLoader /></div>
-        ) : (
-          <>
+      {loading ? (
+        <div className="px-4 lg:px-6 pt-6">
+          <GridLoader />
+        </div>
+      ) : !hasData ? (
+        <div className="flex flex-col items-center gap-4 py-20">
+          <Lottie
+            animationData={noDataAnimation}
+            loop={true}
+            className="w-100 h-100"
+          />
+          <p className="text-gray-400 text-sm">No analytics data available</p>
+        </div>
+      ) : (
+        <>
+          <div className="@container/main flex flex-col gap-2 pt-4 pb-4">
+            <p className="text-md text-gray-500 px-6">{headerText}</p>
+
             <AnalyticsCards data={displayedData} />
             <SecondaryMetrics data={displayedData} />
-          </>
-        )}
-      </div>
+          </div>
 
-      <section>
-        <h2 className="mb-4 text-sm text-gray-400 px-4 lg:px-6">
-          Outlets Insights: click on a table row to see the outlet data
-        </h2>
+          <section>
+            <h2 className="mb-4 text-sm text-gray-400 px-4 lg:px-6">
+              Outlets Insights: click on a table row to see the outlet data
+            </h2>
 
-        <div className="flex flex-col gap-4 px-4 lg:px-6 lg:flex-row">
-          {loading ? (
-            <>
-              <div className="flex-1"><SkeletonLoader /></div>
-              <div className="flex-1"><SkeletonLoader /></div>
-            </>
-          ) : (
-            <>
+            <div className="flex flex-col gap-4 px-4 lg:px-6 lg:flex-row">
               <TabSalesBarChart
                 title="Top Outlets"
                 description="Top performing deployments as per sales"
-                data={data ?? []}
+                data={data}
                 xKey="outletName"
                 yKey="totalSale"
-                onBarClick={() => { }}
+                onBarClick={() => {}}
               />
 
               <DataCard
                 description="Per outlet sales and contribution"
-                title={"Outlet Data"}
-                data={data ?? []}
+                title="Outlet Data"
+                data={data}
                 columns={outletColumns}
                 onRowClick={handleRowClick}
               />
-            </>
-          )}
-        </div>
-      </section>
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 };

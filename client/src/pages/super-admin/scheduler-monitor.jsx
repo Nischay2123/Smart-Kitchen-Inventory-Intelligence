@@ -21,8 +21,9 @@ const SchedulerMonitor = () => {
 
     const [page, setPage] = useState({
         pageIndex: 0,
-        pageSize: 20
+        pageSize: 20,
     });
+
     const [status, setStatus] = useState("all");
     const [eventType, setEventType] = useState("all");
 
@@ -35,9 +36,10 @@ const SchedulerMonitor = () => {
         endDate: dateRange?.to,
     };
 
-    const { data, isLoading, isError, isFetching, refetch } = useGetSchedulerLogsQuery(queryParams, {
-        skip: !dateRange?.from || !dateRange?.to,
-    });
+    const { data, isLoading, isError, isFetching, refetch } =
+        useGetSchedulerLogsQuery(queryParams, {
+            skip: !dateRange?.from || !dateRange?.to,
+        });
 
     const logs = data?.data?.logs || [];
     const totalPages = data?.data?.totalPages || 0;
@@ -55,10 +57,20 @@ const SchedulerMonitor = () => {
                 <div className="flex gap-2 items-end">
                     <DashboardDateRangePicker
                         value={dateRange}
-                        onChange={(range) => dispatch(setDateRange(range))}
+                        onChange={(range) => {
+                            dispatch(setDateRange(range));
+                            setPage((prev) => ({ ...prev, pageIndex: 0 }));
+                        }}
                         className="flex-row"
                     />
-                    <Select value={status} onValueChange={setStatus}>
+
+                    <Select
+                        value={status}
+                        onValueChange={(value) => {
+                            setStatus(value);
+                            setPage((prev) => ({ ...prev, pageIndex: 0 }));
+                        }}
+                    >
                         <SelectTrigger className="w-45">
                             <SelectValue placeholder="Filter by Status" />
                         </SelectTrigger>
@@ -70,14 +82,24 @@ const SchedulerMonitor = () => {
                         </SelectContent>
                     </Select>
 
-                    <Select value={eventType} onValueChange={setEventType}>
+                    <Select
+                        value={eventType}
+                        onValueChange={(value) => {
+                            setEventType(value);
+                            setPage((prev) => ({ ...prev, pageIndex: 0 }));
+                        }}
+                    >
                         <SelectTrigger className="w-45">
                             <SelectValue placeholder="Filter by Event" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Events</SelectItem>
-                            <SelectItem value="daily-snapshot">Daily Snapshot</SelectItem>
-                            <SelectItem value="queue-retry">Queue Retry</SelectItem>
+                            <SelectItem value="daily-snapshot">
+                                Daily Snapshot
+                            </SelectItem>
+                            <SelectItem value="queue-retry">
+                                Queue Retry
+                            </SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -102,7 +124,11 @@ const SchedulerMonitor = () => {
                     />
                 )}
 
-                {isError && <p className="text-red-500 mt-4">Failed to load logs</p>}
+                {isError && (
+                    <p className="text-red-500 mt-4">
+                        Failed to load logs
+                    </p>
+                )}
             </div>
         </div>
     );

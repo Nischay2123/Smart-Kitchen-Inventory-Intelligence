@@ -27,7 +27,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  ArrowUpDown,
 } from "lucide-react"
 
 function getPageNumbers(currentPage, totalPages, siblingCount = 1) {
@@ -143,29 +142,42 @@ export function DataTable({
 
       {/* Table */}
       <div className="rounded-xl border border-muted bg-white overflow-hidden shadow-sm">
-        <div className="overflow-auto">
+        <div className="overflow-auto min-h-100">
 
           <Table>
-            <TableHeader className="bg-muted/40 border-b">
+            <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                <TableRow
+                  key={headerGroup.id}
+                  className="border-b border-[hsl(var(--table-border))] bg-[hsl(var(--table-header-bg))] hover:bg-[hsl(var(--table-header-bg))]"
+                >
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
-                      className="h-11 px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                      className="h-11 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground select-none"
                     >
                       {header.isPlaceholder ? null : (
-                        <Button
-                          variant="ghost"
+                        <div
+                          className={
+                            header.column.getCanSort()
+                              ? "flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors"
+                              : "flex items-center"
+                          }
                           onClick={header.column.getToggleSortingHandler()}
-                          className="h-8 px-0 -ml-1 flex items-center gap-1 text-muted-foreground hover:text-foreground"
                         >
                           {flexRender(
                             header.column.columnDef.header,
                             header.getContext()
                           )}
-                          <ArrowUpDown className="h-3 w-3 opacity-50" />
-                        </Button>
+                          {header.column.getCanSort() && (
+                            <span className="text-muted-foreground/50">
+                              {{
+                                asc: "↑",
+                                desc: "↓",
+                              }[header.column.getIsSorted()] ?? "↕"}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </TableHead>
                   ))}
@@ -186,7 +198,7 @@ export function DataTable({
                     className={`
                   cursor-pointer transition-colors
                   hover:bg-muted/50
-                  ${row.original?._id === selectedRowId ? "bg-primary/5" : ""}
+                  ${selectedRowId && row.original?._id === selectedRowId ? "bg-primary/5" : ""}
                 `}
                   >
                     {row.getVisibleCells().map((cell) => (

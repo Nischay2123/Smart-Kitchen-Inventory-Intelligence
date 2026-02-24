@@ -23,6 +23,9 @@ const COLORS = {
   DOG: "#ef4444",
 }
 
+import Lottie from "lottie-react";
+import noDataAnimation from "@/assets/no-data.json";
+
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null
   const d = payload[0].payload
@@ -46,13 +49,20 @@ export default function MenuEngineeringMatrix({ data = [] }) {
         <CardHeader>
           <CardTitle>Menu Engineering Matrix</CardTitle>
         </CardHeader>
-        <CardContent className="h-105 flex items-center justify-center text-muted-foreground">
-          No data available for selected period
+        <CardContent className="h-105 flex flex-col items-center justify-center text-muted-foreground">
+          <Lottie
+            animationData={noDataAnimation}
+            loop={true}
+            className="w-40 h-40"
+          />
+          <p className="text-sm font-medium mt-2">
+            No data available for selected period
+          </p>
         </CardContent>
       </Card>
     )
   }
-    // console.log(data);
+  // console.log(data);
 
   const avgQty =
     data.reduce((a, b) => a + b.qty, 0) / data.length
@@ -71,7 +81,7 @@ export default function MenuEngineeringMatrix({ data = [] }) {
 
       <CardContent className="flex flex-col gap-3">
         <div className="relative w-full h-105">
-            <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
 
