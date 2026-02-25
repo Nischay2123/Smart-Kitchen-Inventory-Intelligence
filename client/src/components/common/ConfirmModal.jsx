@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -22,12 +22,22 @@ export function ConfirmModal({
     isDanger = false,
     loading = false,
 }) {
+    const [savedTitle, setSavedTitle] = useState(title);
+    const [savedDesc, setSavedDesc] = useState(description);
+
+    useEffect(() => {
+        if (isOpen) {
+            setSavedTitle(title);
+            setSavedDesc(description);
+        }
+    }, [isOpen, title, description]);
+
     return (
         <AlertDialog open={isOpen} onOpenChange={onClose}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>{title}</AlertDialogTitle>
-                    <AlertDialogDescription>{description}</AlertDialogDescription>
+                    <AlertDialogTitle>{savedTitle}</AlertDialogTitle>
+                    <AlertDialogDescription>{savedDesc}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel disabled={loading}>{cancelText}</AlertDialogCancel>

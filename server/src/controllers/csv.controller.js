@@ -46,7 +46,7 @@ export const exportCsv = asyncHandler(async (req, res) => {
 
     let targetOutletId = outlet?.outletId;
 
-    if (type === "stock") {
+    if (type === "stock-movement") {
         if (!targetOutletId) {
             throw new ApiError(400, "Outlet ID required for stock export");
         }

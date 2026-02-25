@@ -110,8 +110,8 @@ export function EmailOtpVerification({
         >
           {timer > 0
             ? `Resend OTP in ${Math.floor(timer / 60)}:${String(
-                timer % 60
-              ).padStart(2, "0")}`
+              timer % 60
+            ).padStart(2, "0")}`
             : "Send OTP"}
         </Button>
       )}
@@ -124,22 +124,27 @@ export function EmailOtpVerification({
       )}
 
       {otpState === "sent" && (
-        <div className="flex gap-2">
-          <Input
-            placeholder="Enter OTP"
-            value={otp}
-            maxLength={6}
-            onChange={(e) =>
-              setOtp(e.target.value.replace(/\D/g, ""))
-            }
-          />
-          <Button
-            type="button"
-            onClick={handleVerifyOtp}
-            disabled={otp.length !== 6}
-          >
-            Verify
-          </Button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter OTP"
+              value={otp}
+              maxLength={6}
+              onChange={(e) =>
+                setOtp(e.target.value.replace(/\D/g, ""))
+              }
+            />
+            <Button
+              type="button"
+              onClick={handleVerifyOtp}
+              disabled={otp.length !== 6}
+            >
+              Verify
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground ml-1">
+            OTP sent! It is valid for 10 minutes.
+          </p>
         </div>
       )}
 

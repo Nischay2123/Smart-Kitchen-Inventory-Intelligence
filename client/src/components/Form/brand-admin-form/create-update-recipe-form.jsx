@@ -299,6 +299,9 @@ const CreateRecipeForm = ({
                     <Input
                       type="number"
                       placeholder="Quantity"
+                      min="0.01"
+                      step="any"
+                      required
                       value={item.quantity}
                       onChange={(e) =>
                         handleQuantityChange(index, e.target.value)

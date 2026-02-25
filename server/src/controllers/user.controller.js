@@ -17,6 +17,11 @@ const hashOTP = (otp) =>
 
 export const requestSignupOTP = asyncHandler(async (req, res) => {
   const { email } = req.body;
+
+  if (!email) {
+    throw new ApiError(400, "email is required");
+  }
+
   const otp = generateOTP();
 
 
@@ -42,6 +47,10 @@ export const requestSignupOTP = asyncHandler(async (req, res) => {
 
 export const verifySignupOTP = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    throw new ApiError(400, "email and otp are required");
+  }
 
   const user = await User.findOne({ email }).select(
     "+otpHash +otpExpiresAt +otpPurpose"
@@ -73,6 +82,10 @@ export const verifySignupOTP = asyncHandler(async (req, res) => {
 
 export const completeSignup = asyncHandler(async (req, res) => {
   const { email, userName, password, tenantId } = req.body;
+
+  if (!email || !userName || !password || !tenantId) {
+    throw new ApiError(400, "email, userName, password, and tenantId are required");
+  }
 
   const user = await User.findOne({ email });
 
@@ -220,6 +233,10 @@ export const requestOutletManagerOTP = asyncHandler(async (req, res) => {
 
 export const verifyOutletManagerOTP = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    throw new ApiError(400, "email and otp are required");
+  }
 
   const user = await User.findOne({ email }).select(
     "+otpHash +otpExpiresAt +otpPurpose"
@@ -500,6 +517,10 @@ export const updateOutletManagerPermissions = asyncHandler(async (req, res) => {
 export const requestPasswordResetOTP = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
+  if (!email) {
+    throw new ApiError(400, "email is required");
+  }
+
   const user = await User.findOne({ email });
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -523,6 +544,10 @@ export const requestPasswordResetOTP = asyncHandler(async (req, res) => {
 
 export const verifyPasswordResetOTP = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    throw new ApiError(400, "email and otp are required");
+  }
 
   const user = await User.findOne({ email }).select(
     "+otpHash +otpExpiresAt +otpPurpose"
@@ -551,6 +576,10 @@ export const verifyPasswordResetOTP = asyncHandler(async (req, res) => {
 
 export const resetPassword = asyncHandler(async (req, res) => {
   const { email, newPassword } = req.body;
+
+  if (!email || !newPassword) {
+    throw new ApiError(400, "email and newPassword are required");
+  }
 
   const user = await User.findOne({ email }).select(
     "+otpPurpose +emailVerified"

@@ -49,6 +49,12 @@ export function CreateUnitModal({ open, onOpenChange }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    if (!form.baseUnit) {
+      setStatus("error")
+      setMessage("Please select a base unit")
+      return
+    }
+
     setStatus("loading")
     setMessage("")
 

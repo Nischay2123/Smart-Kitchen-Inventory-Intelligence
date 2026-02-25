@@ -52,7 +52,7 @@ export function CreateStockMovementForm({
   React.useEffect(() => {
     if (ingredient) {
       setIngredientMasterId(ingredient.ingredientMasterId);
-      setSelectedUnitId(""); 
+      setSelectedUnitId("");
     }
   }, [ingredient]);
 
@@ -74,6 +74,12 @@ export function CreateStockMovementForm({
       return;
     }
 
+    if (!reason) {
+      setStatus("error");
+      setMessage("Please select a movement type");
+      return;
+    }
+
     setStatus("loading");
     setMessage("");
     try {
@@ -85,7 +91,7 @@ export function CreateStockMovementForm({
         purchasePricePerUnit:
           reason === "PURCHASE" ? Number(purchasePrice) : undefined,
       }).unwrap();
-      
+
       setStatus("success");
       setMessage("Stock movement created successfully");
     } catch (err) {
@@ -184,12 +190,12 @@ export function CreateStockMovementForm({
 
         {/* Success */}
         {status === "success" && (
-          <Success onOpenChange={onOpenChange} message={message} resetForm={resetForm}/>
+          <Success onOpenChange={onOpenChange} message={message} resetForm={resetForm} />
         )}
 
         {/* Error */}
         {status === "error" && (
-            <Error setStatus={setStatus} message={message}/>
+          <Error setStatus={setStatus} message={message} />
         )}
       </DialogContent>
     </Dialog>

@@ -267,7 +267,7 @@ export const ingredientColumn = (onDelete) => [
 ]
 
 
-export  const createRecipeColumn = (onDelete, Navigate) => [
+export  const createRecipeColumn = ( Navigate) => [
   {
     accessorKey: "itemName",
     header: "Item Name",

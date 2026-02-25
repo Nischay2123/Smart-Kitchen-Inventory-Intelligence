@@ -228,6 +228,16 @@ const deductStockWithTransaction = async ({
 export const createSale = asyncHandler(async (req, res) => {
   const { items, tenant, outlet, createdAt } = req.body;
 
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    throw new ApiError(400, "items array is required and cannot be empty");
+  }
+  if (!tenant || !tenant.tenantId) {
+    throw new ApiError(400, "tenant with tenantId is required");
+  }
+  if (!outlet || !outlet.outletId) {
+    throw new ApiError(400, "outlet with outletId is required");
+  }
+
   await validateTenant(tenant.tenantId);
   // console.log("create sale",tenant , outlet);
 
@@ -340,7 +350,7 @@ export const getAllSales = asyncHandler(async (req, res) => {
     "outlet.outletId": req.user.outlet.outletId,
   };
   console.log(state);
-  
+
   if (state) {
     filter.state = state;
   }

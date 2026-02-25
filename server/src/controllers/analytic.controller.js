@@ -15,6 +15,10 @@ export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
   const { fromDate, toDate, outletId } = req.query;
   const tenant = req.user.tenant;
 
+  if (!fromDate || !toDate || !outletId) {
+    throw new ApiError(400, "fromDate, toDate, and outletId are required");
+  }
+
   const pipeline = [
     {
       $match: {
@@ -84,6 +88,10 @@ export const ingredientUsageAndBurnRate = asyncHandler(async (req, res) => {
   const tenant = req.user.tenant;
   const { fromDate, toDate } = req.query;
   const outletId = req.user.outlet.outletId
+
+  if (!fromDate || !toDate) {
+    throw new ApiError(400, "fromDate and toDate are required");
+  }
 
   const match = {
     "tenant.tenantId": tenant.tenantId,
@@ -163,6 +171,14 @@ export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Unauthorized Request");
   }
   const { outletIds } = req.body;
+
+  if (!fromDate || !toDate) {
+    throw new ApiError(400, "fromDate and toDate are required");
+  }
+  if (!outletIds || !Array.isArray(outletIds) || outletIds.length === 0) {
+    throw new ApiError(400, "outletIds array is required");
+  }
+
   const from = new Date(fromDate);
   const to = new Date(toDate);
 
@@ -220,6 +236,11 @@ export const brandAnalyticsLiveReport = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Unauthorized Request");
   }
   const { outletIds } = req.body;
+
+  if (!outletIds || !Array.isArray(outletIds) || outletIds.length === 0) {
+    throw new ApiError(400, "outletIds array is required");
+  }
+
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
   const outletObjectIds = outletIds.map((i) => new mongoose.Types.ObjectId(i))
@@ -358,6 +379,9 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
 
   if (!tenantContext) {
     throw new ApiError(400, "Unauthorized Request")
+  }
+  if (!fromDate || !toDate) {
+    throw new ApiError(400, "fromDate and toDate are required");
   }
 
   const data = await Sale.aggregate([

@@ -48,6 +48,7 @@ const IngredientRow = ({
                     placeholder="Qty"
                     min="0"
                     step="any"
+                    required
                     className="h-9 text-sm"
                     value={row.quantity}
                     onChange={(e) => onQuantityChange(index, e.target.value)}
