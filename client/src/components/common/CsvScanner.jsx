@@ -120,7 +120,7 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                     }
 
                     else if (type === 'menu-item') {
-                        const itemMap = new Map(); 
+                        const itemMap = new Map();
                         for (const row of results.data) {
                             const itemName = row.ItemName?.trim();
                             if (!itemName) continue;
@@ -261,8 +261,9 @@ const CsvScanner = ({ type, onSuccess = () => { }, outletId }) => {
                     Export CSV
                 </Button>
 
-                <Button variant="ghost" size="sm" onClick={handleDownloadTemplate} title="Download Template" disabled={loading}>
+                <Button variant="outline" size="sm" onClick={handleDownloadTemplate} title="Download Template" disabled={loading}>
                     <FileSpreadsheet className="h-4 w-4" />
+                    Template
                 </Button>
             </div>
 
