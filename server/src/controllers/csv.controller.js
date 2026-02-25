@@ -9,6 +9,11 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import mongoose from "mongoose";
 
+const writeCsvRow = (stream, row) =>
+    new Promise((resolve) => {
+        if (stream.write(row)) return resolve();
+        stream.once("drain", resolve);
+    });
 
 const validateTenant = async (tenantId) => {
     // console.log("tenant",tenantId);
@@ -40,7 +45,6 @@ export const exportCsv = asyncHandler(async (req, res) => {
     if (!tenant?.tenantId) {
         throw new ApiError(400, "Tenant ID required");
     }
-    // console.log(tenant);
 
     await validateTenant(tenant.tenantId);
 
@@ -48,7 +52,7 @@ export const exportCsv = asyncHandler(async (req, res) => {
 
     if (type === "stock-movement") {
         if (!targetOutletId) {
-            throw new ApiError(400, "Outlet ID required for stock export");
+            throw new ApiError(400, "Outlet ID required");
         }
         await validateOutlet(tenant.tenantId, targetOutletId);
     }
@@ -63,79 +67,64 @@ export const exportCsv = asyncHandler(async (req, res) => {
     csvStream.pipe(res);
 
     switch (type) {
+
         case "ingredient": {
-            const ingredients = IngredientMaster.find({
-                "tenant.tenantId": tenant.tenantId,
-            }).lean().cursor();
+            const cursor = IngredientMaster.find(
+                { "tenant.tenantId": tenant.tenantId },
+                {
+                    name: 1,
+                    unit: 1,
+                    threshold: 1,
+                }
+            ).lean().cursor();
 
-            for await (const ing of ingredients) {
+            for await (const ing of cursor) {
                 const thresholdUnit = ing.threshold?.unit;
-                const unitNames = (ing.unit || []).map(u => u.unitName).join(" $$ ");
+                const unitNames =
+                    (ing.unit || []).map(u => u.unitName).join(" $$ ");
 
-                const row = {
+                await writeCsvRow(csvStream, {
                     Name: ing.name,
                     Units: unitNames,
-                    BaseUnit: ing.unit[0]?.baseUnit,
-                    Low: ing.threshold?.lowInBase / thresholdUnit?.conversionRate,
-                    Critical: ing.threshold?.criticalInBase / thresholdUnit?.conversionRate,
+                    BaseUnit: ing.unit?.[0]?.baseUnit,
+                    Low:
+                        ing.threshold?.lowInBase /
+                        thresholdUnit?.conversionRate,
+                    Critical:
+                        ing.threshold?.criticalInBase /
+                        thresholdUnit?.conversionRate,
                     ThresholdUnit: thresholdUnit?.unitName,
-                };
-
-                csvStream.write(row);
+                });
             }
-
             break;
         }
 
-
-
         case "menu-item": {
-            const items = await MenuItem.find({
-                "tenant.tenantId": tenant.tenantId,
-            }).lean();
 
-            const recipes = await Recipe.find({
-                "tenant.tenantId": tenant.tenantId,
-            }).lean();
+            const itemCursor = MenuItem.find(
+                { "tenant.tenantId": tenant.tenantId },
+                { itemName: 1, price: 1 }
+            ).lean().cursor();
 
-            const recipeMap = new Map(
-                recipes.map(r => [r.item.itemId.toString(), r.recipeItems || []])
-            );
-
-            for (const item of items) {
-                const recipeItems = recipeMap.get(item._id.toString()) || [];
-
-                if (recipeItems.length === 0) {
-                    csvStream.write({
-                        ItemName: item.itemName,
-                        Price: item.price,
-                        IngredientName: "",
-                        Quantity: "",
-                        Unit: "",
-                    });
-                } else {
-                    for (const ri of recipeItems) {
-                        csvStream.write({
-                            ItemName: item.itemName,
-                            Price: item.price,
-                            IngredientName: ri.ingredientName,
-                            Quantity: ri.qty,
-                            Unit: ri.unit,
-                        });
-                    }
-                }
+            for await (const item of itemCursor) {
+                await writeCsvRow(csvStream, {
+                    ItemName: item.itemName,
+                    Price: item.price,
+                });
             }
             break;
         }
 
         case "recipe": {
-            const recipes = await Recipe.find({
-                "tenant.tenantId": tenant.tenantId,
-            }).lean();
 
-            for (const recipe of recipes) {
+            const recipeCursor = Recipe.find(
+                { "tenant.tenantId": tenant.tenantId },
+                { item: 1, recipeItems: 1 }
+            ).lean().cursor();
+
+            for await (const recipe of recipeCursor) {
                 for (const item of recipe.recipeItems || []) {
-                    csvStream.write({
+                    await writeCsvRow(csvStream, {
                         ItemName: recipe.item?.itemName,
                         IngredientName: item.ingredientName,
                         Quantity: item.qty,
@@ -143,26 +132,35 @@ export const exportCsv = asyncHandler(async (req, res) => {
                     });
                 }
             }
+
             break;
         }
 
         case "stock-movement": {
-            const stocks = await Stock.find({
-                "outlet.outletId": targetOutletId,
-            }).lean();
+
+            const stockCursor = Stock.find(
+                { "outlet.outletId": targetOutletId },
+                {
+                    masterIngredient: 1,
+                    currentStockInBase: 1,
+                    baseUnit: 1,
+                    alertState: 1,
+                }
+            ).lean().cursor();
+
             const now = new Date();
             const formattedDate = now.toISOString().substring(0, 10);
             const timestamp = now.toISOString().substring(11, 19);
 
-            for (const stock of stocks) {
-                csvStream.write({
+            for await (const stock of stockCursor) {
+                await writeCsvRow(csvStream, {
                     IngredientName:
-                        stock.masterIngredient.ingredientMasterName,
+                        stock.masterIngredient?.ingredientMasterName,
                     Quantity: stock.currentStockInBase,
                     baseUnit: stock.baseUnit,
                     AlertState: stock.alertState,
                     time: timestamp,
-                    date: formattedDate
+                    date: formattedDate,
                 });
             }
             break;
