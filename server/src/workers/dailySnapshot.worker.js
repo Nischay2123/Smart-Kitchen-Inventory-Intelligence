@@ -6,6 +6,7 @@ import { processDailySnapshot } from "../proccessors/dailySnapshot.processor.js"
 import QueueFail from "../models/queueFail.model.js";
 
 import config from "../utils/config.js";
+import { processDailyItemSnapshot } from "../proccessors/dailyItemSnapshot.processor.js";
 
 const connectDB = async () => {
     try {
@@ -34,12 +35,29 @@ connection.on("error", (err) => {
 export const dailySnapshotWorker = new Worker(
     "daily-snapshot",
     async (job) => {
-        console.log(`🚀 Snapshot Worker ${process.pid} started ${job.name}`);
-        await processDailySnapshot(job);
+        console.log(
+            `🚀 Snapshot Worker ${process.pid} started ${job.name}`
+        );
+
+        const results = await Promise.allSettled([
+            processDailySnapshot(job),
+            processDailyItemSnapshot(job),
+        ]);
+
+        results.forEach((result, index) => {
+            const name =
+                index === 0 ? "OUTLET SNAPSHOT" : "ITEM SNAPSHOT";
+
+            if (result.status === "fulfilled") {
+                console.log(`✔ ${name} completed`);
+            } else {
+                console.error(`❌ ${name} failed:`, result.reason);
+            }
+        });
     },
     {
         connection,
-        concurrency: 1, // Sequential processing is fine for this daily job
+        concurrency: 1, 
     }
 );
 

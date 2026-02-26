@@ -6,157 +6,74 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js"
 import TenantDailySnapshot from "../models/tenantDailySnapshot.model.js";
+import OutletItemDailySnapshot from "../models/outletItemDailySnapshot.model.js";
 
-export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
-  if (req.user.role !== "BRAND_ADMIN") {
-    throw new ApiError(403, "Unauthorized");
-  }
+// export const itemLiveReport  = asyncHandler(async (req, res) => {
+//   if (req.user.role !== "BRAND_ADMIN") {
+//     throw new ApiError(403, "Unauthorized");
+//   }
 
-  const { fromDate, toDate, outletId } = req.query;
-  const tenant = req.user.tenant;
+//   const { fromDate, toDate, outletId } = req.query;
+//   const tenant = req.user.tenant;
 
-  if (!fromDate || !toDate || !outletId) {
-    throw new ApiError(400, "fromDate, toDate, and outletId are required");
-  }
+//   if (!fromDate || !toDate || !outletId) {
+//     throw new ApiError(400, "fromDate, toDate, and outletId are required");
+//   }
 
-  const pipeline = [
-    {
-      $match: {
-        "tenant.tenantId": tenant.tenantId,
-        state: "CONFIRMED",
-        createdAt: {
-          $gte: new Date(fromDate),
-          $lte: new Date(toDate),
-        },
-        "outlet.outletId": new mongoose.Types.ObjectId(outletId),
-      },
-    },
-    {
-      $project: { items: 1 }
-    },
-    { $unwind: "$items" },
-    {
-      $group: {
-        _id: "$items.itemId",
-        itemName: { $first: "$items.itemName" },
-        totalQty: { $sum: "$items.qty" },
-        totalRevenue: { $sum: "$items.totalAmount" },
-        totalMakingCost: { $sum: "$items.makingCost" },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        itemId: "$_id",
-        itemName: 1,
-        totalQty: 1,
-        totalRevenue: 1,
-        totalMakingCost: 1,
-        profit: { $subtract: ["$totalRevenue", "$totalMakingCost"] },
-        profitMargin: {
-          $cond: [
-            { $gt: ["$totalRevenue", 0] },
-            {
-              $multiply: [
-                {
-                  $divide: [
-                    { $subtract: ["$totalRevenue", "$totalMakingCost"] },
-                    "$totalRevenue",
-                  ],
-                },
-                100,
-              ],
-            },
-            0,
-          ],
-        },
-      },
-    },
-  ];
+//   const pipeline = [
+//     {
+//       $match: {
+//         "tenant.tenantId": tenant.tenantId,
+//         state: "CONFIRMED",
+//         createdAt: {
+//           $gte: new Date(fromDate),
+//           $lte: new Date(toDate),
+//         },
+//         "outlet.outletId": new mongoose.Types.ObjectId(outletId),
+//       },
+//     },
+//     {
+//       $project: { items: 1 }
+//     },
+//     { $unwind: "$items" },
+//     {
+//       $group: {
+//         _id: "$items.itemId",
+//         itemName: { $first: "$items.itemName" },
+//         totalQty: { $sum: "$items.qty" },
+//         totalRevenue: { $sum: "$items.totalAmount" },
+//         totalMakingCost: { $sum: "$items.makingCost" },
+//       },
+//     },
+//     // {
+//     //   $project: {
+//     //     _id: 0,
+//     //     // outletId: "$_id.outletId",
+//     //     // outletName: "$_id.outletName",
+//     //     itemId: "$_id.itemId",
+//     //     itemName: "$_id.itemName",
+//     //     totalQty: 1,
+//     //     totalRevenue: 1,
+//     //     totalMakingCost: 1,
+//     //   },
+//     // },
+//     {
+//       $project: {
+//         _id: 0,
+//         itemId: "$_id",
+//         itemName: 1,
+//         totalQty: 1,
+//         totalRevenue: 1,
+//         totalMakingCost: 1,
+//       },
+//     },
+//   ];
 
 
 
-  const data = await Sale.aggregate(pipeline, { allowDiskUse: true });
-  return res.status(200).json(new ApiResoponse(200, data, "success"));
-});
-
-export const ingredientUsageAndBurnRate = asyncHandler(async (req, res) => {
-  if (req.user.role !== "OUTLET_MANAGER") {
-    throw new ApiError(403, "Unauthorized");
-  }
-
-  const tenant = req.user.tenant;
-  const { fromDate, toDate } = req.query;
-  const outletId = req.user.outlet.outletId
-
-  if (!fromDate || !toDate) {
-    throw new ApiError(400, "fromDate and toDate are required");
-  }
-
-  const match = {
-    "tenant.tenantId": tenant.tenantId,
-    createdAt: {
-      $gte: new Date(fromDate),
-      $lte: new Date(toDate),
-    },
-    reason: "ORDER",
-  };
-
-  if (outletId) {
-    match["outlet.outletId"] = new mongoose.Types.ObjectId(outletId);
-  }
-
-  const data = await StockMovement.aggregate([
-    { $match: match },
-
-    {
-      $group: {
-        _id: "$ingredient.ingredientMasterId",
-        ingredientName: { $first: "$ingredient.ingredientMasterName" },
-        totalQty: { $sum: "$quantity" },
-        unit: { $first: "$unit" },
-        noOfOrders: { $sum: 1 },
-        totalCost: {
-          $sum: { $multiply: ["$quantity", "$unitCost"] },
-        },
-      },
-    },
-
-    {
-      $project: {
-        _id: 0,
-        ingredientId: "$_id",
-        ingredientName: 1,
-        totalQty: 1,
-        unit: 1,
-        noOfOrders: 1,
-        totalCost: { $round: ["$totalCost", 2] },
-
-        avgQtyPerOrder: {
-          $cond: [
-            { $gt: ["$noOfOrders", 0] },
-            { $round: [{ $divide: ["$totalQty", "$noOfOrders"] }, 2] },
-            0,
-          ],
-        },
-
-        avgCostPerOrder: {
-          $cond: [
-            { $gt: ["$noOfOrders", 0] },
-            { $round: [{ $divide: ["$totalCost", "$noOfOrders"] }, 2] },
-            0,
-          ],
-        },
-      },
-    },
-
-    { $sort: { totalCost: -1 } },
-  ]);
-
-  return res.status(200).json(
-    new ApiResoponse(200, data, "success")
-  );
-});
+//   const data = await Sale.aggregate(pipeline, { allowDiskUse: true });
+//   return res.status(200).json(new ApiResoponse(200, data, "success"));
+// });
 
 
 export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
@@ -192,7 +109,7 @@ export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
       $match: {
         "tenant.tenantId": tenantContext.tenantId,
         "outlet.outletId": { $in: outletObjectIds },
-        date: { $gte: snapshotStart, $lt: snapshotEnd }
+        date: { $gte: snapshotStart, $lte: snapshotEnd }
       }
     },
     {
@@ -374,8 +291,7 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
   }
 
   const tenantContext = req.user.tenant
-  const { toDate, fromDate } = req.query;
-  // console.log(tenantContext,toDate,fromDate);
+  const { toDate, fromDate, outletId } = req.query;
 
   if (!tenantContext) {
     throw new ApiError(400, "Unauthorized Request")
@@ -384,13 +300,25 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
     throw new ApiError(400, "fromDate and toDate are required");
   }
 
+  const start = new Date(fromDate);
+  start.setUTCHours(0, 0, 0, 0);
+
+  const end = new Date(toDate);
+  end.setUTCHours(23, 59, 59, 999);
+
+  const matchCondition = {
+    "tenant.tenantId": tenantContext.tenantId,
+    createdAt: { $gte: start, $lte: end },
+    state: "CONFIRMED",
+  };
+
+  if (outletId && mongoose.Types.ObjectId.isValid(outletId)) {
+    matchCondition["outlet.outletId"] = new mongoose.Types.ObjectId(outletId);
+  }
+
   const data = await Sale.aggregate([
     {
-      $match: {
-        "tenant.tenantId": tenantContext.tenantId,
-        createdAt: { $gte: new Date(fromDate), $lte: new Date(toDate) },
-        state: "CONFIRMED",
-      },
+      $match: matchCondition,
     },
 
     {
@@ -500,6 +428,226 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResoponse(200, data[0]?.items || [], "success"));
 });
+
+
+export const itemSnapshotReport = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403, "Unauthorized Request");
+  }
+
+  const tenantContext = req.user.tenant;
+  if (!tenantContext) throw new ApiError(403, "Unauthorized Request");
+
+  const { fromDate, toDate } = req.query;
+  const { outletId } = req.body;
+
+  if (!fromDate || !toDate) {
+    throw new ApiError(400, "fromDate and toDate are required");
+  }
+  if (!mongoose.Types.ObjectId.isValid(outletId)) {
+    throw new ApiError(400, "Invalid outletId");
+  }
+
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+  const snapshotStart = new Date(from.setUTCHours(0, 0, 0, 0));
+  const snapshotEnd = new Date(to.setUTCHours(0, 0, 0, 0));
+  const outletObjectIds = new mongoose.Types.ObjectId(outletId);
+
+
+  const pipeline = [
+    {
+      $match: {
+        "tenant.tenantId": tenantContext.tenantId,
+        "outlet.outletId": outletObjectIds,
+        date: { $gte: snapshotStart, $lte: snapshotEnd },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          outletId: "$outlet.outletId",
+          itemId: "$item.itemId",
+        },
+        outletName: { $first: "$outlet.outletName" },
+        itemName: { $first: "$item.itemName" },
+        totalQty: { $sum: "$totalQty" },
+        totalRevenue: { $sum: "$totalRevenue" },
+        totalMakingCost: { $sum: "$totalMakingCost" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        outletId: "$_id.outletId",
+        outletName: "$outletName",
+        itemId: "$_id.itemId",
+        itemName: "$itemName",
+        totalQty: 1,
+        totalRevenue: 1,
+        totalMakingCost: 1,
+      },
+    },
+  ];
+
+  const result = await OutletItemDailySnapshot.aggregate(pipeline);
+
+  return res.status(200).json(
+    new ApiResoponse(200, result, "Item snapshot analytics fetched successfully")
+  );
+});
+
+export const itemLiveReport = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403, "Unauthorized Request");
+  }
+
+  const tenantContext = req.user.tenant;
+  if (!tenantContext) throw new ApiError(403, "Unauthorized Request");
+
+  const { outletId } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(outletId)) {
+    throw new ApiError(400, "Invalid outletId");
+  }
+
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const outletObjectIds = new mongoose.Types.ObjectId(outletId);
+
+  const pipeline = [
+    {
+      $match: {
+        "tenant.tenantId": tenantContext.tenantId,
+        "outlet.outletId": outletObjectIds,
+        createdAt: { $gte: todayStart },
+        state: "CONFIRMED",
+      },
+    },
+    {
+      $project: {
+        outletId: "$outlet.outletId",
+        outletName: "$outlet.outletName",
+        items: 1,
+      },
+    },
+    { $unwind: "$items" },
+    {
+      $group: {
+        _id: {
+          outletId: "$outletId",
+          itemId: "$items.itemId",
+        },
+        outletName: { $first: "$outletName" },
+        itemName: { $first: "$items.itemName" },
+        totalQty: { $sum: "$items.qty" },
+        totalRevenue: { $sum: "$items.totalAmount" },
+        totalMakingCost: { $sum: "$items.makingCost" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        outletId: "$_id.outletId",
+        outletName: "$outletName",
+        itemId: "$_id.itemId",
+        itemName: "$itemName",
+        totalQty: 1,
+        totalRevenue: 1,
+        totalMakingCost: 1,
+      },
+    },
+  ];
+
+  const result = await Sale.aggregate(pipeline);
+
+  return res.status(200).json(
+    new ApiResoponse(200, result, "Item live analytics fetched successfully")
+  );
+});
+
+
+export const ingredientUsageAndBurnRate = asyncHandler(async (req, res) => {
+  if (req.user.role !== "OUTLET_MANAGER") {
+    throw new ApiError(403, "Unauthorized");
+  }
+
+  const tenant = req.user.tenant;
+  const { fromDate, toDate } = req.query;
+  const outletId = req.user.outlet.outletId
+
+  if (!fromDate || !toDate) {
+    throw new ApiError(400, "fromDate and toDate are required");
+  }
+
+  const match = {
+    "tenant.tenantId": tenant.tenantId,
+    createdAt: {
+      $gte: new Date(fromDate),
+      $lte: new Date(toDate),
+    },
+    reason: "ORDER",
+  };
+
+  if (outletId) {
+    match["outlet.outletId"] = new mongoose.Types.ObjectId(outletId);
+  }
+
+  const data = await StockMovement.aggregate([
+    { $match: match },
+
+    {
+      $group: {
+        _id: "$ingredient.ingredientMasterId",
+        ingredientName: { $first: "$ingredient.ingredientMasterName" },
+        totalQty: { $sum: "$quantity" },
+        unit: { $first: "$unit" },
+        noOfOrders: { $sum: 1 },
+        totalCost: {
+          $sum: { $multiply: ["$quantity", "$unitCost"] },
+        },
+      },
+    },
+
+    {
+      $project: {
+        _id: 0,
+        ingredientId: "$_id",
+        ingredientName: 1,
+        totalQty: 1,
+        unit: 1,
+        noOfOrders: 1,
+        totalCost: { $round: ["$totalCost", 2] },
+
+        avgQtyPerOrder: {
+          $cond: [
+            { $gt: ["$noOfOrders", 0] },
+            { $round: [{ $divide: ["$totalQty", "$noOfOrders"] }, 2] },
+            0,
+          ],
+        },
+
+        avgCostPerOrder: {
+          $cond: [
+            { $gt: ["$noOfOrders", 0] },
+            { $round: [{ $divide: ["$totalCost", "$noOfOrders"] }, 2] },
+            0,
+          ],
+        },
+      },
+    },
+
+    { $sort: { totalCost: -1 } },
+  ]);
+
+  return res.status(200).json(
+    new ApiResoponse(200, data, "success")
+  );
+});
+
+
+
 
 export const getOutlets = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
