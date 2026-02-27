@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
+import { toast } from "sonner";
 
 import AnalyticsHeader from "@/components/AnalyticsHeader";
 import MenuEngineeringMatrix from "@/components/menu-matrix";
 import DataCard from "@/components/data-card/data-card";
+import ExportBanner from "@/components/export-banner";
 import { SkeletonLoader } from "@/components/laoder";
 
 import {
   useGetMenuMatrixDataQuery,
   useGetItemSnapshotDataMutation,
   useGetItemLiveDataMutation,
+  useRequestReportExportMutation,
 } from "@/redux/apis/brand-admin/analyticsApi";
 
 import { mergeItemAnalytics } from "@/utils/analyitcs/itemAnalyticsUtil";
@@ -33,14 +36,8 @@ const isPastInRange = (from) => {
 };
 
 const outletColumns = [
-  {
-    accessorKey: "itemName",
-    header: "Item",
-  },
-  {
-    accessorKey: "totalQty",
-    header: "Qty Sold",
-  },
+  { accessorKey: "itemName", header: "Item" },
+  { accessorKey: "totalQty", header: "Qty Sold" },
   {
     accessorKey: "totalRevenue",
     header: "Total Revenue",
@@ -69,25 +66,31 @@ const outletColumns = [
   },
 ];
 
+const isOver30Days = (from, to) => {
+  if (!from || !to) return false;
+  return (new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24) > 30;
+};
 
 export const MenuItemAnalysis = () => {
   const { from, to } = useSelector((state) => state.dashboardFilters.dateRange);
   const outletId = useSelector((state) => state.dashboardFilters.outletId);
 
+  const rangeOver30 = isOver30Days(from, to);
+
   const { data, isLoading, refetch } = useGetMenuMatrixDataQuery(
     { from, to, outletId },
-    { skip: !from || !to }
+    { skip: !from || !to || rangeOver30 || !outletId }
   );
-
 
   const [getItemSnapshotData] = useGetItemSnapshotDataMutation();
   const [getItemLiveData] = useGetItemLiveDataMutation();
 
   const [outletData, setOutletData] = useState([]);
   const [outletDataLoading, setOutletDataLoading] = useState(false);
+
   const loadItemData = async () => {
     try {
-      if (!outletId || !from || !to) return;
+      if (!outletId || !from || !to || rangeOver30) return;
 
       setOutletDataLoading(true);
 
@@ -125,9 +128,23 @@ export const MenuItemAnalysis = () => {
   };
 
   useEffect(() => {
-    if (!outletId || !from || !to) return;
+    if (!outletId || !from || !to || rangeOver30) return;
     loadItemData();
   }, [outletId, from, to]);
+
+  const [requestReportExport, { isLoading: exportLoading }] =
+    useRequestReportExportMutation();
+
+  const handleProfitExport = async (email) => {
+    try {
+      await requestReportExport({
+        from, to, outletId, email, type: "profit",
+      }).unwrap();
+      toast.success("Report generation started! You'll receive an email when it's ready.");
+    } catch {
+      toast.error("Failed to trigger export. Please try again.");
+    }
+  };
 
   return (
     <div className="w-full bg-gray-50 min-h-screen pb-4">
@@ -136,29 +153,45 @@ export const MenuItemAnalysis = () => {
         description="Live performance insights across all outlets"
         isRefreshing={isLoading || outletDataLoading}
         onRefresh={() => {
-          refetch();
-          loadItemData();
+          if (!rangeOver30) {
+            refetch();
+            loadItemData();
+          }
         }}
       />
-      <div className="px-6">
-        {isLoading || !data ? (
-          <SkeletonLoader />
-        ) : (
-          <MenuEngineeringMatrix data={data?.data ?? []} />
-        )}
-      </div>
-      <div className="flex flex-col gap-4 px-4 lg:px-6 lg:flex-row pt-4">
-        {outletDataLoading ? (
-          <SkeletonLoader />
-        ) : (
-          <DataCard
-            description="Per outlet sales and contribution"
-            title={"Outlet Data"}
-            data={outletData ?? []}
-            columns={outletColumns}
+
+      {rangeOver30 ? (
+        <div className="px-6 pt-2">
+          <ExportBanner
+            label="Menu Item Profit"
+            onExport={handleProfitExport}
+            isLoading={exportLoading}
           />
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          <div className="px-6 pt-2">
+            {isLoading || !data ? (
+              <SkeletonLoader />
+            ) : (
+              <MenuEngineeringMatrix data={data?.data ?? []} />
+            )}
+          </div>
+
+          <div className="flex flex-col gap-4 px-4 lg:px-6 lg:flex-row pt-4">
+            {outletDataLoading ? (
+              <SkeletonLoader />
+            ) : (
+              <DataCard
+                description="Per outlet sales and contribution"
+                title="Outlet Data"
+                data={outletData ?? []}
+                columns={outletColumns}
+              />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

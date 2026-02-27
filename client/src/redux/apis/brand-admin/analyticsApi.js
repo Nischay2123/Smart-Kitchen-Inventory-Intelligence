@@ -10,6 +10,7 @@ export const Analytics = baseApi.injectEndpoints({
       }),
     }),
 
+
     getSnapshotDeploymentData: builder.mutation({
       query: ({ outletIds, from, to }) => ({
         url: "analytics/reports/deployment-snapshot",
@@ -34,6 +35,7 @@ export const Analytics = baseApi.injectEndpoints({
         params: { fromDate: from, toDate: to, outletId },
       }),
     }),
+
     getMenuMatrixData: builder.query({
       query: ({ from, to, outletId }) => ({
         url: "analytics/menu-matrix",
@@ -58,6 +60,14 @@ export const Analytics = baseApi.injectEndpoints({
       }),
     }),
 
+    requestReportExport: builder.mutation({
+      query: ({ from, to, outletId, email, type }) => ({
+        url: "analytics/reports/export",
+        method: "POST",
+        body: { fromDate: from, toDate: to, outletId, email, type },
+      }),
+    }),
+
   }),
 });
 
@@ -69,4 +79,5 @@ export const {
   useGetSnapshotDeploymentDataMutation,
   useGetItemSnapshotDataMutation,
   useGetItemLiveDataMutation,
+  useRequestReportExportMutation,
 } = Analytics;

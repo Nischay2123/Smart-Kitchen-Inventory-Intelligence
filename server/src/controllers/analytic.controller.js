@@ -7,12 +7,12 @@ import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js"
 import TenantDailySnapshot from "../models/tenantDailySnapshot.model.js";
 import OutletItemDailySnapshot from "../models/outletItemDailySnapshot.model.js";
+import { csvExportQueue } from "../queues/csvExport.queue.js";
 
 // export const itemLiveReport  = asyncHandler(async (req, res) => {
 //   if (req.user.role !== "BRAND_ADMIN") {
 //     throw new ApiError(403, "Unauthorized");
 //   }
-
 //   const { fromDate, toDate, outletId } = req.query;
 //   const tenant = req.user.tenant;
 
@@ -68,13 +68,56 @@ import OutletItemDailySnapshot from "../models/outletItemDailySnapshot.model.js"
 //       },
 //     },
 //   ];
-
-
-
 //   const data = await Sale.aggregate(pipeline, { allowDiskUse: true });
 //   return res.status(200).json(new ApiResoponse(200, data, "success"));
 // });
 
+export const requestReportExport = asyncHandler(async (req, res) => {
+  
+  const { fromDate, toDate, outletId, email, type } = req.body;
+  
+  const tenant = req.user.tenant;
+
+  if (type === "consumption") {
+    if (req.user.role !== "OUTLET_MANAGER") {
+      throw new ApiError(403, "Only Outlet Manager can export consumption report");
+    }
+  } else {
+    if (req.user.role !== "BRAND_ADMIN") {
+      throw new ApiError(403, "Only Brand Admin can export this report");
+    }
+  }
+
+  if (!fromDate || !toDate || !outletId) {
+    throw new ApiError(400, "fromDate, toDate, and outletId are required");
+  }
+
+  if (!email) {
+    throw new ApiError(400, "email is required");
+  }
+
+  const outlet = await Outlet.findById(outletId).select("outletName");
+  console.log(type);
+    
+  await csvExportQueue.add(`${type}`, {
+    reportType: type,
+    tenantId: String(tenant.tenantId),
+    outletId,
+    outletName: outlet?.outletName || "Selected Outlet",
+    fromDate,
+    toDate,
+    userEmail: email,
+    userName: req.user.name,
+  });
+  
+  return res.status(202).json(
+    new ApiResoponse(
+      202,
+      null,
+      "Report generation started. You'll receive an email when it's ready."
+    )
+  );
+});
 
 export const brandAnalyticsSnapshotReport = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
