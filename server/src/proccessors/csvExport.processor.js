@@ -10,12 +10,6 @@ const startOfDay = (d) => {
   return date;
 };
 
-const endOfDay = (d) => {
-  const date = new Date(d);
-  date.setUTCHours(23, 59, 59, 999);
-  return date;
-};
-
 const todayStart = () => startOfDay(new Date());
 
 const isTodayInRange = (from, to) => {
@@ -23,129 +17,98 @@ const isTodayInRange = (from, to) => {
   return today >= startOfDay(from) && today <= startOfDay(to);
 };
 
-const isPastInRange = (from) => {
-  return startOfDay(from) < todayStart();
-};
+const isPastInRange = (from) => startOfDay(from) < todayStart();
 
-const mergeByKey = (snapshotRows, liveRows, keyField) => {
-  const map = new Map();
+export async function* fetchProfitReport({ tenantId, outletId, fromDate, toDate }) {
+  const outletObjId = new mongoose.Types.ObjectId(outletId);
 
-  for (const row of snapshotRows) {
-    map.set(String(row[keyField]), { ...row });
-  }
+  const map = new Map(); 
 
-  for (const row of liveRows) {
-    const key = String(row[keyField]);
-    if (map.has(key)) {
-      const existing = map.get(key);
-      for (const field of Object.keys(row)) {
-        if (typeof row[field] === "number" && field !== keyField) {
-          existing[field] = (existing[field] || 0) + row[field];
-        }
-      }
-    } else {
-      map.set(key, { ...row });
+  if (isPastInRange(fromDate)) {
+    const cursor = OutletItemDailySnapshot.aggregate([
+      {
+        $match: {
+          "tenant.tenantId": tenantId,
+          "outlet.outletId": outletObjId,
+          date: { $gte: startOfDay(fromDate), $lte: startOfDay(toDate) },
+        },
+      },
+      {
+        $group: {
+          _id: "$item.itemId",
+          itemName: { $first: "$item.itemName" },
+          totalQty: { $sum: "$totalQty" },
+          totalRevenue: { $sum: "$totalRevenue" },
+          totalMakingCost: { $sum: "$totalMakingCost" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          itemId: "$_id",
+          itemName: 1,
+          totalQty: 1,
+          totalRevenue: 1,
+          totalMakingCost: { $round: ["$totalMakingCost", 2] },
+        },
+      },
+    ]).cursor();
+
+    for await (const doc of cursor) {
+      map.set(String(doc.itemId), { ...doc });
     }
   }
 
-  return [...map.values()];
-};
-
-
-async function profitSnapshot({ tenantId, outletId, fromDate, toDate }) {
-  const outletObjId = new mongoose.Types.ObjectId(outletId);
-  const snapshotEnd = startOfDay(toDate);
-  // snapshot covers all days BEFORE today
-  const snapshotStart = startOfDay(fromDate);
-
-  return OutletItemDailySnapshot.aggregate([
-    {
-      $match: {
-        "tenant.tenantId": tenantId,
-        "outlet.outletId": outletObjId,
-        date: { $gte: snapshotStart, $lte: snapshotEnd },
+  if (isTodayInRange(fromDate, toDate)) {
+    const cursor = Sale.aggregate([
+      {
+        $match: {
+          "tenant.tenantId": tenantId,
+          "outlet.outletId": outletObjId,
+          createdAt: { $gte: todayStart() },
+          state: "CONFIRMED",
+        },
       },
-    },
-    {
-      $group: {
-        _id: "$item.itemId",
-        itemName: { $first: "$item.itemName" },
-        totalQty: { $sum: "$totalQty" },
-        totalRevenue: { $sum: "$totalRevenue" },
-        totalMakingCost: { $sum: "$totalMakingCost" },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.itemId",
+          itemName: { $first: "$items.itemName" },
+          totalQty: { $sum: "$items.qty" },
+          totalRevenue: { $sum: "$items.totalAmount" },
+          totalMakingCost: { $sum: "$items.makingCost" },
+        },
       },
-    },
-    {
-      $project: {
-        _id: 0,
-        itemId: "$_id",
-        itemName: 1,
-        totalQty: 1,
-        totalRevenue: 1,
-        totalMakingCost: { $round: ["$totalMakingCost", 2] },
+      {
+        $project: {
+          _id: 0,
+          itemId: "$_id",
+          itemName: 1,
+          totalQty: 1,
+          totalRevenue: 1,
+          totalMakingCost: { $round: ["$totalMakingCost", 2] },
+        },
       },
-    },
-  ]);
-}
+    ]).cursor();
 
-async function profitLive({ tenantId, outletId }) {
-  const outletObjId = new mongoose.Types.ObjectId(outletId);
-
-  return Sale.aggregate([
-    {
-      $match: {
-        "tenant.tenantId": tenantId,
-        "outlet.outletId": outletObjId,
-        createdAt: { $gte: todayStart() },
-        state: "CONFIRMED",
-      },
-    },
-    { $project: { items: 1 } },
-    { $unwind: "$items" },
-    {
-      $group: {
-        _id: "$items.itemId",
-        itemName: { $first: "$items.itemName" },
-        totalQty: { $sum: "$items.qty" },
-        totalRevenue: { $sum: "$items.totalAmount" },
-        totalMakingCost: { $sum: "$items.makingCost" },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        itemId: "$_id",
-        itemName: 1,
-        totalQty: 1,
-        totalRevenue: 1,
-        totalMakingCost: { $round: ["$totalMakingCost", 2] },
-      },
-    },
-  ]);
-}
-
-export async function fetchProfitReport({ tenantId, outletId, fromDate, toDate }) {
-  const includePast = isPastInRange(fromDate);
-  const includeLive = isTodayInRange(fromDate, toDate);
-
-  let snapshotData = [];
-  let liveData = [];
-
-  if (includePast) {
-    snapshotData = await profitSnapshot({ tenantId, outletId, fromDate, toDate });
-  }
-  if (includeLive) {
-    liveData = await profitLive({ tenantId, outletId });
+    for await (const doc of cursor) {
+      const key = String(doc.itemId);
+      if (map.has(key)) {
+        const e = map.get(key);
+        e.totalQty += doc.totalQty;
+        e.totalRevenue += doc.totalRevenue;
+        e.totalMakingCost = +((e.totalMakingCost || 0) + doc.totalMakingCost).toFixed(2);
+      } else {
+        map.set(key, { ...doc });
+      }
+    }
   }
 
-  const merged = mergeByKey(snapshotData, liveData, "itemId");
-
-  return merged.map((r) => {
+  for (const r of map.values()) {
     const profit = +(r.totalRevenue - r.totalMakingCost).toFixed(2);
-    const profitMargin = r.totalRevenue > 0
-      ? +(((profit / r.totalRevenue) * 100).toFixed(2))
-      : 0;
-    return {
+    const profitMargin =
+      r.totalRevenue > 0 ? +(((profit / r.totalRevenue) * 100).toFixed(2)) : 0;
+    yield {
       itemName: r.itemName,
       totalQty: r.totalQty,
       totalRevenue: r.totalRevenue,
@@ -153,118 +116,123 @@ export async function fetchProfitReport({ tenantId, outletId, fromDate, toDate }
       profit,
       profitMargin,
     };
-  });
-}
-
-async function salesSnapshot({ tenantId, fromDate, toDate }) {
-  return TenantDailySnapshot.aggregate([
-    {
-      $match: {
-        "tenant.tenantId": tenantId,
-        date: { $gte: startOfDay(fromDate), $lte: startOfDay(toDate) },
-      },
-    },
-    {
-      $group: {
-        _id: "$outlet.outletId",
-        outletName: { $first: "$outlet.outletName" },
-        totalSale: { $sum: "$totalSale" },
-        confirmedOrders: { $sum: "$confirmedOrders" },
-        canceledOrders: { $sum: "$canceledOrders" },
-        cogs: { $sum: "$cogs" },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        outletId: "$_id",
-        outletName: 1,
-        totalSale: 1,
-        confirmedOrders: 1,
-        canceledOrders: 1,
-        cogs: 1,
-      },
-    },
-  ]);
-}
-
-async function salesLive({ tenantId }) {
-  return Sale.aggregate([
-    {
-      $match: {
-        "tenant.tenantId": tenantId,
-        createdAt: { $gte: todayStart() },
-      },
-    },
-    {
-      $project: {
-        outletId: "$outlet.outletId",
-        outletName: "$outlet.outletName",
-        state: 1,
-        sale: { $sum: "$items.totalAmount" },
-        cogs: { $sum: "$items.makingCost" },
-      },
-    },
-    {
-      $group: {
-        _id: "$outletId",
-        outletName: { $first: "$outletName" },
-        totalSale: {
-          $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0] },
-        },
-        cogs: {
-          $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$cogs", 0] },
-        },
-        confirmedOrders: {
-          $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0] },
-        },
-        canceledOrders: {
-          $sum: { $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0] },
-        },
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        outletId: "$_id",
-        outletName: 1,
-        totalSale: 1,
-        confirmedOrders: 1,
-        canceledOrders: 1,
-        cogs: 1,
-      },
-    },
-  ]);
-}
-
-export async function fetchSalesReport({ tenantId, fromDate, toDate }) {
-  const includePast = isPastInRange(fromDate);
-  const includeLive = isTodayInRange(fromDate, toDate);
-
-  let snapshotData = [];
-  let liveData = [];
-
-  if (includePast) {
-    snapshotData = await salesSnapshot({ tenantId, fromDate, toDate });
   }
-  if (includeLive) {
-    liveData = await salesLive({ tenantId });
+}
+
+export async function* fetchSalesReport({ tenantId, fromDate, toDate }) {
+  const map = new Map(); 
+
+  if (isPastInRange(fromDate)) {
+    const cursor = TenantDailySnapshot.aggregate([
+      {
+        $match: {
+          "tenant.tenantId": tenantId,
+          date: { $gte: startOfDay(fromDate), $lte: startOfDay(toDate) },
+        },
+      },
+      {
+        $group: {
+          _id: "$outlet.outletId",
+          outletName: { $first: "$outlet.outletName" },
+          totalSale: { $sum: "$totalSale" },
+          confirmedOrders: { $sum: "$confirmedOrders" },
+          canceledOrders: { $sum: "$canceledOrders" },
+          cogs: { $sum: "$cogs" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          outletId: "$_id",
+          outletName: 1,
+          totalSale: 1,
+          confirmedOrders: 1,
+          canceledOrders: 1,
+          cogs: 1,
+        },
+      },
+    ]).cursor();
+
+    for await (const doc of cursor) {
+      map.set(String(doc.outletId), { ...doc });
+    }
   }
 
-  const merged = mergeByKey(snapshotData, liveData, "outletId");
+  if (isTodayInRange(fromDate, toDate)) {
+    const cursor = Sale.aggregate([
+      {
+        $match: {
+          "tenant.tenantId": tenantId,
+          createdAt: { $gte: todayStart() },
+        },
+      },
+      {
+        $project: {
+          outletId: "$outlet.outletId",
+          outletName: "$outlet.outletName",
+          state: 1,
+          sale: { $sum: "$items.totalAmount" },
+          cogs: { $sum: "$items.makingCost" },
+        },
+      },
+      {
+        $group: {
+          _id: "$outletId",
+          outletName: { $first: "$outletName" },
+          totalSale: {
+            $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0] },
+          },
+          cogs: {
+            $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$cogs", 0] },
+          },
+          confirmedOrders: {
+            $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0] },
+          },
+          canceledOrders: {
+            $sum: { $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0] },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          outletId: "$_id",
+          outletName: 1,
+          totalSale: 1,
+          confirmedOrders: 1,
+          canceledOrders: 1,
+          cogs: 1,
+        },
+      },
+    ]).cursor();
 
-  return merged.map((r) => ({
-    outletName: r.outletName,
-    totalSale: r.totalSale,
-    confirmedOrders: r.confirmedOrders,
-    canceledOrders: r.canceledOrders,
-    cogs: +(r.cogs || 0).toFixed(2),
-    profit: +((r.totalSale || 0) - (r.cogs || 0)).toFixed(2),
-  }));
+    for await (const doc of cursor) {
+      const key = String(doc.outletId);
+      if (map.has(key)) {
+        const e = map.get(key);
+        e.totalSale = (e.totalSale || 0) + (doc.totalSale || 0);
+        e.confirmedOrders = (e.confirmedOrders || 0) + (doc.confirmedOrders || 0);
+        e.canceledOrders = (e.canceledOrders || 0) + (doc.canceledOrders || 0);
+        e.cogs = +((e.cogs || 0) + (doc.cogs || 0)).toFixed(2);
+      } else {
+        map.set(key, { ...doc });
+      }
+    }
+  }
+
+  for (const r of map.values()) {
+    yield {
+      outletName: r.outletName,
+      totalSale: r.totalSale,
+      confirmedOrders: r.confirmedOrders,
+      canceledOrders: r.canceledOrders,
+      cogs: +(r.cogs || 0).toFixed(2),
+      profit: +((r.totalSale || 0) - (r.cogs || 0)).toFixed(2),
+    };
+  }
 }
 
-
-export async function fetchConsumptionReport({ tenantId, outletId, fromDate, toDate }) {
+export async function* fetchConsumptionReport({ tenantId, outletId, fromDate, toDate }) {
   const match = {
     "tenant.tenantId": tenantId,
     createdAt: { $gte: new Date(fromDate), $lte: new Date(toDate) },
@@ -275,7 +243,7 @@ export async function fetchConsumptionReport({ tenantId, outletId, fromDate, toD
     match["outlet.outletId"] = new mongoose.Types.ObjectId(outletId);
   }
 
-  return StockMovement.aggregate([
+  const cursor = StockMovement.aggregate([
     { $match: match },
     {
       $group: {
@@ -312,19 +280,26 @@ export async function fetchConsumptionReport({ tenantId, outletId, fromDate, toD
       },
     },
     { $sort: { totalCost: -1 } },
-  ]);
+  ]).cursor();
+
+  for await (const doc of cursor) {
+    yield doc;
+  }
 }
 
-export async function generateReportRows({ reportType, tenantId, outletId, fromDate, toDate }) {
+export async function* generateReportRows({ reportType, tenantId, outletId, fromDate, toDate }) {
   const tenantObjId = new mongoose.Types.ObjectId(tenantId);
 
   switch (reportType) {
     case "profit":
-      return fetchProfitReport({ tenantId: tenantObjId, outletId, fromDate, toDate });
+      yield* fetchProfitReport({ tenantId: tenantObjId, outletId, fromDate, toDate });
+      break;
     case "sales":
-      return fetchSalesReport({ tenantId: tenantObjId, fromDate, toDate });
+      yield* fetchSalesReport({ tenantId: tenantObjId, fromDate, toDate });
+      break;
     case "consumption":
-      return fetchConsumptionReport({ tenantId: tenantObjId, outletId, fromDate, toDate });
+      yield* fetchConsumptionReport({ tenantId: tenantObjId, outletId, fromDate, toDate });
+      break;
     default:
       throw new Error(`Unknown reportType: ${reportType}`);
   }

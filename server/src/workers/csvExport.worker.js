@@ -1,8 +1,11 @@
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
 import mongoose from "mongoose";
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { PassThrough } from "stream";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { format as csvFormat } from "fast-csv";
 import config from "../utils/config.js";
 import { sendMenuItemExportEmail } from "../utils/emailAlert.js";
 import { generateReportRows } from "../proccessors/csvExport.processor.js";
@@ -29,20 +32,6 @@ const s3 = new S3Client({
     },
 });
 
-function arrayToCSV(rows) {
-    if (!rows || rows.length === 0) return "";
-    const headers = Object.keys(rows[0]);
-    const lines = rows.map((row) =>
-        headers.map((h) => {
-            const val = row[h] ?? "";
-            return typeof val === "string" && (val.includes(",") || val.includes('"'))
-                ? `"${val.replace(/"/g, '""')}"`
-                : val;
-        }).join(",")
-    );
-    return [headers.join(","), ...lines].join("\n");
-}
-
 export const csvExportWorker = new Worker(
     "csv-export",
     async (job) => {
@@ -50,19 +39,35 @@ export const csvExportWorker = new Worker(
 
         console.log(`[csvExport.worker] Processing job ${job.id} | type=${reportType}`);
 
-        const rows = await generateReportRows({ reportType, tenantId, outletId, fromDate, toDate });
-
-        const csvContent = arrayToCSV(rows);
         const fileName = `reports/${reportType}_${tenantId}_${fromDate}_${toDate}_${Date.now()}.csv`;
 
-        await s3.send(
-            new PutObjectCommand({
+        const passThrough = new PassThrough();
+
+        const csvStream = csvFormat({ headers: true, writeBOM: true });
+        csvStream.pipe(passThrough);
+
+        const upload = new Upload({
+            client: s3,
+            params: {
                 Bucket: config.AWS.S3_BUCKET,
                 Key: fileName,
-                Body: csvContent,
+                Body: passThrough,
                 ContentType: "text/csv",
-            })
-        );
+            },
+        });
+
+        try {
+            for await (const row of generateReportRows({ reportType, tenantId, outletId, fromDate, toDate })) {
+                if (!csvStream.write(row)) {
+                    await new Promise((resolve) => csvStream.once("drain", resolve));
+                }
+            }
+        } finally {
+            csvStream.end();
+        }
+
+        await upload.done();
+        console.log(`[csvExport.worker] S3 upload complete: ${fileName}`);
 
         const downloadUrl = await getSignedUrl(
             s3,
@@ -72,7 +77,7 @@ export const csvExportWorker = new Worker(
 
         await sendMenuItemExportEmail({ to: userEmail, userName, outletName, fromDate, toDate, reportType, downloadUrl });
 
-        console.log(`[csvExport.worker] Job ${job.id} completed. Email sent to ${userEmail}`);
+        console.log(`[csvExport.worker] Job ${job.id} done. Email sent to ${userEmail}`);
     },
     {
         connection,
