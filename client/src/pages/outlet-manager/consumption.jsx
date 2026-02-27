@@ -1,11 +1,14 @@
 import React from "react";
 import { useDispatch } from "react-redux";
+import { toast } from "sonner";
 
 import DataCard from "@/components/data-card/data-card";
 import SiteHeader from "@/components/site-header";
 import DashboardDateRangePicker from "@/components/data-range-picker";
+import ExportBanner from "@/components/export-banner";
 
 import { useGetSaleStockConsumptionQuery } from "@/redux/apis/outlet-manager/stockMovementApi";
+import { useRequestReportExportMutation } from "@/redux/apis/brand-admin/analyticsApi";
 import {
   setStocks,
   updateStockInStore,
@@ -14,6 +17,11 @@ import {
 import { useAuth } from "@/auth/auth";
 import { useStockSocket } from "@/sockets/sockets";
 import { SkeletonLoader } from "@/components/laoder";
+
+const isOver30Days = (from, to) => {
+  if (!from || !to) return false;
+  return (new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24) > 30;
+};
 
 const ingredientColumn = () => [
   { accessorKey: "ingredientName", header: "Ingredient" },
@@ -34,6 +42,26 @@ export const Consumption = () => {
   const { user } = useAuth();
 
   const [dateRange, setDateRange] = React.useState(null);
+
+  const rangeOver30 = isOver30Days(dateRange?.from, dateRange?.to);
+
+  const [requestReportExport, { isLoading: exportLoading }] =
+    useRequestReportExportMutation();
+
+  const handleConsumptionExport = async (email) => {
+    try {
+      await requestReportExport({
+        from: dateRange?.from,
+        to: dateRange?.to,
+        outletId: user?.outlet?.outletId,
+        email,
+        type: "consumption",
+      }).unwrap();
+      toast.success("Report generation started! You'll receive an email when it's ready.");
+    } catch {
+      toast.error("Failed to trigger export. Please try again.");
+    }
+  };
 
   const { data, isLoading, refetch, isFetching } =
     useGetSaleStockConsumptionQuery({
@@ -74,7 +102,13 @@ export const Consumption = () => {
       />
 
       <div className="flex-1 min-h-0 p-4 lg:p-6">
-        {(isLoading || isFetching) ? (
+        {rangeOver30 ? (
+          <ExportBanner
+            label="Consumption"
+            onExport={handleConsumptionExport}
+            isLoading={exportLoading}
+          />
+        ) : (isLoading || isFetching) ? (
           <SkeletonLoader />
         ) : (
           <DataCard

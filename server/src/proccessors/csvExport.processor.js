@@ -156,14 +156,11 @@ export async function fetchProfitReport({ tenantId, outletId, fromDate, toDate }
   });
 }
 
-async function salesSnapshot({ tenantId, outletId, fromDate, toDate }) {
-  const outletObjId = new mongoose.Types.ObjectId(outletId);
-
+async function salesSnapshot({ tenantId, fromDate, toDate }) {
   return TenantDailySnapshot.aggregate([
     {
       $match: {
         "tenant.tenantId": tenantId,
-        "outlet.outletId": outletObjId,
         date: { $gte: startOfDay(fromDate), $lte: startOfDay(toDate) },
       },
     },
@@ -191,14 +188,11 @@ async function salesSnapshot({ tenantId, outletId, fromDate, toDate }) {
   ]);
 }
 
-async function salesLive({ tenantId, outletId }) {
-  const outletObjId = new mongoose.Types.ObjectId(outletId);
-
+async function salesLive({ tenantId }) {
   return Sale.aggregate([
     {
       $match: {
         "tenant.tenantId": tenantId,
-        "outlet.outletId": outletObjId,
         createdAt: { $gte: todayStart() },
       },
     },
@@ -243,7 +237,7 @@ async function salesLive({ tenantId, outletId }) {
   ]);
 }
 
-export async function fetchSalesReport({ tenantId, outletId, fromDate, toDate }) {
+export async function fetchSalesReport({ tenantId, fromDate, toDate }) {
   const includePast = isPastInRange(fromDate);
   const includeLive = isTodayInRange(fromDate, toDate);
 
@@ -251,10 +245,10 @@ export async function fetchSalesReport({ tenantId, outletId, fromDate, toDate })
   let liveData = [];
 
   if (includePast) {
-    snapshotData = await salesSnapshot({ tenantId, outletId, fromDate, toDate });
+    snapshotData = await salesSnapshot({ tenantId, fromDate, toDate });
   }
   if (includeLive) {
-    liveData = await salesLive({ tenantId, outletId });
+    liveData = await salesLive({ tenantId });
   }
 
   const merged = mergeByKey(snapshotData, liveData, "outletId");
@@ -328,7 +322,7 @@ export async function generateReportRows({ reportType, tenantId, outletId, fromD
     case "profit":
       return fetchProfitReport({ tenantId: tenantObjId, outletId, fromDate, toDate });
     case "sales":
-      return fetchSalesReport({ tenantId: tenantObjId, outletId, fromDate, toDate });
+      return fetchSalesReport({ tenantId: tenantObjId, fromDate, toDate });
     case "consumption":
       return fetchConsumptionReport({ tenantId: tenantObjId, outletId, fromDate, toDate });
     default:

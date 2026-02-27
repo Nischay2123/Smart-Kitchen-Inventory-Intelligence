@@ -88,27 +88,39 @@ export const requestReportExport = asyncHandler(async (req, res) => {
     }
   }
 
-  if (!fromDate || !toDate || !outletId) {
-    throw new ApiError(400, "fromDate, toDate, and outletId are required");
+  if (!fromDate || !toDate) {
+    throw new ApiError(400, "fromDate and toDate are required");
+  }
+
+  if (type !== "sales" && !outletId) {
+    throw new ApiError(400, "outletId is required for this report type");
   }
 
   if (!email) {
     throw new ApiError(400, "email is required");
   }
 
-  const outlet = await Outlet.findById(outletId).select("outletName");
-  console.log(type);
-    
-  await csvExportQueue.add(`${type}`, {
+  let outletName = "All Outlets";
+  if (outletId) {
+    const outlet = await Outlet.findById(outletId).select("outletName");
+    outletName = outlet?.outletName || "Selected Outlet";
+  }
+
+  const jobPayload = {
     reportType: type,
     tenantId: String(tenant.tenantId),
-    outletId,
-    outletName: outlet?.outletName || "Selected Outlet",
     fromDate,
     toDate,
     userEmail: email,
     userName: req.user.name,
-  });
+    outletName,
+  };
+
+  if (type !== "sales") {
+    jobPayload.outletId = outletId;
+  }
+
+  await csvExportQueue.add(`${type}`, jobPayload);
   
   return res.status(202).json(
     new ApiResoponse(

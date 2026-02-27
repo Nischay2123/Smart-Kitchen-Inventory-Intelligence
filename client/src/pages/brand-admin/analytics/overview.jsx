@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
+import { toast } from "sonner";
 
 import AnalyticsHeader from "@/components/AnalyticsHeader";
+import ExportBanner from "@/components/export-banner";
 import TabSalesBarChart from "@/components/charts/bar-chart";
 import DataCard from "@/components/data-card/data-card";
 import {
@@ -13,6 +15,7 @@ import { GridLoader, SkeletonLoader } from '@/components/laoder';
 import {
   useGetLiveDeploymentDataMutation,
   useGetSnapshotDeploymentDataMutation,
+  useRequestReportExportMutation,
 } from "@/redux/apis/brand-admin/analyticsApi";
 
 import {
@@ -25,6 +28,11 @@ import noDataAnimation from "@/assets/no-data.json"
 
 import { useGetAllOutletsQuery } from "@/redux/apis/brand-admin/outletApi";
 import Lottie from "lottie-react";
+
+const isOver30Days = (from, to) => {
+  if (!from || !to) return false;
+  return (new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24) > 30;
+};
 
 const isTodayInRange = (from, to) => {
   const today = new Date();
@@ -244,14 +252,27 @@ export const Overview = () => {
     (state) => state.dashboardFilters.dateRange
   );
 
+  const rangeOver30 = isOver30Days(from, to);
+
   const { data: outlets } = useGetAllOutletsQuery();
 
   const [snapshotApi] = useGetSnapshotDeploymentDataMutation();
   const [liveApi] = useGetLiveDeploymentDataMutation();
+  const [requestReportExport, { isLoading: exportLoading }] =
+    useRequestReportExportMutation();
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [focusedDeployment, setFocusedDeployment] = useState(null);
+
+  const handleSalesExport = async (email) => {
+    try {
+      await requestReportExport({ from, to, email, type: "sales" }).unwrap();
+      toast.success("Report generation started! You'll receive an email when it's ready.");
+    } catch {
+      toast.error("Failed to trigger export. Please try again.");
+    }
+  };
 
   const load = async () => {
     try {
@@ -311,9 +332,9 @@ export const Overview = () => {
   };
 
   useEffect(() => {
-    if (!outlets?.data || !from || !to) return;
+    if (!outlets?.data || !from || !to || rangeOver30) return;
     load();
-  }, [outlets, from, to]);
+  }, [outlets, from, to, rangeOver30]);
 
   const aggregated = aggregateData(data);
 
@@ -342,12 +363,20 @@ export const Overview = () => {
       <AnalyticsHeader
         headerTitle="Sales Analytics"
         description="Live performance insights across all outlets"
-        onRefresh={load}
+        onRefresh={rangeOver30 ? undefined : load}
         isRefreshing={loading}
         isOutlet={false}
       />
 
-      {loading ? (
+      {rangeOver30 ? (
+        <div className="px-6 pt-2">
+          <ExportBanner
+            label="Sales"
+            onExport={handleSalesExport}
+            isLoading={exportLoading}
+          />
+        </div>
+      ) : loading ? (
         <div className="px-4 lg:px-6 pt-6">
           <GridLoader />
         </div>
