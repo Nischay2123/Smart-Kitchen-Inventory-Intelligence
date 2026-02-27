@@ -11,6 +11,7 @@ import Recipe from "../models/recipes.model.js";
 import QueueFail from "../models/queueFail.model.js";
 import Tenant from "../models/tenant.model.js";
 import Outlet from "../models/outlet.model.js";
+import MenuItem from "../models/menuItem.model.js";
 
 import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
@@ -40,6 +41,12 @@ const validateOutlet = async (tenantId, outletId) => {
 };
 
 const createPendingSale = async ({ tenant, outlet, items, createdAt }) => {
+  const itemIds = items.map(i => i.itemId);
+  const menuItems = await MenuItem.find({ _id: { $in: itemIds } })
+    .select("_id itemName")
+    .lean();
+  const menuNameMap = new Map(menuItems.map(m => [String(m._id), m.itemName]));
+
   return Sale.create({
     tenant,
     outlet,
@@ -47,7 +54,7 @@ const createPendingSale = async ({ tenant, outlet, items, createdAt }) => {
     createdAt: createdAt || new Date(),
     items: items.map(i => ({
       itemId: i.itemId,
-      itemName: i.itemName,
+      itemName: menuNameMap.get(String(i.itemId)) || i.itemName,
       qty: i.qty,
       totalAmount: 0,
       makingCost: 0,

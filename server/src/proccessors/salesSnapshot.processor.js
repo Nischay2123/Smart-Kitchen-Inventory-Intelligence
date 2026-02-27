@@ -99,6 +99,7 @@ export const processSalesSnapshot = async (data) => {
 
       return {
         ...item.toObject(),
+        itemName: menu.itemName,
         totalAmount:
           menu.price * item.qty,
         makingCost,
