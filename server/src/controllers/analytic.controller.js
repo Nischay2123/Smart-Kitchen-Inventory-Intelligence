@@ -6,7 +6,72 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js"
 import TenantDailySnapshot from "../models/tenantDailySnapshot.model.js";
+import { csvExportQueue } from "../queues/csvExport.queue.js";
 
+// ── Export controllers ────────────────────────────────────────────────
+export const requestProfitExport = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403, "Unauthorized");
+  }
+
+  const { fromDate, toDate, outletId, email } = req.body;
+  const tenant = req.user.tenant;
+
+  if (!fromDate || !toDate || !outletId) {
+    throw new ApiError(400, "fromDate, toDate, and outletId are required");
+  }
+  if (!email) {
+    throw new ApiError(400, "email is required");
+  }
+
+  const outlet = await Outlet.findById(outletId).select("outletName");
+  await csvExportQueue.add("menu-item.export", {
+    reportType: "profit",
+    tenantId: String(tenant.tenantId),
+    outletId,
+    outletName: outlet?.outletName || "Selected Outlet",
+    fromDate,
+    toDate,
+    userEmail: email,
+    userName: req.user.name,
+  });
+
+  return res.status(202).json(
+    new ApiResoponse(202, null, "Report generation started. You'll receive an email when it's ready.")
+  );
+});
+
+export const requestMenuMatrixExport = asyncHandler(async (req, res) => {
+  if (req.user.role !== "BRAND_ADMIN") {
+    throw new ApiError(403, "Unauthorized");
+  }
+
+  const { fromDate, toDate, email } = req.body;
+  const tenantContext = req.user.tenant;
+
+  if (!fromDate || !toDate) {
+    throw new ApiError(400, "fromDate and toDate are required");
+  }
+  if (!email) {
+    throw new ApiError(400, "email is required");
+  }
+
+  await csvExportQueue.add("menu-item.export", {
+    reportType: "menu-matrix",
+    tenantId: String(tenantContext.tenantId),
+    outletName: "All Outlets",
+    fromDate,
+    toDate,
+    userEmail: email,
+    userName: req.user.name,
+  });
+
+  return res.status(202).json(
+    new ApiResoponse(202, null, "Report generation started. You'll receive an email when it's ready.")
+  );
+});
+
+// ── Data controllers ──────────────────────────────────────────────────
 export const itemsProfitPerDeployement = asyncHandler(async (req, res) => {
   if (req.user.role !== "BRAND_ADMIN") {
     throw new ApiError(403, "Unauthorized");
@@ -375,7 +440,6 @@ export const menuEngineeringMatrix = asyncHandler(async (req, res) => {
 
   const tenantContext = req.user.tenant
   const { toDate, fromDate } = req.query;
-  // console.log(tenantContext,toDate,fromDate);
 
   if (!tenantContext) {
     throw new ApiError(400, "Unauthorized Request")

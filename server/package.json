@@ -13,6 +13,8 @@
     "start:scheduler": "nodemon src/scheduler.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.998.0",
+    "@aws-sdk/s3-request-presigner": "^3.998.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.66.5",
     "cookie-parser": "^1.4.7",

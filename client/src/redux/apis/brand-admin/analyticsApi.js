@@ -17,14 +17,7 @@ export const Analytics = baseApi.injectEndpoints({
         params: { fromDate: from, toDate: to },
       }),
     }),
-    getLiveDeploymentData: builder.query({
-      query: ({ from, to, outletIds }) => ({
-        url: "analytics/reports/deployment-snapshot",
-        method: "GET",
-        params: { fromDate: from, toDate: to },
-        body: { outletIds }
-      }),
-    }),
+
     getSnapshotDeploymentData: builder.mutation({
       query: ({ outletIds, from, to }) => ({
         url: "analytics/reports/deployment-snapshot",
@@ -42,6 +35,7 @@ export const Analytics = baseApi.injectEndpoints({
       }),
     }),
 
+    // ── Data queries (range ≤ 30 days) ──────────────────────────────
     getMenuItemData: builder.query({
       query: ({ from, to, outletId }) => ({
         url: "analytics/profit",
@@ -49,6 +43,7 @@ export const Analytics = baseApi.injectEndpoints({
         params: { fromDate: from, toDate: to, outletId },
       }),
     }),
+
     getMenuMatrixData: builder.query({
       query: ({ from, to }) => ({
         url: "analytics/menu-matrix",
@@ -57,6 +52,22 @@ export const Analytics = baseApi.injectEndpoints({
       }),
     }),
 
+    // ── Export mutations (range > 30 days) — dedicated POST endpoints
+    requestMenuItemExport: builder.mutation({
+      query: ({ from, to, outletId, email }) => ({
+        url: "analytics/profit/export",
+        method: "POST",
+        body: { fromDate: from, toDate: to, outletId, email },
+      }),
+    }),
+
+    requestMenuMatrixExport: builder.mutation({
+      query: ({ from, to, email }) => ({
+        url: "analytics/menu-matrix/export",
+        method: "POST",
+        body: { fromDate: from, toDate: to, email },
+      }),
+    }),
 
   }),
 });
@@ -67,5 +78,7 @@ export const {
   useGetMenuMatrixDataQuery,
   useGetMenuItemDataQuery,
   useGetLiveDeploymentDataMutation,
-  useGetSnapshotDeploymentDataMutation
+  useGetSnapshotDeploymentDataMutation,
+  useRequestMenuItemExportMutation,
+  useRequestMenuMatrixExportMutation,
 } = Analytics;

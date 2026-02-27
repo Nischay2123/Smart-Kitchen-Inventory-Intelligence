@@ -4,15 +4,9 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const WORKER_PATH_ORDER = path.join(
-  __dirname,
-  "order.worker.js"
-);
-
-const WORKER_PATH_SNAPSHOT = path.join(
-  __dirname,
-  "dailySnapshot.worker.js"
-);
+const WORKER_PATH_ORDER = path.join(__dirname, "order.worker.js");
+const WORKER_PATH_SNAPSHOT = path.join(__dirname, "dailySnapshot.worker.js");
+const WORKER_PATH_CSV_EXPORT = path.join(__dirname, "csvExport.worker.js");
 
 const WORKER_COUNT = 4;
 
@@ -37,3 +31,6 @@ for (let i = 0; i < WORKER_COUNT; i++) {
 
 // Start 1 snapshot worker
 startWorker(WORKER_PATH_SNAPSHOT, "Snapshot");
+
+// Start 1 CSV export worker
+startWorker(WORKER_PATH_CSV_EXPORT, "CsvExport");

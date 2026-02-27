@@ -26,6 +26,13 @@ const config = {
   },
 
   REDIS_URL: requireEnv("REDIS_URI"),
+
+  AWS: {
+    ACCESS_KEY_ID: requireEnv("AWS_ACCESS_KEY_ID"),
+    SECRET_ACCESS_KEY: requireEnv("AWS_SECRET_ACCESS_KEY"),
+    REGION: requireEnv("AWS_REGION"),
+    S3_BUCKET: requireEnv("AWS_S3_BUCKET"),
+  },
 };
 
 export default config;
