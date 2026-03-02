@@ -1,501 +1,980 @@
 <p align="center">
   <h1 align="center">🍳 Smart Kitchen Inventory Intelligence (SKII)</h1>
   <p align="center">
-    <strong>A production-grade, multi-tenant kitchen inventory management platform built for real-time order processing, intelligent stock tracking, and data-driven analytics.</strong>
+    <strong>A multi-tenant, event-driven restaurant inventory platform with real-time order processing, automated stock tracking, and pre-aggregated analytics.</strong>
   </p>
   <p align="center">
     <img src="https://img.shields.io/badge/Node.js-v20+-339933?style=for-the-badge&logo=node.js&logoColor=white" />
     <img src="https://img.shields.io/badge/Express-v5-000000?style=for-the-badge&logo=express&logoColor=white" />
     <img src="https://img.shields.io/badge/React-v19-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
     <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" />
-    <img src="https://img.shields.io/badge/Redis-Cloud-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
+    <img src="https://img.shields.io/badge/Redis-ioredis-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
+    <img src="https://img.shields.io/badge/BullMQ-v5-F4821F?style=for-the-badge" />
     <img src="https://img.shields.io/badge/Socket.IO-v4-010101?style=for-the-badge&logo=socket.io&logoColor=white" />
+    <img src="https://img.shields.io/badge/AWS_S3-SDK_v3-FF9900?style=for-the-badge&logo=amazons3&logoColor=white" />
   </p>
 </p>
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Overview](#-overview)
-- [System Architecture](#-system-architecture)
-- [Order Processing Pipeline](#-order-processing-pipeline)
-- [Tech Stack](#-tech-stack)
-- [Data Model](#-data-model)
-- [Why SKII is Scalable & Optimized](#-why-skii-is-scalable--optimized)
-- [Key Features](#-key-features)
-- [Project Structure](#-project-structure)
-- [Getting Started](#-getting-started)
-
----
-
-## 🧠 Overview
-
-SKII is a **multi-tenant SaaS platform** designed for restaurant chains and cloud kitchens to manage inventory across multiple outlets in real-time. The system handles the entire lifecycle — from incoming orders to automatic stock deduction, intelligent low-stock alerting, and daily financial snapshot aggregation.
-
-**The core problem it solves:** When an order comes in, the system must atomically deduct stock across multiple ingredients, calculate COGS (Cost of Goods Sold), detect low-stock thresholds, alert outlet managers, and update dashboards — all in real-time, at scale, without data inconsistency.
-
-### Role-Based Multi-Tenant Architecture
-
-| Role | Scope | Capabilities |
-|------|-------|-------------|
-| **Super Admin** | Platform-wide | Manage tenants (brands), global settings |
-| **Brand Admin** | Single tenant | Manage outlets, menu items, ingredients, recipes, users |
-| **Outlet Manager** | Single outlet | View stock, orders, analytics; receive alerts |
+- [What is SKII?](#what-is-skii)
+- [Role Architecture](#role-architecture)
+- [System Architecture](#system-architecture)
+- [Order Processing Pipeline — The Core Flow](#order-processing-pipeline--the-core-flow)
+- [Tech Stack](#tech-stack)
+- [Database — 14 Collections](#database--14-collections)
+- [Why it is Designed This Way](#why-it-is-designed-this-way)
+- [Key Features](#key-features)
+- [Project Structure](#project-structure)
+- [Running the Project](#running-the-project)
 
 ---
 
-## 🏗 System Architecture
+## What is SKII?
 
-<p align="center">
-  <img src="docs/system_architecture.png" alt="System Architecture Diagram" width="100%" />
-</p>
+SKII is a **multi-tenant SaaS platform** for restaurant chains and cloud kitchens to manage ingredient inventory across multiple outlets. A single brand (`Tenant`) can operate many physical locations (`Outlets`), each with their own stock, staff, and order stream.
 
-The platform follows a **distributed, event-driven architecture** split across **5 independently scalable processes**:
+The hardest problem the system solves: **when a POS order arrives, multiple ingredients must be atomically deducted from stock, COGS must be computed per item, low-stock thresholds must be re-evaluated, affected managers must be emailed, and the dashboard must update in real-time — without blocking the HTTP response or losing data if any step fails.**
 
-| Process | Role | Scalability |
-|---------|------|-------------|
-| **API Server** | Handles HTTP requests, JWT auth, rate limiting | Horizontal (load-balanced) |
-| **Worker Pool** | Processes async jobs from BullMQ queues | Horizontal (4 forked order workers) |
-| **Snapshot Worker** | Processes daily aggregation jobs | Single instance, sequential |
-| **Scheduler Service** | Cron-based job scheduling + DLQ retry | Single instance |
-| **Client App** | React SPA with real-time Socket.IO | CDN-served, stateless |
+SKII solves this by splitting the work across a synchronous validation phase (fast, in-request) and an asynchronous processing phase (workers consuming a BullMQ queue).
 
-### Communication Patterns
+---
+
+## Role Architecture
+
+| Role | Scope | What they can do |
+|---|---|---|
+| `SUPER_ADMIN` | Platform-wide | Create / delete tenants (brands), monitor cron scheduler logs |
+| `BRAND_ADMIN` | One tenant | Manage outlets, menu items, ingredients, units, recipes, brand managers, analytics |
+| `OUTLET_MANAGER` | One outlet | View stock, create restocks, view orders & movements. Access is gated by two flags: `RESTOCK` and `ANALYTICS` |
+
+Outlet manager permissions are toggled individually per user by the brand admin via `PUT /api/v1/users/outlet-managers/:userId/permissions`.
+
+---
+
+## System Architecture
 
 ```
-Client ←→ API Server     : REST + WebSocket (Socket.IO)
-API Server → Redis        : Caching, Rate Limiting, Queue Backbone
-API Server → BullMQ       : Async Job Dispatch
-BullMQ → Worker Pool      : Job Processing (fan-out)
-Worker → Socket.IO Server : Real-time Event Emission
-Worker → MongoDB          : Data Persistence
-Scheduler → BullMQ        : Scheduled + Retry Jobs
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              CLIENT  (Vite + React 19)                       │
+│                                                                               │
+│   ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────────┐    │
+│   │   SuperAdmin App  │   │  BrandAdmin App  │   │  OutletManager App   │    │
+│   └──────────────────┘   └──────────────────┘   └──────────────────────┘    │
+│        RTK Query (REST)       RTK Query (REST)      RTK Query + Socket.IO    │
+└────────────────────────────────────┬────────────────────────┬────────────────┘
+                                     │ REST /api/v1           │ WebSocket
+┌────────────────────────────────────▼────────────────────────▼────────────────┐
+│                          EXPRESS 5 — API SERVER  (app.js)                    │
+│                                                                               │
+│   Redis Rate Limiter ──► Passport JWT ──► Controllers ──► Services           │
+│                                    │                                          │
+│                         ┌──────────▼──────────┐                              │
+│                         │    MongoDB Atlas     │  ← Mongoose 8 ODM            │
+│                         └─────────────────────┘                              │
+│                                    │                                          │
+│   ┌────────────────────────────────▼──────────────────────────────────────┐  │
+│   │                      BullMQ  Queues  (Redis)                           │  │
+│   │   ┌──────────────┐   ┌─────────────────────┐   ┌──────────────────┐  │  │
+│   │   │    orders     │   │   daily-snapshot     │   │   csv-export     │  │  │
+│   │   └──────────────┘   └─────────────────────┘   └──────────────────┘  │  │
+│   └───────────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────────┘
+              ↓  child_process.fork()  (npm run start:worker)
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                          WORKER  POOL  (startWorkers.js)                      │
+│                                                                               │
+│  4× order.worker.js  (concurrency 5 each = 20 parallel slots)                │
+│      sale.confirmed → processStockMovement + processSalesSnapshot + processAlerts │
+│      sale.failed    → processSalesSnapshot  (cancel record only)              │
+│                                                                               │
+│  1× dailySnapshot.worker.js  (concurrency 1)                                 │
+│      Promise.allSettled → processDailySnapshot + processDailyItemSnapshot     │
+│                                                                               │
+│  1× csvExport.worker.js                                                       │
+│      generateReportRows → fast-csv stream → S3 Upload → presign → email      │
+└───────────────────────────────────────────────────────────────────────────────┘
+              ↓  separate process  (npm run start:scheduler)
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                         SCHEDULER  PROCESS  (scheduler.js)                   │
+│                                                                               │
+│  dailySnapshot.cron  ── "0 1 * * *"   Asia/Kolkata  ── enqueue snapshot job │
+│  retryQueue.cron     ── every 1 min   ── re-enqueue QueueFail DLQ entries    │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
+
+```mermaid
+graph TD
+    subgraph Clients["CLIENTS (Vite + React 19)"]
+        POS[("POS Device (Machine)")]
+        UI[("Web UI (User)")]
+    end
+
+    subgraph External["External Services"]
+        AWS[("AWS S3 Bucket")]
+        Mail[("SMTP Server")]
+    end
+
+    subgraph Data["DATA PERSISTENCE"]
+        Mongo[(MongoDB Atlas)]
+        Redis[(Redis ioredis)]
+    end
+
+    subgraph MainApp["MAIN API SERVER (Express 5 - dev)"]
+        Middlewares[Middlewares: Auth, RateLimit]
+        Controllers[API Controllers]
+        Services[Core Services]
+        Sockets[Socket.IO Server]
+        BullProducer[BullMQ Queue Producer]
+    end
+
+    subgraph WorkerPool["WORKER POOL (startWorkers.js)"]
+        %% Fixed: Enclosed labels with parentheses in double quotes
+        O_Worker["Order Workers (4x)"]
+        S_Worker["Snapshot Worker (1x)"]
+        C_Worker["CSV Export Worker (1x)"]
+        BullConsumer[BullMQ Consumer]
+    end
+
+    subgraph SchedulerApp["SCHEDULER PROCESS (node-cron)"]
+        Cron[node-cron Jobs]
+    end
+
+    %% Client Interactions
+    POS -- "POST /sales (no auth)" --> Controllers
+    UI -- "JWT (httpOnly Cookie)" --> Middlewares
+    UI -- "WebSocket" --> Sockets
+
+    %% API Internals
+    Middlewares --> Controllers
+    Controllers --> Services
+    Services --> BullProducer
+    Sockets -- "Broadcasts" --> UI
+
+    %% Data Connections
+    Controllers <--"Mongoose 8"--> Mongo
+    Services <--"ioredis"--> Redis
+    BullProducer -- "Job Persistence" --> Redis
+    WorkerPool -- "Job Data" --> Redis
+    Cron -- "Logs" --> Mongo
+
+    %% Process Connections
+    SchedulerApp -- "Enqueues cron jobs" --> Redis
+    Redis -- "Dispatch Jobs" --> BullConsumer
+
+    %% Worker Actions
+    O_Worker -- "Update Stocks" --> Mongo
+    O_Worker -- "Socket Emit" --> Sockets
+    S_Worker -- "Read Sales / Write Snapshots" --> Mongo
+    C_Worker -- "Read" --> Mongo
+    C_Worker -- "Fast-CSV Stream" --> Pass[PassThrough]
+    Pass --> AWS
+    O_Worker -- "Send Stock Alert" --> Mail
+    C_Worker -- "Email with presigned URL" --> Mail
+```
+
+### The Three Independent Processes
+
+```bash
+npm run dev              # 1. API Server   — HTTP + WebSocket
+npm run start:worker     # 2. Worker Pool  — BullMQ consumers (6 forked processes)
+npm run start:scheduler  # 3. Scheduler   — node-cron jobs (2 crons)
+```
+
+Keeping these separate means cron jitter or a slow snapshot job can **never** delay an HTTP response, and a crashing worker is **auto-restarted** without affecting the API.
+
+---
+
+## Order Processing Pipeline — The Core Flow
+
+This is what happens from the moment a POS device sends `POST /api/v1/sales`:
+
+```mermaid
+sequenceDiagram
+    autonumber
+
+    actor POS
+    participant API
+    participant Redis
+    participant DB
+    participant Queue
+    participant Worker
+    actor Manager
+
+    Note over POS,API: Phase 1 — Fast synchronous request
+
+    POS->>API: POST /sales
+    API->>API: Validate tenant & outlet
+
+    API->>Redis: Get recipes (mget)
+
+    alt Cache miss
+        Redis-->>API: Miss
+        API->>DB: Fetch recipes
+        API->>Redis: Cache recipes (24h)
+    else Cache hit
+        Redis-->>API: Recipes
+    end
+
+    API->>API: Calculate required ingredients
+
+    API->>DB: Check stock (bulk query)
+
+    alt Stock insufficient
+        API->>DB: Mark sale CANCELED
+        API-->>POS: 400 Error
+    else Stock sufficient
+
+        Note over API,DB: MongoDB Transaction
+
+        API->>DB: Bulk stock deduction ($inc)
+        API->>API: OCC retry (max 5)
+
+        API->>Queue: Add job sale.confirmed
+        API-->>POS: 200 OK
+    end
+
+    Note over Queue,Worker: Phase 2 — Async processing
+
+    Queue->>Worker: Consume sale.confirmed
+
+    Worker->>Worker: processStockMovement()
+    Worker-->>API: Emit STOCK_MOVEMENT_CREATED
+
+    Worker->>Worker: processSalesSnapshot()
+    Worker-->>API: Emit NEW_SALE
+
+    Worker->>DB: processAlerts()
+    Worker->>Worker: Evaluate alert state
+
+    Worker->>DB: Update alert state (guarded)
+
+    alt State changed
+        Worker->>DB: Fetch manager emails
+        Worker->>Manager: Send alert email
+    else No change
+        Worker->>Worker: Skip email
+    end
+```
+### Phase 1 — Synchronous (inside the HTTP request)
+
+```
+1. validateTenant()        — Look up Tenant by tenantId (404 if not found)
+2. validateOutlet()        — Ensure outlet belongs to that tenant
+3. createPendingSale()     — Insert Sale document with state="PENDING"
+                             Items resolved to itemNames via MenuItem lookup
+4. loadRecipeMap()         — For each unique itemId:
+     └─ Redis mget() batch ─► cache HIT  → use cached recipe (TTL 24h)
+                             ─► cache MISS → load from MongoDB,
+                                             write back to Redis (write-through)
+5. buildStockRequirement() — Multiply recipe.baseQty × order item qty
+                             Aggregate across all items in the order
+6. validateStock()         — One MongoDB query: find all relevant Stock docs
+                             For each ingredient: current >= required?
+                               FAIL → push to failed[], mark isValid=false
+7a. isValid == false       → cancelSaleAndRespond():
+                             Update Sale state="CANCELED" + cancelIngredientDetails
+                             Return 400 immediately
+7b. isValid == true        → deductStockWithTransaction():
+                             MongoDB session.startTransaction()
+                             bulkWrite with guard: currentStockInBase >= required
+                             $inc: -requiredBaseQty per ingredient
+                             OCC conflict → retry up to MAX_RETRIES=5
+                             with jittered exponential backoff
+8. Enqueue job to BullMQ "orders" queue  (sale.confirmed or sale.failed)
+9. Return 200 to POS
+```
+
+### Phase 2 — Asynchronous (inside order.worker.js)
+
+The worker picks up the queued job and runs three processors sequentially:
+
+```
+job: sale.confirmed
+│
+├─ processStockMovement()
+│    For each ingredient in requirementList:
+│      findOneAndUpdate with $setOnInsert + upsert=true  (idempotent)
+│      Creates StockMovement doc (reason="ORDER")
+│      Emits "STOCK_MOVEMENT_CREATED" via Socket.IO to outlet room
+│
+├─ processSalesSnapshot()
+│    Loads MenuItem + Recipe + Stock in parallel (Promise.all)
+│    Computes totalAmount = price × qty per item
+│    Computes makingCost = sum(ingredient baseQty × unitCost) per item
+│    Updates Sale state="CONFIRMED" with final financials
+│    Emits "NEW_SALE" via Socket.IO to outlet room
+│
+└─ processAlerts()
+     Loads Stock + IngredientMaster in parallel
+     resolveAlertState() per ingredient:
+       currentStockInBase <= criticalInBase → "CRITICAL"
+       currentStockInBase <= lowInBase      → "LOW"
+       else                                 → "OK"
+     bulkWrite only where alertState actually changed
+     (optimistic: filter by prevState prevents lost-update)
+     If any state changed → fetch outlet manager emails
+                         → sendStockAlertEmail()
+```
+
+### Phase 3 — Failure Recovery
+
+```
+BullMQ retries failed jobs: 5 attempts, exponential backoff starting at 1s
+After 5 exhausted attempts → worker writes QueueFail document
+  { eventType, payload, lastError, status: "investigate", source: "worker" }
+
+retryQueue.cron runs every minute:
+  - Finds QueueFail docs where nextRetryAt <= now (up to 50 per run)
+  - Re-enqueues each into the correct queue
+  - On success: deletes the QueueFail doc
+  - On failure: retryCount++, nextRetryAt = now + 1 hour
+
+If the cron itself fails to enqueue (e.g. Redis down):
+  dailySnapshot.cron writes its own QueueFail with nextRetryAt = now + 10 min
 ```
 
 ---
 
-## 🔄 Order Processing Pipeline
-
-<p align="center">
-  <img src="docs/order_pipeline.png" alt="Order Processing Pipeline" width="100%" />
-</p>
-
-The order pipeline is the heart of the system. Here's the detailed flow:
-
-### 1️⃣ Synchronous Phase (API Request)
-
-```
-Incoming Order → Validate Tenant & Outlet → Create PENDING Sale
-    → Load Recipes (Redis cache-first, MongoDB fallback with write-through)
-    → Build Stock Requirements (aggregate ingredients across all order items)
-    → Transactional Stock Deduction (MongoDB session + OCC with 5 retries + jittered backoff)
-```
-
-### 2️⃣ Asynchronous Phase (Worker Pool)
-
-Upon successful stock deduction, the job is enqueued to **BullMQ** and processed by the worker pool:
-
-| Processor | Responsibility |
-|-----------|---------------|
-| **Stock Movement Processor** | Creates auditable movement records, emits `STOCK_MOVEMENT_CREATED` via Socket.IO |
-| **Sales Snapshot Processor** | Calculates `totalAmount` and `makingCost` (COGS), updates sale state to `CONFIRMED`, emits `SALES_CREATED` |
-| **Alert Processor** | Evaluates stock thresholds, bulk-updates alert states (`OK → LOW → CRITICAL`), sends email notifications to outlet managers |
-
-### 3️⃣ Failure Handling
-
-- **Transaction failure** → Sale is `CANCELED` with reason (`RECIPE_NOT_FOUND` / `INSUFFICIENT_STOCK` / `STOCK_CHANGED`)
-- **Queue failure** → Payload saved to `QueueFail` collection (Dead Letter Queue)
-- **Worker failure** → BullMQ retries (5 attempts, exponential backoff). Exhausted jobs → saved to DLQ
-- **DLQ Recovery** → Retry cron picks up failed jobs every minute and re-enqueues them
-
----
-
-## ⚙️ Tech Stack
+## Tech Stack
 
 ### Backend
 
-| Technology | Purpose |
-|-----------|---------|
-| **Node.js** | Runtime |
-| **Express 5** | REST API framework |
-| **MongoDB Atlas** | Primary database with transactions |
-| **Mongoose 8** | ODM with compound indexes & aggregation pipelines |
-| **Redis (ioredis)** | Caching, rate limiting, queue backbone |
-| **BullMQ** | Distributed job queue with retry & DLQ |
-| **Socket.IO** | Real-time bi-directional events |
-| **Passport + JWT** | Stateless authentication |
-| **express-rate-limit** | Tiered rate limiting (Redis-backed) |
-| **node-cron** | Scheduled job orchestration |
-| **Nodemailer** | Email alerts (stock thresholds, OTP) |
-| **Multer + fast-csv** | CSV bulk upload & parsing |
-| **bcrypt** | Password hashing |
+| Package | Version | What it does in this project |
+|---|---|---|
+| `express` | v5 | HTTP server, routing, global error handler |
+| `mongoose` | v8 | ODM — schemas, compound indexes, aggregation pipelines, transactions |
+| `bullmq` | v5 | Job queues with retries, backoff, concurrency control |
+| `ioredis` | v5 | Redis client — cache, rate limiting store, queue backbone |
+| `node-cron` | v4 | Two scheduled jobs (daily snapshot + DLQ retry) |
+| `socket.io` | v4 | Real-time bi-directional events; JWT auth at handshake |
+| `passport` / `passport-jwt` | v0.7 / v4 | JWT strategy reading from httpOnly cookie |
+| `jsonwebtoken` | v9 | Sign + verify tokens |
+| `bcrypt` | v6 | Password hashing (salt rounds applied at save) |
+| `express-rate-limit` | v8 | Three-tier rate limiting middleware |
+| `rate-limit-redis` | v4 | Redis backing store for rate limiter (distributed) |
+| `@aws-sdk/client-s3` | v3 | S3 object commands |
+| `@aws-sdk/lib-storage` | v3 | Streaming multipart upload — no temp files |
+| `@aws-sdk/s3-request-presigner` | v3 | Pre-signed download URLs (7-day expiry) |
+| `fast-csv` | v5 | Streaming CSV write with BOM — piped to S3 |
+| `nodemailer` | v7 | SMTP email — OTP delivery + stock alerts + CSV export links |
+| `multer` | v2 | Multipart file upload handling for CSV imports |
+| `uuid` | v13 | Unique ID generation |
+| `cookie-parser` | v1 | Parse signed cookies (accessToken) |
+| `cors` | v2 | Configured CORS with credentials |
+| `morgan` | v1 | HTTP request logging (tiny format) |
+| `dotenv` | v17 | Env config; validated in `config.js` at boot |
+| `nodemon` | v3 | Dev auto-restart |
 
 ### Frontend
 
-| Technology | Purpose |
-|-----------|---------|
-| **React 19** | UI framework |
-| **Vite 7** | Build tool & dev server |
-| **Redux Toolkit (RTK Query)** | State management & API layer |
-| **TailwindCSS 4** | Utility-first styling |
-| **ShadCN/UI (Radix)** | Accessible component primitives |
-| **Recharts** | Data visualization & analytics |
-| **Socket.IO Client** | Real-time updates |
-| **TanStack Table** | Data tables with sorting, filtering |
-| **PapaParse** | Client-side CSV parsing & validation |
-| **React Router v7** | SPA routing |
+| Package | Version | What it does in this project |
+|---|---|---|
+| `react` / `react-dom` | v19 | UI framework |
+| `vite` | v7 | Build tool + dev server with HMR |
+| `react-router-dom` | v7 | Client-side routing; role-based app shell switching |
+| `@reduxjs/toolkit` | v2 | Store + RTK Query (all API calls, cache, tag invalidation) |
+| `react-redux` | v9 | React bindings for Redux |
+| `tailwindcss` | v4 | Utility-first CSS |
+| `@radix-ui/*` | various | Accessible UI primitives (dialog, select, dropdown…) |
+| `class-variance-authority` | v0.7 | Variant-based className management |
+| `tailwind-merge` | v3 | Safe class merging (`cn()` helper) |
+| `@tanstack/react-table` | v8 | Headless table — sort + pagination client-side |
+| `recharts` | v2 | Bar + line charts for analytics pages |
+| `socket.io-client` | v4 | WebSocket client; custom hooks for each event type |
+| `sonner` | v2 | Toast notifications (success, error, rate-limit warning) |
+| `papaparse` | v5 | CSV parsing in the browser before upload |
+| `axios` | v1 | HTTP client (used alongside RTK Query for some ad-hoc calls) |
+| `lottie-react` | v2 | Lottie JSON animation player (empty states) |
+| `date-fns` | v4 | Date arithmetic + formatting for analytics date range picker |
+| `lodash` | v4 | Utility functions |
+| `lucide-react` | v0.56 | Icon library |
 
 ---
 
-## 📊 Data Model
+## Database — 14 Collections
 
-<p align="center">
-  <img src="docs/data_model.png" alt="Data Model ERD" width="100%" />
-</p>
-
-### Collections Overview
-
-The database is designed around **13 collections** with a **denormalized multi-tenant pattern** — tenant and outlet info is embedded in each document to enable **single-query reads** without `$lookup` joins.
-
-| Collection | Purpose | Key Indexes |
-|-----------|---------|-------------|
-| **Tenant** | Restaurant brand/chain | `name` (unique) |
-| **User** | Platform users with RBAC | `email` (unique) |
-| **Outlet** | Physical restaurant locations | `(tenant.tenantId, createdAt)` |
-| **IngredientMaster** | Master ingredient catalog with thresholds & unit conversions | `(tenant.tenantId, createdAt)` |
-| **BaseUnit** | Unit of measurement definitions | `unitName` |
-| **MenuItem** | Menu items with prices | `(tenant.tenantId, itemName)`, `(tenant.tenantId, createdAt)` |
-| **Recipe** | Item-to-ingredient mapping with quantities | `(tenant.tenantId, item.itemId)` |
-| **Stock** | Current stock levels per outlet per ingredient | `(outlet.outletId, masterIngredient.ingredientMasterId)` |
-| **StockMovement** | Immutable audit log of all stock changes | `(tenant.tenantId, outlet.outletId, reason, createdAt)`, `(orderId, ingredient.ingredientMasterId)` |
-| **Sale** | Order records with lifecycle states | `(tenant.tenantId, outlet.outletId, createdAt)`, `(tenant.tenantId, createdAt)` |
-| **TenantDailySnapshot** | Pre-aggregated daily financial summaries | `(tenant.tenantId, date)` |
-| **QueueFail** | Dead Letter Queue for failed async jobs | `eventType` |
-| **SchedulerLog** | Cron execution audit trail | `eventType`, `runId` |
-
-### Key Data Relationships
+The data model uses **denormalised multi-tenancy**: every document embeds `{ tenantId, tenantName }` and (where applicable) `{ outletId, outletName }`. This avoids `$lookup` joins and lets compound indexes cover all common query shapes.
 
 ```mermaid
-graph LR
-    Tenant --> Outlet
-    Tenant --> User
-    Tenant --> IngredientMaster
-    Tenant --> MenuItem
-    MenuItem --> Recipe
-    IngredientMaster --> Recipe
-    Outlet --> Stock
-    IngredientMaster --> Stock
-    Stock --> StockMovement
-    Outlet --> Sale
-    Sale --> StockMovement
+
+erDiagram
+    %% Core Entities
+    Tenants {
+        ObjectId _id
+        String name
+    }
+
+    Users {
+        ObjectId _id
+        String email
+        String role
+        Map permissions
+        Ref tenant
+        Ref outlet
+    }
+
+    Outlets {
+        ObjectId _id
+        String outletName
+        Ref tenant
+    }
+
+    %% Master Data & Recipes
+    Units {
+        ObjectId _id
+        String unit
+        String baseUnit
+        Number conversionRate
+        Ref tenant
+    }
+
+    IngredientMasters {
+        ObjectId _id
+        String name
+        Map thresholds
+        Array unitMappings
+        Ref tenant
+    }
+
+    MenuItems {
+        ObjectId _id
+        String itemName
+        Number price
+        Ref tenant
+    }
+
+    Recipes {
+        ObjectId _id
+        Ref item
+        Array recipeItems
+        Ref tenant
+    }
+
+    %% Active Inventory & Orders
+    Stocks {
+        ObjectId _id
+        Ref masterIngredient
+        String alertState
+        Number currentStockInBase
+        Ref tenant
+        Ref outlet
+    }
+
+    StockMovements {
+        ObjectId _id
+        Ref stockId
+        String reason
+        Number quantity
+        Ref orderId
+        Ref tenant
+        Ref outlet
+    }
+
+    Sales {
+        ObjectId _id
+        String externalOrderId
+        String state
+        Array items
+        Array cancelDetails
+        Ref tenant
+        Ref outlet
+    }
+
+    %% Analytics & Logs
+    TenantDailySnapshots {
+        Date date
+        Number cogs
+        Number totalSale
+        Ref tenant
+    }
+
+    OutletItemDailySnapshots {
+        Date date
+        Number totalQty
+        Ref item
+        Ref tenant
+        Ref outlet
+    }
+
+    SchedulerLogs {
+        String eventType
+        String status
+    }
+
+    QueueFails {
+        String eventType
+        Map payload
+        String status
+    }
+
+    %% Relationships based on document structure
+    Tenants ||--o{ Outlets : "owns"
+    Tenants ||--o{ Users : "employs (BrandAdmin)"
+    Outlets ||--o{ Users : "employs (OutletMgr)"
+
+    %% Denormalized Data Flows / Dependencies
+    IngredientMasters }o--o{ Units : "references conversions"
+    Recipes ||--|| MenuItems : "for specific item"
+    Recipes }o--|| IngredientMasters : "uses ingredients"
+    Stocks }o--|| IngredientMasters : "specific ingredient stock"
+    StockMovements }o--|| Stocks : "belongs to stock"
+    StockMovements }o--|| Sales : "belongs to sale"
+    Sales }o--o{ MenuItems : "sold items"
+    OutletItemDailySnapshots }o--|| MenuItems : "snapshot of item"
+
+```
+
+### Tenants
+
+```
+_id, name (unique), createdAt, updatedAt
+```
+
+### Users
+
+```
+_id
+tenant        { tenantId, tenantName }  — null for SUPER_ADMIN
+outlet        { outletId, outletName }  — null unless OUTLET_MANAGER
+userName
+email         (unique)
+password      (bcrypt, select:false)
+role          SUPER_ADMIN | BRAND_ADMIN | OUTLET_MANAGER
+emailVerified
+otpHash, otpExpiresAt, otpPurpose   (SIGNUP | FORGOT_PASSWORD)
+outletManagerPermissions { RESTOCK: bool, ANALYTICS: bool }
+```
+
+### Outlets
+
+```
+_id
+tenant        { tenantId, tenantName }
+outletName
+address       { line, city, state, country, pincode }
+```
+Index: `(tenant.tenantId, createdAt: -1)`
+
+### IngredientMasters
+
+```
+_id
+tenant        { tenantId, tenantName }
+name
+threshold     { lowInBase, criticalInBase, unit: { unitId, unitName, baseUnit, conversionRate } }
+unit[]        [{ unitId, unitName, baseUnit, conversionRate }]
+```
+
+### Units  (BaseUnit)
+
+```
+_id
+tenant        { tenantId, tenantName }
+unit          — display name  e.g. "kg"
+baseUnit      — storage unit  e.g. "g"
+conversionRate — multiplier (1 kg = 1000 g → conversionRate: 1000)
+```
+
+### MenuItems
+
+```
+_id
+tenant        { tenantId, tenantName }
+itemName
+price
+```
+Indexes: `(tenant.tenantId, itemName)`, `(tenant.tenantId, createdAt: -1)`
+
+### Recipes
+
+```
+_id
+tenant        { tenantId, tenantName }
+item          { itemId, itemName }
+recipeItems[] { ingredientMasterId, ingredientName, baseQty, unit, qty }
+              — must have at least 1 item (validated)
+```
+
+### Stocks
+
+```
+_id
+tenant        { tenantId, tenantName }
+outlet        { outletId, outletName }
+masterIngredient { ingredientMasterId, ingredientMasterName }
+baseUnit
+currentStockInBase   — always stored in base unit
+unitCost             — cost per base unit (used for COGS calculation)
+alertState    OK | LOW | CRITICAL
+```
+Index: `(outlet.outletId, masterIngredient.ingredientMasterId)`
+
+### StockMovements
+
+```
+_id
+tenant, outlet, ingredient  — embedded refs
+quantity     — negative for consumption
+unit
+reason       ORDER | PURCHASE | POSITIVE_ADJUSTMENT | NEGATIVE_ADJUSTMENT
+orderId      — present for ORDER movements (links to Sale)
+stockId      — ref to Stock doc
+unitCost     — snapshot of cost at time of movement
+```
+
+### Sales
+
+```
+_id
+tenant, outlet  — embedded
+orderId         — external POS order ID
+state           PENDING → CONFIRMED | CANCELED | PARTIAL
+items[]
+  itemId, itemName, qty
+  totalAmount   — price × qty  (0 while PENDING, set by worker)
+  makingCost    — COGS per item (0 while PENDING, set by worker)
+  cancelIngredientDetails[]  { ingredientMasterId, requiredQty, availableStock, issue }
+```
+
+### TenantDailySnapshots
+
+```
+tenant, outlet  — embedded
+date            — normalised to UTC midnight (setUTCHours 0,0,0,0)
+totalSale       — sum of confirmed order revenue
+confirmedOrders, canceledOrders
+cogs            — sum of confirmed order making costs
+```
+Index: `(tenant.tenantId, date)`
+
+### OutletItemDailySnapshots
+
+```
+tenant, outlet, item  — embedded
+date
+totalQty, totalRevenue, totalMakingCost
+```
+Indexes: `(tenant.tenantId, date)`, `(tenant.tenantId, outlet.outletId, date)`
+
+### SchedulerLogs
+
+```
+eventType  e.g. "daily-snapshot"
+status     started | success | failed
+runId      — node-cron ctx.execution.id (upsert key)
+startTime, endTime, duration (ms)
+error, details
+```
+
+### QueueFails  (Dead-Letter Store)
+
+```
+eventType
+payload         — original job data
+retryCount
+lastError
+nextRetryAt     — when the retry cron should try again
+status          pending_retry | investigate
+source          scheduler | worker
 ```
 
 ---
 
-## 🚀 Why SKII is Scalable & Optimized
+## Why it is Designed This Way
 
-### 1. Asynchronous Event-Driven Processing
+### 1. Redis Write-Through Recipe Cache
 
-The API server and background processing are **completely decoupled** via BullMQ. This means:
+Recipes are read on every order but change rarely. The `loadRecipeMap()` function in `sale.controller.js`:
 
-- The API responds to the client in **~50ms** (synchronous stock deduction only)
-- Heavy computation (COGS calculation, alert evaluation, movement logging, snapshots) happens **async in workers**
-- Workers can be **horizontally scaled** — the system spawns **4 order worker processes** via `child_process.fork()`
-- Each worker runs with **concurrency: 5**, handling up to **20 parallel jobs** across all workers
+1. Builds cache keys: `tenant:{tenantId}:recipe:{itemId}` for all unique item IDs
+2. Fires a single `redis.mget(keys)` — one round-trip for all recipes
+3. For any cache miss, queries MongoDB and immediately writes back to Redis (`TTL: 24 hours`)
+4. When a recipe is updated, `cacheService.delByPattern()` uses `ioredis.scanStream()` to find and pipeline-delete all matching keys
 
-### 2. Optimistic Concurrency Control (OCC) with Retries
+This keeps recipe loading at ~1 ms (cache hit) instead of a MongoDB query per item, and keeps the cache coherent after writes.
 
-Stock deduction uses **MongoDB transactions** with an OCC pattern:
+### 2. MongoDB Transactions + OCC for Stock Deduction
 
-```javascript
-// Atomic bulkWrite within a transaction
+`deductStockWithTransaction()` in `sale.controller.js` runs a `session.startTransaction()` → `bulkWrite` with a guard clause:
+
+```js
 filter: {
   "outlet.outletId": outletId,
   "masterIngredient.ingredientMasterId": ingredientId,
-  currentStockInBase: { $gte: requiredQty }  // guard clause
-},
-update: { $inc: { currentStockInBase: -requiredQty } }
+  currentStockInBase: { $gte: requiredBaseQty }  // ← the OCC guard
+}
+update: { $inc: { currentStockInBase: -requiredBaseQty } }
 ```
 
-- If a write conflict occurs (two concurrent orders deducting the same stock), the transaction is retried up to **5 times** with **jittered exponential backoff** (`20ms + random(80ms)`)
-- This eliminates race conditions while avoiding pessimistic locks that would bottleneck throughput
+If two orders arrive simultaneously for the same ingredient, one will see `modifiedCount < requirementList.length` and retry. Up to `MAX_RETRIES = 5` times with sleep-based backoff. This prevents overselling without using pessimistic locks that would serialise all requests.
 
-### 3. Redis Cache-First Recipe Loading
+### 3. Idempotent Workers via `$setOnInsert`
 
-Recipes are the most frequently accessed data during order processing. The system uses a **write-through cache strategy**:
+Every processor uses `findOneAndUpdate` with `upsert: true` and `$setOnInsert`. If BullMQ retries a job (because the worker crashed mid-flight), the second run is a no-op — no duplicate `StockMovement` records. This makes the entire pipeline exactly-once from the data perspective.
 
-```
-Order comes in → Check Redis for all recipes (mget) → Cache HIT? Use cached
-                                                   → Cache MISS? Load from MongoDB, write to Redis (TTL: 24h)
-```
+### 4. Alert Processor with Optimistic State Guard
 
-- **`mget`** loads all recipes in a **single round-trip** instead of N individual calls
-- Cache invalidation uses **pattern-based `SCAN` deletion** when recipes are updated
-- This reduces MongoDB query load by **~80%** for high-frequency order endpoints
+`processAlerts()` loads stock and ingredient in `Promise.all`, evaluates the new alert state, then does:
 
-### 4. Compound Indexes Aligned to Query Patterns
-
-Every collection has **purpose-built compound indexes** that match exact query patterns:
-
-| Query Pattern | Index |
-|--------------|-------|
-| Get stock for an outlet's ingredient | `(outlet.outletId, masterIngredient.ingredientMasterId)` |
-| List sales for an outlet by date | `(tenant.tenantId, outlet.outletId, createdAt: -1)` |
-| Find movement by order | `(orderId, ingredient.ingredientMasterId)` |
-| Tenant-scoped date range queries | `(tenant.tenantId, createdAt: -1)` |
-| Snapshot by tenant and date | `(tenant.tenantId, date)` |
-
-This ensures **all queries use covered or indexed reads** — no full collection scans, even at scale.
-
-### 5. Pre-Aggregated Daily Snapshots
-
-Instead of running expensive aggregation pipelines on every analytics request, the system **pre-computes daily summaries**:
-
-- A **cron job** runs at **01:00 IST daily** and enqueues a snapshot job
-- The processor uses a **MongoDB aggregation pipeline** with `$dateTrunc` and `$group` across all tenants
-- Results are **bulk-written** (upsert) into the `TenantDailySnapshot` collection inside an **atomic transaction**
-- Gap-fill logic detects the last snapshot date and processes all missing days automatically
-
-This converts **O(n) real-time aggregations** into **O(1) pre-computed lookups**.
-
-### 6. Tiered Rate Limiting (Redis-Backed)
-
-Three tiers of rate limiting protect the system from abuse:
-
-| Tier | Window | Max Requests | Key Strategy |
-|------|--------|-------------|-------------|
-| **General** | 1 min | 100 | User ID (authenticated) or IP (anonymous) |
-| **Authentication** | 10 min | 20 | IP-based |
-| **CSV Upload** | 5 min | 5 | User ID or IP |
-
-All rate limit counters are stored in **Redis** (via `rate-limit-redis`), enabling:
-- **Distributed rate limiting** across multiple API server instances
-- **Sliding window** accuracy with `resetExpiryOnChange`
-- Zero memory burden on the application server
-
-### 7. Idempotent Processors
-
-Workers use `findOneAndUpdate` with `$setOnInsert` + `upsert: true`, making all operations **idempotent**:
-
-```javascript
-// If a job is retried, duplicate movements are NOT created
-StockMovement.findOneAndUpdate(
-  { orderId, "ingredient.ingredientMasterId": id, reason: "ORDER" },
-  { $setOnInsert: { ...movementData } },
-  { upsert: true }
-)
+```js
+Stock.bulkWrite([{
+  updateOne: {
+    filter: { _id: item.stockId, alertState: item.prevAlert },  // ← guard
+    update: { $set: { alertState: item.alertState } }
+  }
+}])
 ```
 
-This means BullMQ can safely retry failed jobs **without data duplication**.
+The `alertState: prevAlert` guard prevents a race condition where two workers evaluate the same stock simultaneously — only one write lands. If `modifiedCount === 0` the email is skipped entirely, preventing duplicate alerts.
 
-### 8. Dead Letter Queue (DLQ) with Auto-Recovery
+### 5. Streaming CSV Export — No Temp Files, No Memory Spike
 
-A two-layer failure recovery system ensures **no job is permanently lost**:
-
-```
-Layer 1: BullMQ Retry → 5 attempts, exponential backoff (1s, 2s, 4s, 8s, 16s)
-Layer 2: QueueFail DLQ → Failed jobs saved to MongoDB → Retry cron re-enqueues every minute
-```
-
-- Jobs that exhaust BullMQ retries are saved to `QueueFail` with `status: "investigate"`
-- The retry cron processes up to **50 pending DLQ entries per run** with mutex protection (`isRunning` flag)
-- All scheduler executions are logged to `SchedulerLog` with duration, status, and error details
-
-### 9. Denormalized Multi-Tenant Data Model
-
-Instead of using MongoDB `$lookup` (equivalent to SQL JOINs), tenant and outlet information is **embedded** in every document:
-
-```javascript
-// Every document carries its tenant context
-tenant: { tenantId: ObjectId, tenantName: String }
-outlet: { outletId: ObjectId, outletName: String }
-```
-
-**Benefits:**
-- **Single-query reads** — no joins needed for listing data
-- **Compound indexes** work efficiently with embedded fields
-- **Tenant isolation** is enforced at the query level in every controller
-- Scales linearly with number of tenants without cross-collection pressure
-
-### 10. Real-Time Socket.IO with Room-Based Broadcasting
-
-Workers emit events directly to Socket.IO rooms, enabling **instant UI updates**:
+The `csvExport.worker.js` never buffers the full CSV in memory. It connects three streams:
 
 ```
-Room Pattern: tenant:{tenantId}:outlet:{outletId}
-Events: SALES_CREATED, STOCK_MOVEMENT_CREATED
+generateReportRows() async generator
+   → csvFormat({ headers: true })    (fast-csv write stream)
+   → PassThrough
+   → Upload({ Body: passThrough })   (AWS SDK multipart upload)
 ```
 
-- Socket connections are **JWT-authenticated** at the handshake level
-- **Room authorization** prevents users from joining unauthorized tenants/outlets
-- Workers connect via a **service auth bypass** (no cookie needed)
+Rows are yielded one at a time; `fast-csv` applies backpressure (`csvStream.once("drain")` when write returns false). The upload uploads parts as the stream fills them. The process RAM footprint is constant regardless of report size.
 
-### 11. Parallel Pagination
+### 6. Pre-Aggregated Snapshots for Analytics
 
-The pagination utility runs **count and data queries in parallel** using `Promise.all`:
+Every analytics query that asks "how did this outlet perform from date A to date B?" reads from `TenantDailySnapshot` or `OutletItemDailySnapshot` — documents pre-computed by the nightly cron. The aggregation pipeline uses:
 
-```javascript
-const [totalDocs, data] = await Promise.all([
-  model.countDocuments(filter),
-  model.find(filter).sort(sort).skip(skip).limit(limit)
-]);
-```
+- `$dateTrunc` to normalise order timestamps to day boundaries
+- `$group` on `(day, outletId)` to sum revenue, COGS, and order counts
+- Bulk upsert inside a transaction per tenant
 
-This cuts pagination response time by **~40%** compared to sequential execution.
+The "live" report endpoints (`/reports/deployment-live`, `/reports/item-live`) skip snapshots and aggregate directly from `Sales` — useful for today's in-progress data.
+
+### 7. Distributed Rate Limiting
+
+All three `rateLimit()` instances use `RedisStore` from `rate-limit-redis`:
+
+| Limiter | Window | Max | Key |
+|---|---|---|---|
+| `generalRateLimit` | 1 min | 1 000 req | `rl:general:` + user `_id` or IP |
+| `authRateLimit` | 10 min | 20 req | `rl:auth:` + IP |
+| `csvRateLimit` | 5 min | 5 req | `rl:csv:` + user `_id` or IP |
+
+Because counters live in Redis (not process memory), limits are enforced correctly across any number of horizontal API server replicas.
+
+### 8. Socket.IO Room-Based Broadcasting
+
+The server maintains two room patterns:
+- `tenant:{tenantId}:outlet:{outletId}` — joined by outlet managers via `join_outlet`
+- `tenant:{tenantId}` — joined by brand admins via `join_tenant`
+
+Workers don't hold a Socket.IO server reference. Instead they connect as a client with `{ auth: { service: "worker" } }`, bypassing JWT cookie auth, and emit `worker_emit` with `{ room, event, payload }`. The server's `worker_emit` handler calls `io.to(room).emit(event, payload)` — forwarding to all real clients in that room.
+
+Room membership is validated at join time by checking `socket.user.tenantId === tenantId` and `socket.user.outletId === outletId`. A cross-tenant join attempt is silently dropped.
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### Operations
-- 📦 **Real-time Stock Tracking** — per ingredient, per outlet, with `OK / LOW / CRITICAL` alert states
-- 🛒 **Order Processing** — atomic stock deduction with transactional guarantees
-- 📊 **Stock Movement Audit** — immutable log of all purchases, orders, and adjustments
-- ⚖️ **Weighted Average Cost (WAC)** — automatic unit cost recalculation on every purchase
-- 📧 **Email Alerts** — automatic notification to outlet managers when stock drops below thresholds
+### Inventory Operations
+- Real-time stock levels per ingredient per outlet, stored in base units
+- Three alert states: `OK → LOW → CRITICAL` based on configurable thresholds
+- Automatic alert state re-evaluation after every order
+- Email notification to all outlet managers when an ingredient crosses a threshold
+- Full immutable audit log of all stock changes (`StockMovement` collection)
+- Bulk restock via CSV upload + client-side validation
 
-### Menu Management
-- 🍔 **Menu Items** — centralized menu with pricing
-- 📝 **Recipes** — ingredient-to-item mapping with unit conversions
-- 📤 **Bulk CSV Upload** — menu items, recipes, ingredients, and stock movements via CSV with client-side validation
+### Order & Sales
+- POS-friendly `POST /sales` endpoint (no auth required — designed for machine-to-machine)
+- Atomic multi-ingredient stock deduction in a single MongoDB transaction
+- Per-item COGS (`makingCost`) computed in the worker and stamped onto the Sale
+- Partial order support: some items confirmed, others canceled if stock insufficient
+- Cancel details record exactly which ingredient was missing and by how much
+
+### Menu & Recipe Management
+- Multi-unit ingredients — define `kg`, `g`, `litre`, `ml` with conversion rates
+- Recipes link menu items to ingredients with per-unit quantities
+- Bulk create menu items, ingredients, and recipes via CSV
+- Recipe update invalidates all related Redis cache keys instantly
 
 ### Analytics
-- 📈 **Daily Snapshots** — pre-aggregated revenue, COGS, order counts per outlet
-- 📉 **Live Dashboard** — real-time order and stock data via Socket.IO
-- 📅 **Date Range Queries** — historical analytics with indexed time-series queries
+- Deployment-level (outlet) snapshot and live reports with revenue, COGS, order counts
+- Item-level snapshot and live reports with qty, revenue, making cost
+- Menu Engineering Matrix: popularity (qty sold) vs profitability (margin) quadrant classification
+- Ingredient burn rate report
+- Async CSV export of any report type — streamed to S3, download link emailed
 
 ### Platform
-- 🏢 **Multi-Tenant** — complete data isolation per restaurant brand
-- 👥 **Role-Based Access Control** — Super Admin, Brand Admin, Outlet Manager
-- 🔐 **JWT + Passport Authentication** — stateless, cookie-based token management
-- 🚦 **Tiered Rate Limiting** — Redis-backed, per-user/IP sliding window
-- 🔄 **Real-time Updates** — Socket.IO with authenticated rooms
+- OTP-based user invitation for brand managers and outlet managers
+- OTP-based password reset
+- Granular outlet manager permissions (toggle `RESTOCK` and `ANALYTICS` independently)
+- Cron execution audit trail visible in the Super Admin UI
+- Dead-letter queue with automatic retry — no permanently lost jobs
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 InventoryManagementSystem/
-├── client/                         # React 19 Frontend (Vite)
-│   └── src/
-│       ├── apps/                   # Role-based app shells
-│       │   ├── super-admin/        # Platform management UI
-│       │   ├── brand-admin/        # Tenant management UI
-│       │   └── outlet-admin/       # Outlet operations UI
-│       ├── components/             # Shared UI components (ShadCN)
-│       │   ├── ui/                 # ShadCN/Radix primitives
-│       │   ├── charts/             # Recharts visualizations
-│       │   ├── side-bar/           # App navigation
-│       │   └── common/             # CsvScanner, DataCards, etc.
-│       ├── redux/                  # RTK Query API definitions
-│       ├── sockets/                # Socket.IO client hooks
-│       └── auth/                   # Auth guards & context
 │
-├── server/                         # Express 5 API Server
-│   ├── app.js                      # Server entry point
+├── client/                         # React 19 SPA (Vite 7)
 │   └── src/
-│       ├── controllers/            # 13 resource controllers
-│       ├── models/                 # 13 Mongoose models
-│       ├── routes/                 # REST API route definitions
-│       ├── services/               # Business logic services
-│       │   ├── cache.service.js    # Redis cache abstraction
-│       │   ├── stockValidator.js   # Stock availability checker
-│       │   └── stockRequirement.js # Recipe → ingredient aggregator
-│       ├── queues/                 # BullMQ queue definitions
-│       ├── workers/                # Background job workers
-│       │   ├── startWorkers.js     # Process forking (4+1 workers)
-│       │   ├── order.worker.js     # Order event processing
-│       │   └── dailySnapshot.worker.js
-│       ├── proccessors/            # Job processing logic
-│       │   ├── stockMovement.processor.js
-│       │   ├── salesSnapshot.processor.js
-│       │   ├── dailySnapshot.processor.js
-│       │   └── proccessAlerts.processor.js
-│       ├── crons/                  # Scheduled jobs
-│       │   ├── dailySnapshot.cron.js   # 01:00 IST daily
-│       │   └── retryQueue.cron.js      # Every minute (DLQ)
-│       ├── sockets/                # Socket.IO server setup
-│       ├── middlerwares/           # Auth + Rate limiting
-│       └── utils/                  # Helpers (pagination, email, etc.)
+│       ├── App.jsx                 # Role-based app switcher
+│       ├── apps/                   # One shell per role
+│       │   ├── super-admin/
+│       │   ├── brand-admin/
+│       │   └── outlet-admin/
+│       ├── auth/                   # AuthContext, useAuth, ProtectedRoute
+│       ├── pages/                  # Page components per role
+│       ├── components/             # Shared UI (shadcn/ui + custom)
+│       │   ├── ui/                 # Radix-based primitives
+│       │   ├── common/             # CsvScanner, ConfirmModal
+│       │   ├── charts/             # Recharts wrappers
+│       │   └── data-card/          # TanStack Table wrapper
+│       ├── redux/
+│       │   ├── store.js
+│       │   ├── apis/               # RTK Query per-resource slices + baseApi
+│       │   └── reducers/           # dashboardFilters, stockSlice
+│       ├── routes/                 # Route config arrays (brand / outlet / super)
+│       ├── sockets/                # Socket.IO client + useStockSocket etc.
+│       └── utils/                  # render-routes, csv.validator, columns
 │
-├── orders/                         # Order Simulator (Stress Testing)
-│   └── index.js                    # Multi-outlet order generator
+├── server/                         # Express 5 API
+│   ├── app.js                      # Bootstrap: DB, CORS, Socket.IO, routes, error handler
+│   └── src/
+│       ├── scheduler.js            # Scheduler process entry point
+│       ├── controllers/            # 13 controllers (one per resource)
+│       ├── routes/                 # 14 Express routers + index.js
+│       ├── models/                 # 14 Mongoose models
+│       ├── middlerwares/
+│       │   ├── auth.middleware.js  # verifyJwt — Passport JWT
+│       │   └── rateLimiter.middleware.js  # general / auth / csv
+│       ├── services/
+│       │   ├── cache.service.js    # Redis get/set/mget/delByPattern (TTL 24h)
+│       │   ├── stockRequirement.service.js
+│       │   └── stockValidator.service.js
+│       ├── queues/
+│       │   ├── order.queue.js      # "orders" — 5 attempts, exp backoff
+│       │   ├── dailySnapshot.queue.js
+│       │   └── csvExport.queue.js
+│       ├── workers/
+│       │   ├── startWorkers.js     # Forks 4 order + 1 snapshot + 1 csv workers
+│       │   ├── order.worker.js     # concurrency:5; handles sale.confirmed / sale.failed
+│       │   ├── dailySnapshot.worker.js  # concurrency:1; parallel snapshot processors
+│       │   ├── csvExport.worker.js # stream → S3 → presign → email
+│       │   └── socket.js           # Worker-side Socket.IO client (worker_emit)
+│       ├── proccessors/
+│       │   ├── stockMovement.processor.js   # idempotent upsert + socket emit
+│       │   ├── salesSnapshot.processor.js   # COGS calc + Sale update + socket emit
+│       │   ├── proccessAlerts.processor.js  # threshold eval + bulkWrite + email
+│       │   ├── dailySnapshot.processor.js   # tenant-level daily aggregation
+│       │   ├── dailyItemSnapshot.processor.js
+│       │   └── csvExport.processor.js       # async row generator for reports
+│       ├── crons/
+│       │   ├── dailySnapshot.cron.js  # "0 1 * * *" Asia/Kolkata
+│       │   └── retryQueue.cron.js     # every 1 min, 50 entries/run, isRunning guard
+│       ├── sockets/
+│       │   └── socket.js           # Socket.IO init, JWT auth middleware, rooms
+│       └── utils/
+│           ├── config.js           # Env validation (throws on missing required)
+│           ├── db.js               # mongoose.connect()
+│           ├── redis.js            # ioredis singleton
+│           ├── token.js            # JWT sign/verify
+│           ├── passport.js         # passport-jwt strategy (cookie extraction)
+│           ├── apiError.js         # ApiError class
+│           ├── apiResponse.js      # Standard response shape
+│           ├── asyncHandler.js     # Async controller wrapper
+│           ├── pagination.js       # Parallel count + find
+│           ├── alertState.js       # resolveAlertState() pure function
+│           ├── mailer.js           # Nodemailer transporter factory
+│           └── emailAlert.js       # Email templates (OTP, alert, CSV export)
+│
+├── orders/                         # Order load simulator
+│   ├── index.js                    # Fires concurrent POST /sales across outlets
+│   └── dailysnapshot.js
 │
 └── docs/                           # Architecture diagrams
 ```
 
 ---
 
-## 🛠 Getting Started
+## Running the Project
 
 ### Prerequisites
 
-- **Node.js** v20+
-- **MongoDB Atlas** cluster (or local MongoDB with replica set for transactions)
-- **Redis** instance (local or cloud like Upstash/Redis Cloud)
+- Node.js v20+
+- MongoDB Atlas (replica set required for multi-document transactions) or local `mongod --replSet`
+- Redis (Upstash, Redis Cloud, or local)
+- AWS S3 bucket with IAM credentials that have `s3:PutObject` + `s3:GetObject`
+- SMTP credentials (Gmail App Password, SendGrid, etc.)
 
-### 1. Clone the Repository
+### 1. Clone
 
 ```bash
-git clone https://github.com/Nischay2123/Smart-Kitchen-Inventory-Intelligence.git
-cd Smart-Kitchen-Inventory-Intelligence
+git clone <repo-url>
+cd InventoryManagementSystem
 ```
 
-### 2. Server Setup
+### 2. Configure the server
 
 ```bash
 cd server
 npm install
+cp .env.backup .env   # fill in values
 ```
 
-Create `.env`:
+Required `.env` keys:
+
 ```env
 PORT=8000
-MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/SKII
-REDIS_URL=redis://default:<pass>@<host>:<port>
-ACCESS_TOKEN_SECRET=your_jwt_secret
+MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/SKII
+REDIS_URI=redis://default:pass@host:port
+ACCESS_TOKEN_SECRET=change_me_to_a_long_random_string
 ACCESS_TOKEN_EXPIRY=7d
-CLIENT_URL=http://localhost:5173
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
+SMTP_USER=you@gmail.com
+SMTP_PASS=your_app_password
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=ap-south-1
+AWS_S3_BUCKET=skii-exports
+CLIENT_URL=http://localhost:5173
 ```
 
-Run all services:
-```bash
-# Terminal 1: API Server
-npm run dev
-
-# Terminal 2: Workers (4 order + 1 snapshot)
-npm run start:worker
-
-# Terminal 3: Scheduler (crons)
-npm run start:scheduler
-```
-
-### 3. Client Setup
+### 3. Run all three server processes
 
 ```bash
-cd client
-npm install
-npm run dev
+# Terminal 1 — API server
+cd server && npm run dev
+
+# Terminal 2 — Worker pool (6 child processes)
+cd server && npm run start:worker
+
+# Terminal 3 — Cron scheduler
+cd server && npm run start:scheduler
 ```
 
-### 4. Stress Test (Optional)
+### 4. Run the client
 
 ```bash
-cd orders
-npm install
-node index.js
+cd client && npm install && npm run dev
+# → http://localhost:5173
 ```
 
-This simulates concurrent orders across 5 outlets to validate the system under load.
+### 5. (Optional) Load test
+
+```bash
+cd orders && npm install && node index.js
+# Fires concurrent orders across multiple outlets
+```
 
 ---
 
 <p align="center">
-  <sub>Built with ❤️ by <a href="https://github.com/Nischay2123">Nischay Sharma</a></sub>
+  Built from scratch with Node.js, React, MongoDB, Redis, BullMQ, and Socket.IO
 </p>
