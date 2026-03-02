@@ -68,6 +68,38 @@ export const sendOTPEmail = async ({
   });
 };
 
+export const sendMenuItemExportErrorEmail = async ({
+  to,
+  userName,
+  outletName,
+  fromDate,
+  toDate,
+  reportType,
+  err,
+}) => {
+  const reportLabel = reportType === "profit" ? "Menu Item Profit Report" : "Menu Engineering Matrix Report";
+  const errorMessage = err?.message || "An unexpected error occurred while generating the report.";
+
+  await mailer.sendMail({
+    from: `"Analytics Reports" <${process.env.SMTP_USER}>`,
+    to,
+    subject: `❌ Report Generation Failed – ${reportLabel}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #c0392b;">❌ Report Generation Failed</h2>
+        <p>Hi <b>${userName ?? "there"}</b>,</p>
+        <p>Outlet: <b>${outletName || "All Outlets"}</b></p>
+        <p>Unfortunately, your <b>${reportLabel}</b> for the period <b>${fromDate}</b> to <b>${toDate}</b> could not be generated.</p>
+        <div style="background: #fff3f3; border-left: 4px solid #c0392b; padding: 12px 16px; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 0; color: #c0392b; font-size: 14px;"><b>Error:</b> ${errorMessage}</p>
+        </div>
+        <p>Please try again or contact support if the problem persists.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="color: #999; font-size: 12px;">This is an automated message from Smart Kitchen Inventory. Do not reply to this email.</p>
+      </div>
+    `,
+  });
+};
 export const sendMenuItemExportEmail = async ({
   to,
   userName,

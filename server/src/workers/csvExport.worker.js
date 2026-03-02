@@ -7,7 +7,7 @@ import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { format as csvFormat } from "fast-csv";
 import config from "../utils/config.js";
-import { sendMenuItemExportEmail } from "../utils/emailAlert.js";
+import { sendMenuItemExportEmail, sendMenuItemExportErrorEmail } from "../utils/emailAlert.js";
 import { generateReportRows } from "../proccessors/csvExport.processor.js";
 
 const connectDB = async () => {
@@ -85,6 +85,19 @@ export const csvExportWorker = new Worker(
     }
 );
 
-csvExportWorker.on("failed", (job, err) => {
+csvExportWorker.on("failed", async (job, err) => {
     console.error(`[csvExport.worker] Job ${job?.id} failed:`, err.message);
+
+    if (!job?.data) return;
+    const { userEmail, userName, outletName, fromDate, toDate, reportType } = job.data;
+
+    await sendMenuItemExportErrorEmail({
+        to: userEmail,
+        userName,
+        outletName,
+        fromDate,
+        toDate,
+        reportType,
+        err,
+    });
 });
