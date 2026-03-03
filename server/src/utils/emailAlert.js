@@ -77,7 +77,16 @@ export const sendMenuItemExportErrorEmail = async ({
   reportType,
   err,
 }) => {
-  const reportLabel = reportType === "profit" ? "Menu Item Profit Report" : "Menu Engineering Matrix Report";
+    const reportLabel = (() => {
+    switch (reportType) {
+      case "profit":
+        return "Menu Item Profit Report";
+      case "sales":
+        return "Sales Performance Report";
+      default:
+        return "Ingredient Consumption Report";
+    }
+  })();
   const errorMessage = err?.message || "An unexpected error occurred while generating the report.";
 
   await mailer.sendMail({
@@ -109,7 +118,16 @@ export const sendMenuItemExportEmail = async ({
   reportType,
   downloadUrl,
 }) => {
-  const reportLabel = reportType === "profit" ? "Menu Item Profit Report" : "Menu Engineering Matrix Report";
+  const reportLabel = (() => {
+    switch (reportType) {
+      case "profit":
+        return "Menu Item Profit Report";
+      case "sales":
+        return "Sales Performance Report";
+      default:
+        return "Ingredient Consumption Report";
+    }
+  })();
 
   await mailer.sendMail({
     from: `"Analytics Reports" <${process.env.SMTP_USER}>`,

@@ -91,8 +91,13 @@ export const createMenuItem = asyncHandler(async (req, res) => {
   let inserted = 0;
   let recipeCreated = 0;
 
+  const incomingNames = items
+  .map(i => i?.itemName?.trim()?.toLowerCase())
+  .filter(Boolean);
+  
   const existingItems = await MenuItem.find({
     "tenant.tenantId": tenantContext.tenantId,
+    "itemName": { $in: incomingNames },
   }).select("itemName");
 
   const existingNames = new Set(

@@ -64,8 +64,7 @@ export const verifySignupOTP = asyncHandler(async (req, res) => {
     throw new ApiError(400, "OTP expired");
   }
 
-  if (hashOTP(otp) !== user.otpHash) {
-    user.otpAttempts++;
+  if (hashOTP(otp) !== user.otpHash) {;
     await user.save();
     throw new ApiError(400, "Invalid OTP");
   }

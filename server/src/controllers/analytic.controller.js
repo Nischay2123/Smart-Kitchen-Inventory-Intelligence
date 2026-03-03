@@ -100,7 +100,7 @@ export const requestReportExport = asyncHandler(async (req, res) => {
     throw new ApiError(400, "email is required");
   }
 
-  let outletName = "All Outlets";
+  let outletName;
   if (outletId) {
     const outlet = await Outlet.findById(outletId).select("outletName");
     outletName = outlet?.outletName || "Selected Outlet";

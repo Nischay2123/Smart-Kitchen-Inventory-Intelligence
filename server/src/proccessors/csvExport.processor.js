@@ -52,7 +52,7 @@ export async function* fetchProfitReport({ tenantId, outletId, fromDate, toDate 
           totalMakingCost: { $round: ["$totalMakingCost", 2] },
         },
       },
-    ]).cursor();
+    ]).cursor({ batchSize: 200 });
 
     for await (const doc of cursor) {
       map.set(String(doc.itemId), { ...doc });
@@ -89,7 +89,7 @@ export async function* fetchProfitReport({ tenantId, outletId, fromDate, toDate 
           totalMakingCost: { $round: ["$totalMakingCost", 2] },
         },
       },
-    ]).cursor();
+    ]).cursor({ batchSize: 200 });
 
     for await (const doc of cursor) {
       const key = String(doc.itemId);
@@ -151,7 +151,7 @@ export async function* fetchSalesReport({ tenantId, fromDate, toDate }) {
           cogs: 1,
         },
       },
-    ]).cursor();
+    ]).cursor({ batchSize: 200 });
 
     for await (const doc of cursor) {
       map.set(String(doc.outletId), { ...doc });
@@ -204,7 +204,7 @@ export async function* fetchSalesReport({ tenantId, fromDate, toDate }) {
           cogs: 1,
         },
       },
-    ]).cursor();
+    ]).cursor({ batchSize: 200 });
 
     for await (const doc of cursor) {
       const key = String(doc.outletId);
@@ -280,7 +280,7 @@ export async function* fetchConsumptionReport({ tenantId, outletId, fromDate, to
       },
     },
     { $sort: { totalCost: -1 } },
-  ]).cursor();
+  ]).cursor({ batchSize: 200 });  
 
   for await (const doc of cursor) {
     yield doc;

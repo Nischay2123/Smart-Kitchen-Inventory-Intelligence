@@ -22,7 +22,7 @@ export const buildStockRequirement = async (items, recipeMap) => {
         requirementMap.get(key).requiredBaseQty += totalQty;
       } else {
         requirementMap.set(key, {
-          ingredientMasterId: key,
+          ingredientMasterId: new mongoose.Types.ObjectId(key),
           ingredientName: ing.ingredientName,
           requiredBaseQty: totalQty,
         });

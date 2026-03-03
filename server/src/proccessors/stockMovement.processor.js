@@ -2,17 +2,62 @@ import StockMovement from "../models/stockMovement.model.js";
 import IngredientMaster from "../models/ingredientMaster.model.js";
 import Stock from "../models/stock.model.js";
 import { emitEvent } from "../workers/socket.js";
+import { cacheService } from "../services/cache.service.js";
 
 export const processStockMovement = async (data) => {
   const { orderId, requirementList, tenant, outlet, createdAt } = data;
 
-
   try {
+    const ingredientIds = [
+      ...new Set(requirementList.map((r) => String(r.ingredientMasterId))),
+    ];
+
+    const ingredientMap = new Map();
+    {
+      const keys = ingredientIds.map((id) =>
+        cacheService.generateKey("ingredient", tenant.tenantId, id)
+      );
+      let cached = [];
+      try {
+        cached = await cacheService.mget(keys);
+      } catch {
+        cached = new Array(ingredientIds.length).fill(null);
+      }
+
+      const missIds = [];
+      cached.forEach((ing, i) => {
+        if (ing) ingredientMap.set(ingredientIds[i], ing);
+        else missIds.push(ingredientIds[i]);
+      });
+
+      if (missIds.length > 0) {
+        const dbIngredients = await IngredientMaster.find({ _id: { $in: missIds } })
+          .select("name unit")
+          .lean();
+        for (const ing of dbIngredients) {
+          const id = String(ing._id);
+          ingredientMap.set(id, ing);
+          cacheService
+            .set(cacheService.generateKey("ingredient", tenant.tenantId, id), ing)
+            .catch((err) => console.error("Cache Write Error (ingredient):", err));
+        }
+      }
+    }
+
+    // ── 2. Stock: always fetch from DB (changes frequently) ───────────
+    const dbStocks = await Stock.find({
+      "outlet.outletId": outlet.outletId,
+      "masterIngredient.ingredientMasterId": { $in: ingredientIds },
+    })
+      .select("_id unitCost masterIngredient")
+      .lean();
+
+    const stockMap = new Map(
+      dbStocks.map((s) => [String(s.masterIngredient.ingredientMasterId), s])
+    );
+
     for (const r of requirementList) {
-      const ingredient = await IngredientMaster
-        .findById(r.ingredientMasterId)
-        .select("name unit")
-        .lean();
+      const ingredient = ingredientMap.get(String(r.ingredientMasterId));
 
       if (!ingredient) {
         throw new Error(
@@ -20,14 +65,7 @@ export const processStockMovement = async (data) => {
         );
       }
 
-      const stock = await Stock
-        .findOne({
-          "outlet.outletId": outlet.outletId,
-          "masterIngredient.ingredientMasterId":
-            r.ingredientMasterId,
-        })
-        .select("_id unitCost")
-        .lean();
+      const stock = stockMap.get(String(r.ingredientMasterId)) ?? null;
 
       const result = await StockMovement.findOneAndUpdate(
         {

@@ -179,8 +179,13 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
     units.map(u => [u.unit, u])
   );
 
+  const incomingNames = payload.map(p =>
+    p.name.trim().toLowerCase()
+  );
+
   const existingIngredients = await IngredientMaster.find({
     "tenant.tenantId": tenantContext.tenantId,
+    "name": { $in: incomingNames },
   })
     .select("name")
     .lean();

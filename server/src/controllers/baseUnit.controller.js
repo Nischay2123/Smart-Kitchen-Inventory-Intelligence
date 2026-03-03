@@ -10,7 +10,7 @@ export const createUnit = asyncHandler(async (req, res) => {
 
   const { unit, baseUnit, conversionRate } = req.body;
 
-  if (!unit || !baseUnit || !conversionRate) {
+  if (!unit || !baseUnit || !["gm", "ml", "piece"].includes(baseUnit.trim()) || !conversionRate) {
     throw new ApiError(
       400,
       "unit, baseUnit and conversionRate are required"

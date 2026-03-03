@@ -6,6 +6,7 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResoponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { paginate } from "../utils/pagination.js";
+import { cacheService } from "../services/cache.service.js";
 
 const validatePayload = (req) => {
   const {
@@ -70,7 +71,6 @@ const validateContext = (req) => {
   return { tenant, outlet };
 };
 
-import { cacheService } from "../services/cache.service.js";
 
 const validateIngredient = async ({
   ingredientMasterId,
@@ -630,6 +630,7 @@ export const getAllStockMovementsExceptOrders = asyncHandler(async (req, res) =>
   );
 });
 
+// not used not 
 export const getOrderConsumptionSummary = asyncHandler(async (req, res) => {
   if (req.user.role !== "OUTLET_MANAGER") {
     throw new ApiError(

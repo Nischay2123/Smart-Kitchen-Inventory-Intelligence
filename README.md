@@ -58,50 +58,50 @@ Outlet manager permissions are toggled individually per user by the brand admin 
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CLIENT  (Vite + React 19)                       │
-│                                                                               │
+│                              CLIENT  (Vite + React 19)                      │
+│                                                                             │
 │   ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────────┐    │
-│   │   SuperAdmin App  │   │  BrandAdmin App  │   │  OutletManager App   │    │
+│   │   SuperAdmin App │   │  BrandAdmin App  │   │  OutletManager App   │    |
 │   └──────────────────┘   └──────────────────┘   └──────────────────────┘    │
-│        RTK Query (REST)       RTK Query (REST)      RTK Query + Socket.IO    │
-└────────────────────────────────────┬────────────────────────┬────────────────┘
+│        RTK Query (REST)       RTK Query (REST)      RTK Query + Socket.IO   │
+└────────────────────────────────────┬────────────────────────┬───────────────┘
                                      │ REST /api/v1           │ WebSocket
 ┌────────────────────────────────────▼────────────────────────▼────────────────┐
 │                          EXPRESS 5 — API SERVER  (app.js)                    │
-│                                                                               │
+│                                                                              │
 │   Redis Rate Limiter ──► Passport JWT ──► Controllers ──► Services           │
-│                                    │                                          │
+│                                    │                                         │
 │                         ┌──────────▼──────────┐                              │
-│                         │    MongoDB Atlas     │  ← Mongoose 8 ODM            │
+│                         │    MongoDB Atlas     │  ← Mongoose 8 ODM           │
 │                         └─────────────────────┘                              │
-│                                    │                                          │
+│                                    │                                         │
 │   ┌────────────────────────────────▼──────────────────────────────────────┐  │
-│   │                      BullMQ  Queues  (Redis)                           │  │
-│   │   ┌──────────────┐   ┌─────────────────────┐   ┌──────────────────┐  │  │
-│   │   │    orders     │   │   daily-snapshot     │   │   csv-export     │  │  │
-│   │   └──────────────┘   └─────────────────────┘   └──────────────────┘  │  │
+│   │                      BullMQ  Queues  (Redis)                          │  │
+│   │   ┌──────────────┐   ┌─────────────────────┐   ┌──────────────────┐   │  │
+│   │   │    orders    │   │   daily-snapshot    │   │   csv-export     │   │  │
+│   │   └──────────────┘   └─────────────────────┘   └──────────────────┘   │  │ 
 │   └───────────────────────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────────────────┘
               ↓  child_process.fork()  (npm run start:worker)
-┌───────────────────────────────────────────────────────────────────────────────┐
-│                          WORKER  POOL  (startWorkers.js)                      │
-│                                                                               │
-│  4× order.worker.js  (concurrency 5 each = 20 parallel slots)                │
-│      sale.confirmed → processStockMovement + processSalesSnapshot + processAlerts │
-│      sale.failed    → processSalesSnapshot  (cancel record only)              │
-│                                                                               │
-│  1× dailySnapshot.worker.js  (concurrency 1)                                 │
-│      Promise.allSettled → processDailySnapshot + processDailyItemSnapshot     │
-│                                                                               │
-│  1× csvExport.worker.js                                                       │
-│      generateReportRows → fast-csv stream → S3 Upload → presign → email      │
-└───────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                          WORKER  POOL  (startWorkers.js)                                 │
+│                                                                                          │
+│  4× order.worker.js  (concurrency 5 each = 20 parallel slots)                            │
+│      sale.confirmed → processStockMovement + processSalesSnapshot + processAlerts        │
+│      sale.failed    → processSalesSnapshot  (cancel record only)                         │
+│                                                                                          │
+│  1× dailySnapshot.worker.js  (concurrency 1)                                             │
+│      Promise.allSettled → processDailySnapshot + processDailyItemSnapshot                │
+│                                                                                          │
+│  1× csvExport.worker.js                                                                  │
+│      generateReportRows → fast-csv stream → S3 Upload → presign → email                  │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
               ↓  separate process  (npm run start:scheduler)
 ┌───────────────────────────────────────────────────────────────────────────────┐
-│                         SCHEDULER  PROCESS  (scheduler.js)                   │
+│                         SCHEDULER  PROCESS  (scheduler.js)                    │
 │                                                                               │
-│  dailySnapshot.cron  ── "0 1 * * *"   Asia/Kolkata  ── enqueue snapshot job │
-│  retryQueue.cron     ── every 1 min   ── re-enqueue QueueFail DLQ entries    │
+│  dailySnapshot.cron  ── "0 1 * * *"   Asia/Kolkata  ── enqueue snapshot job   │
+│  retryQueue.cron     ── every 1 min   ── re-enqueue QueueFail DLQ entries     │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 

@@ -294,8 +294,8 @@ export const createSale = asyncHandler(async (req, res) => {
             requirementList,
             state: "CONFIRMED",
             createdAt: saleRecord.createdAt,
-            nextRetryAt: new Date(Date.now() + 60 * 60 * 1000)
           },
+          nextRetryAt: new Date(Date.now() + 60 * 60 * 1000),
           lastError: err.message,
         });
       } catch (dbErr) {
