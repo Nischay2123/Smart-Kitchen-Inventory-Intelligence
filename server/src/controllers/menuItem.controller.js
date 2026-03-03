@@ -92,13 +92,13 @@ export const createMenuItem = asyncHandler(async (req, res) => {
   let recipeCreated = 0;
 
   const incomingNames = items
-  .map(i => i?.itemName?.trim()?.toLowerCase())
-  .filter(Boolean);
-  
+    .map(i => i?.itemName?.trim())
+    .filter(Boolean);
+
   const existingItems = await MenuItem.find({
     "tenant.tenantId": tenantContext.tenantId,
     "itemName": { $in: incomingNames },
-  }).select("itemName");
+  }).collation({ locale: "en", strength: 2 }).select("itemName");
 
   const existingNames = new Set(
     existingItems.map(i => i.itemName.trim().toLowerCase())
