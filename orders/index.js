@@ -77,12 +77,14 @@ const getTodayDate = () => {
 
 const sendOrder = async (outlet, createdAt) => {
   try {
-    await axios.post(API_URL, {
+    const res =await axios.post(API_URL, {
       outlet,
       tenant,
       items: buildOrderItems(),
       createdAt
     });
+    console.log(res.data);
+    
   } catch {
     console.log("Order failed, continuing...");
   }

@@ -5,11 +5,11 @@ import config from "./config.js";
 const REDIS_URL = config.REDIS_URL;
 
 const redis = new IORedis(REDIS_URL, {
-    maxRetriesPerRequest: null,
-    retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-    },
+    maxRetriesPerRequest: 0,           
+    enableOfflineQueue: false,        
+    retryStrategy: () => null,         
+    connectTimeout: 2000,              
+    commandTimeout: 1000,              
 });
 
 redis.on("connect", () => {

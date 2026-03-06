@@ -93,43 +93,39 @@ export const menuColumns = (onDelete, Navigate) => [
     ),
   },
   {
-    id: "deleteActions",
-    header: "Delete",
+    id: "actions",
+    header: "Actions",
     cell: ({ row }) => (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="text-destructive hover:bg-destructive/10"
-        onClick={(e) => {
-          e.stopPropagation()
-          onDelete(row.original)
-        }}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
-    ),
-  },
-  {
-    id: "viewActions",
-    header: "View Recipe",
-    cell: ({ row }) => (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="text-black hover:bg-black/10"
-        onClick={(e) => {
-          e.stopPropagation()
-          Navigate(`/item/${row.original._id}`,{
-            state: { itemName: row.original.itemName },
-          })
-        }}
-      >
-        <ExternalLink className="h-4 w-4" />
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-black hover:bg-black/10"
+          onClick={(e) => {
+            e.stopPropagation()
+            Navigate(`/item/${row.original._id}`, {
+              state: { itemName: row.original.itemName },
+            })
+          }}
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-destructive hover:bg-destructive/10"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(row.original)
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
     ),
   },
 ]
-
 
 
 

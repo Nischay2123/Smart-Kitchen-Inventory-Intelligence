@@ -22,7 +22,10 @@ const connectDB = async () => {
 
 connectDB();
 
-const connection = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null });
+const connection = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null,enableOfflineQueue: false,retryStrategy(times) {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+    }, });
 
 const s3 = new S3Client({
     region: config.AWS.REGION,

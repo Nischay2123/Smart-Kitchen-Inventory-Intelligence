@@ -163,3 +163,38 @@ export const sendMenuItemExportEmail = async ({
     `,
   });
 };
+
+
+export const sendRedisDownAlertEmail = async (err) => {
+  try {
+    const smtpUser = process.env.SMTP_USER;
+    
+    if (!smtpUser) {
+      throw new Error("SMTP_USER environment variable is not set");
+    }
+    
+    console.log("[emailAlert] Attempting to send Redis down alert to:", smtpUser);
+    
+    const result = await mailer.sendMail({
+      from: smtpUser,
+      to: smtpUser,
+      subject: "🚨 CRITICAL: Redis Connection Failed - Order Worker",
+      html: `
+        <h2>Redis Connection Error</h2>
+        <p><strong>Service:</strong> Order Worker</p>
+        <p><strong>Error:</strong> ${err.message}</p>
+        <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+        <p><strong>Impact:</strong> Order processing will fail until Redis is restored.</p>
+        <hr>
+        <p>Action Required: Check Redis server status immediately.</p>
+      `,
+    });
+    
+    console.log("[emailAlert] Email sent successfully. Message ID:", result.messageId);
+    return result;
+  } catch (emailError) {
+    console.error("[emailAlert] Failed to send email:", emailError.message);
+    console.error("[emailAlert] Full email error:", emailError);
+    throw emailError;
+  }
+};

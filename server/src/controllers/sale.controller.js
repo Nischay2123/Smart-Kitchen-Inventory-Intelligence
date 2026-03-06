@@ -282,7 +282,7 @@ export const createSale = asyncHandler(async (req, res) => {
         createdAt: saleRecord.createdAt,
       });
     } catch (err) {
-      console.error("Queue Add Error:", err);
+      console.error("Queue Add Error:");
       try {
         await QueueFail.create({
           eventType: "sale.confirmed",

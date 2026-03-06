@@ -6,19 +6,32 @@ import { ApiError } from "../utils/apiError.js";
 const handler = (req, res, next) => {
     const retryAfter = parseInt(res.getHeader("Retry-After") || "60", 10);
     next(
-        new ApiError(429, `Too many requests. Please try again after ${retryAfter} seconds.`, [], retryAfter)
+        new ApiError(
+            429,
+            `Too many requests. Please try again after ${retryAfter} seconds.`,
+            [],
+            retryAfter
+        )
     );
 };
 
-const makeStore = (prefix) =>
-    new RedisStore({
-        sendCommand: (...args) => redis.call(...args),
-        prefix,
-        resetExpiryOnChange: true,
-    });
+const makeStore = (prefix) => {
+    if (redis && redis.status === "ready") {
+        console.log(`Rate limiter using Redis (${prefix})`);
+
+        return new RedisStore({
+            sendCommand: (...args) => redis.call(...args),
+            prefix,
+            resetExpiryOnChange: true,
+        });
+    }
+
+    console.warn(`Redis unavailable → using memory store (${prefix})`);
+    return undefined; // express-rate-limit will use default memory store
+};
 
 export const generalRateLimit = rateLimit({
-    windowMs: 60*1000,
+    windowMs: 60 * 1000,
     max: 1000,
     keyGenerator: (req) => req.user?._id?.toString() ?? ipKeyGenerator(req),
     store: makeStore("rl:general:"),

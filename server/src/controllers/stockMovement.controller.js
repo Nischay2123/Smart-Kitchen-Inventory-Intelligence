@@ -84,7 +84,7 @@ const validateIngredient = async ({
   );
 
   const cached = await cacheService.get(cacheKey);
-  if (cached) return cached;
+  if (cached && cached.threshold) return cached;
 
   const ingredient = await IngredientMaster.findOne({
     _id: ingredientMasterId,

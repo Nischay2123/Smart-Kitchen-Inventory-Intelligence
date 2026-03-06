@@ -3,6 +3,7 @@ import QueueFail from "../models/queueFail.model.js";
 import { orderQueue } from "../queues/order.queue.js";
 import { dailySnapshotQueue } from "../queues/dailySnapshot.queue.js";
 import SchedulerLog from "../models/schedulerLog.model.js";
+import redis from "../utils/redis.js";
 
 let isRunning = false;
 
@@ -17,6 +18,12 @@ const task = cron.schedule(
         isRunning = true;
 
         try {
+            if (!redis || redis.status !== "ready") {
+                console.warn(`queue-retry skipped: Redis status = ${redis?.status || "null"}`);
+                isRunning = false;
+                return { skipped: true, reason: "redis-not-ready" };
+            }
+
             const events = await QueueFail.find({
                 nextRetryAt: { $lte: new Date() },
             })

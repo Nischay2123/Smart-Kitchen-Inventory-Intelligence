@@ -4,6 +4,11 @@ import config from "../utils/config.js";
 
 const connection = new IORedis(config.REDIS_URL, {
     maxRetriesPerRequest: null,
+    enableOfflineQueue: false,
+    retryStrategy(times) {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+    },
 });
 
 export const csvExportQueue = new Queue("csv-export", {
