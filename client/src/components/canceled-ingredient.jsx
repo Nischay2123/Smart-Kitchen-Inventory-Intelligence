@@ -5,7 +5,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const CancelIngredientsDialog = ({ items ,open, onClose,}) => {
+const CancelIngredientsDialog = ({ items ,open, onClose,reason}) => {
   if (!items?.length) return null;
 // console.log(items);
 
@@ -15,6 +15,7 @@ const CancelIngredientsDialog = ({ items ,open, onClose,}) => {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Cancelled Ingredient Details</DialogTitle>
+          <span className="text-xs text-accent-foreground">Reason: {reason}</span>
         </DialogHeader>
 
         <div className="space-y-4 max-h-[70vh] overflow-y-auto">

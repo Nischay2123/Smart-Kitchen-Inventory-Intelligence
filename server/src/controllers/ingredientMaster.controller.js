@@ -83,8 +83,8 @@ export const createIngredient = asyncHandler(async (req, res) => {
 
   const existing = await IngredientMaster.findOne({
     "tenant.tenantId": tenantContext.tenantId,
-    name: name.trim(),
-  });
+    name: name.trim().toLowerCase(),
+  }).collation({ locale: "en", strength: 2 });
 
   if (existing) {
     throw new ApiError(409, "Ingredient already exists");
@@ -98,7 +98,7 @@ export const createIngredient = asyncHandler(async (req, res) => {
       tenantName: tenantContext.tenantName,
     },
 
-    name: name.trim(),
+    name: name.trim().toLowerCase(),
 
     unit: units.map(u => ({
       unitId: u._id,
@@ -187,6 +187,7 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
     "tenant.tenantId": tenantContext.tenantId,
     "name": { $in: incomingNames },
   })
+    .collation({ locale: "en", strength: 2 })
     .select("name")
     .lean();
 
@@ -276,7 +277,7 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
         tenantName: tenantContext.tenantName,
       },
 
-      name: name.trim(),
+      name: normalizedName,
 
       unit: rowUnits.map(u => ({
         unitId: u._id,

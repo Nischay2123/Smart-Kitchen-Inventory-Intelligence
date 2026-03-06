@@ -44,6 +44,7 @@ export const Orders = () => {
   const [orders, setOrders] = useState([])
 
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [reason, setReason] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCanceledModalOpen, setIsCanceledModalOpen] = useState(false)
   const [isCanceled, setISCancled] = useState(false)
@@ -79,6 +80,7 @@ export const Orders = () => {
   const handleViewOrder = (order) => {
     if (order.state == "CANCELED") {
       setSelectedOrder(order.items)
+      setReason(order.reason)
       setISCancled(true);
       setIsCanceledModalOpen(true)
       return
@@ -142,7 +144,8 @@ export const Orders = () => {
         <CancelIngredientsDialog
           items={selectedOrder}
           onClose={() => setIsCanceledModalOpen(false)}
-          open={isCanceledModalOpen} />
+          open={isCanceledModalOpen}
+          reason = {reason} />
         : <OrderDetailsModal
           open={isModalOpen}
           onClose={() => setIsModalOpen(false)}

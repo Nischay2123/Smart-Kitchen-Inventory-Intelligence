@@ -22,7 +22,7 @@ const resolveRecipeItems = async (recipeItems, tenantId) => {
   const ingredientNames = [
     ...new Set(
       recipeItems
-        .map((r) => r.ingredientName?.trim())
+        .map((r) => r.ingredientName?.trim().toLowerCase())
         .filter(Boolean)
     ),
   ];
@@ -30,7 +30,7 @@ const resolveRecipeItems = async (recipeItems, tenantId) => {
   const ingredients = await IngredientMaster.find({
     "tenant.tenantId": tenantId,
     name: { $in: ingredientNames },
-  }).lean();
+  }).collation({ locale: "en", strength: 2 }).lean();
 
   const ingredientMap = new Map(
     ingredients.map((i) => [i.name.toLowerCase(), i])
@@ -92,7 +92,7 @@ export const createMenuItem = asyncHandler(async (req, res) => {
   let recipeCreated = 0;
 
   const incomingNames = items
-    .map(i => i?.itemName?.trim())
+    .map(i => i?.itemName?.trim().toLowerCase())
     .filter(Boolean);
 
   const existingItems = await MenuItem.find({
@@ -139,7 +139,7 @@ export const createMenuItem = asyncHandler(async (req, res) => {
                 tenantId: tenantContext.tenantId,
                 tenantName: tenantContext.tenantName,
               },
-              itemName: trimmedName,
+              itemName: normalizedName,
               price,
             },
           ],
