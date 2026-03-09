@@ -1,6 +1,7 @@
 import TickModal from "@/components/permission"
 import { Button } from "@/components/ui/button"
-import { ExternalLink, Trash2 } from 'lucide-react'
+import { Badge } from "@/components/ui/badge"
+import { ExternalLink, Trash2, Key, Ban } from 'lucide-react'
 import { useState } from "react"
 
 export const outletManagerColumns = (onDelete) => [
@@ -329,6 +330,83 @@ export  const unitColumn = () => [
       <span className="text-muted-foreground">
         {row.original.conversionRate}
       </span>
+    ),
+  },
+]
+
+export const apiKeyColumns = (onRevoke) => [
+  {
+    accessorKey: "maskedKey",
+    header: "API Key",
+    cell: ({ row }) => {
+      const key = row.original.apiKey || row.original.maskedKey
+      const masked = key ? `${key.substring(0, 12)}...${key.slice(-4)}` : "****"
+      return (
+        <div className="flex items-center gap-2">
+          <Key className="h-4 w-4 text-muted-foreground" />
+          <span className="font-mono text-sm">
+            {masked}
+          </span>
+        </div>
+      )
+    },
+  },
+  {
+    accessorKey: "outlet.outletName",
+    header: "Outlet",
+    cell: ({ row }) => (
+      <span className="font-medium">
+        {row.original.outlet?.outletName || "N/A"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "isActive",
+    header: "Status",
+    cell: ({ row }) => (
+      <Badge 
+        variant={row.original.isActive ? "default" : "destructive"}
+        className={row.original.isActive ? "bg-green-500 hover:bg-green-600" : ""}
+      >
+        {row.original.isActive ? "Active" : "Revoked"}
+      </Badge>
+    ),
+  },
+  {
+    accessorKey: "createdAt",
+    header: "Created At",
+    cell: ({ row }) => {
+      const date= row.original.createdAt ;
+       return <span className="text-muted-foreground text-sm">
+          {date ? new Date(date).toLocaleDateString() : "Never"}
+        </span>
+    }
+  },
+  {
+    accessorKey: "createdBy.userEmail",
+    header: "Created By",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-sm">
+        {row.original.createdBy.userEmail }
+      </span>
+    ),
+  },
+  {
+    id: "actions",
+    header: "Actions",
+    cell: ({ row }) => (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-destructive hover:bg-destructive/10"
+        disabled={!row.original.isActive}
+        onClick={(e) => {
+          e.stopPropagation()
+          onRevoke(row.original)
+        }}
+      >
+        <Ban className="h-4 w-4" />
+      </Button>
     ),
   },
 ]

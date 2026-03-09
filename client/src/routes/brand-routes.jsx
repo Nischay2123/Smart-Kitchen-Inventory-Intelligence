@@ -7,6 +7,7 @@ import { Recipe } from "@/pages/brand-admin/recipe"
 import { CreateRecipe } from "@/pages/brand-admin/create-recipe"
 import { Ingredients } from "@/pages/brand-admin/ingredient"
 import { Unit } from "@/pages/brand-admin/unit"
+import { ApiKeys } from "@/pages/brand-admin/api-keys"
 import { Overview } from "@/pages/brand-admin/analytics/overview"
 import { MenuItemAnalysis } from "@/pages/brand-admin/analytics/menu-item-analyitcs"
 
@@ -42,6 +43,10 @@ export const brandAdminRoutes = [
   {
     path: "/units",
     element: <Unit />
+  },
+  {
+    path: "/api-keys",
+    element: <ApiKeys />
   },
   {
     path: "/overview",

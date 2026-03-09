@@ -10,6 +10,7 @@ import { renderRoutes } from "@/utils/render-routes";
 import {
   Building2Icon,
   CookingPot,
+  Key,
   Menu,
   MenuIcon,
   Ruler,
@@ -65,6 +66,11 @@ export const BrandAdminApp = () => {
         name: "Units",
         url: "/units",
         icon: Ruler,
+      },
+      {
+        name: "API Keys",
+        url: "/api-keys",
+        icon: Key,
       },
     ],
     analytics: [

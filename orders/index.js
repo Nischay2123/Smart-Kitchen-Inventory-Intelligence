@@ -11,15 +11,28 @@ const tenant = {
 };
 
 /* =========================
-   OUTLETS
+   OUTLETS & API KEYS
 ========================= */
 const outlets = [
   { outletId: "696a2158448eaa44cbb20e3e", outletName: "NSP" },
-  { outletId: "697750a866bf3e3f6b5c2df6", outletName: "CP" },
-  { outletId: "6977bc4ece1177f4a76c4cbb", outletName: "Saket" },
-  { outletId: "6977bc78ce1177f4a76c4cbf", outletName: "Gurgaon" },
-  { outletId: "6977bc8bce1177f4a76c4cc1", outletName: "Noida" }
+  // { outletId: "697750a866bf3e3f6b5c2df6", outletName: "CP" },
+  // { outletId: "6977bc4ece1177f4a76c4cbb", outletName: "Saket" },
+  // { outletId: "6977bc78ce1177f4a76c4cbf", outletName: "Gurgaon" },
+  // { outletId: "6977bc8bce1177f4a76c4cc1", outletName: "Noida" }
 ];
+
+/* =========================
+   POS API KEYS
+   Generate these via: POST /api/v1/pos-api-keys/generate
+   Replace with your actual API keys before running
+========================= */
+const API_KEYS = {
+  "696a2158448eaa44cbb20e3e": "pos_696a2158448eaa44cbb20e3e_1eedab0f56a82c4dbf1a40f34b13e7b31b95f131f95c8761",
+  // "697750a866bf3e3f6b5c2df6": "YOUR_API_KEY_FOR_CP_OUTLET",
+  // "6977bc4ece1177f4a76c4cbb": "YOUR_API_KEY_FOR_SAKET_OUTLET",
+  // "6977bc78ce1177f4a76c4cbf": "YOUR_API_KEY_FOR_GURGAON_OUTLET",
+  // "6977bc8bce1177f4a76c4cc1": ""
+};
 
 /* =========================
    ITEMS
@@ -77,16 +90,35 @@ const getTodayDate = () => {
 
 const sendOrder = async (outlet, createdAt) => {
   try {
-    const res =await axios.post(API_URL, {
-      outlet,
-      tenant,
-      items: buildOrderItems(),
-      createdAt
-    });
-    console.log(res.data);
+    const apiKey = API_KEYS[outlet.outletId];
     
-  } catch {
-    console.log("Order failed, continuing...");
+    if (!apiKey || apiKey.startsWith("YOUR_API_KEY")) {
+      console.error(`❌ No valid API key configured for outlet ${outlet.outletName}`);
+      console.error(`   Generate a key via: POST /api/v1/pos-api-keys/generate`);
+      return;
+    }
+
+    const res = await axios.post(
+      API_URL,
+      {
+        outlet,
+        tenant,
+        items: buildOrderItems(),
+        createdAt
+      },
+      {
+        headers: {
+          "X-API-Key": apiKey,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+    console.log(`✅ ${outlet.outletName}:`, res.data);
+    
+  } catch (error) {
+    const status = error.response?.status;
+    const message = error.response?.data?.message || error.message;
+    console.error(`❌ ${outlet.outletName}: [${status}] ${message}`);
   }
 };
 

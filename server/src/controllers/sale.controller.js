@@ -245,6 +245,24 @@ export const createSale = asyncHandler(async (req, res) => {
     throw new ApiError(400, "outlet with outletId is required");
   }
 
+  if (!req.posAuth) {
+    throw new ApiError(401, "POS authentication required");
+  }
+
+  if (String(req.posAuth.tenant.tenantId) !== String(tenant.tenantId)) {
+    throw new ApiError(
+      403,
+      "Unauthorized: API key does not have access to this tenant"
+    );
+  }
+
+  if (String(req.posAuth.outlet.outletId) !== String(outlet.outletId)) {
+    throw new ApiError(
+      403,
+      "Unauthorized: API key does not have access to this outlet"
+    );
+  }
+
   await validateTenant(tenant.tenantId);
   // console.log("create sale",tenant , outlet);
 

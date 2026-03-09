@@ -13,6 +13,7 @@ import Sales from "./sale.routes.js";
 import Analytics from "./analytic.routes.js";
 import Csv from "./csv.routes.js";
 import SchedulerLogs from "./scheduler.routes.js";
+import POSApiKeys from "./posApiKey.routes.js";
 
 // import Outlet from "../models/outlet.model.js";
 // import Tenant from "../models/tenant.model.js";
@@ -34,6 +35,7 @@ router.use("/sales", Sales);
 router.use("/analytics", Analytics);
 router.use("/csv", Csv);
 router.use("/scheduler-logs", SchedulerLogs);
+router.use("/pos-api-keys", POSApiKeys);
 
 
 // router.post("/genrate_sanpshot", runDailySnapshotJob)
