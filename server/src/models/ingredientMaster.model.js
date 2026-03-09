@@ -89,6 +89,6 @@ const IngredientMasterSchema = new Schema(
   }
 );
 
-IngredientMasterSchema.index({ "tenant.tenantId": 1, createdAt: -1 });
+IngredientMasterSchema.index({ "tenant.tenantId": 1, name: 1 },{  unique: true });
 
 export default model("IngredientMaster", IngredientMasterSchema);

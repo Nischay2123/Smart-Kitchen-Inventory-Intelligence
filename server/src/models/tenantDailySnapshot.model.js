@@ -67,6 +67,9 @@ const tenantDailySnapshotSchema = new mongoose.Schema(
 );
 
 tenantDailySnapshotSchema.index(
+  { "tenant.tenantId": 1, "outlet.outletId": 1, date: 1 },
+);
+tenantDailySnapshotSchema.index(
   { "tenant.tenantId": 1, date: 1 },
 );
 

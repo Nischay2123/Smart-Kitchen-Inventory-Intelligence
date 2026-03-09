@@ -37,7 +37,7 @@ const MenuItemSchema = new Schema(
   }
 );
 
-MenuItemSchema.index({ "tenant.tenantId": 1, itemName: 1 });
+MenuItemSchema.index({ "tenant.tenantId": 1, itemName: 1 },{ unique: true});
 MenuItemSchema.index({ "tenant.tenantId": 1, createdAt: -1 });
 
 

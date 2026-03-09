@@ -42,7 +42,6 @@ const RecipeSchema = new Schema(
           type: Schema.Types.ObjectId,
           ref: "Tenant",
           required: true,
-          index: true,
         },
         tenantName: {
           type: String,
@@ -59,7 +58,6 @@ const RecipeSchema = new Schema(
           type: Schema.Types.ObjectId,
           ref: "MenuItem",
           required: true,
-          index: true,
         },
         itemName: {
           type: String,
@@ -84,6 +82,6 @@ const RecipeSchema = new Schema(
   }
 );
 
-RecipeSchema.index({ "tenant.tenantId": 1, "item.itemId": 1 });
+RecipeSchema.index({ "tenant.tenantId": 1, "item.itemId": 1 },{unique: true});
 
 export default model("Recipe", RecipeSchema);
