@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Simulator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1024px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 5px;
+    }
+
+    .card-description {
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+
+    .card-content {
+      padding: 20px;
+    }
+
+    .tenant-info {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tenant-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+    }
+
+    .tenant-label {
+      font-weight: 500;
+      color: #4b5563;
+    }
+
+    .tenant-value {
+      color: #6b7280;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+
+    .outlet-selection {
+      margin-top: 15px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-outline {
+      background: white;
+      border: 1px solid #d1d5db;
+      color: #374151;
+    }
+
+    .btn-outline:hover:not(:disabled) {
+      background: #f9fafb;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+      flex: 1;
+      justify-content: center;
+      font-size: 1.1rem;
+      padding: 12px;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #5568d3;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+      padding: 12px;
+      font-size: 1.1rem;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #dc2626;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .checkbox-item:hover {
+      background: #f9fafb;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+
+    .checkbox-item label {
+      cursor: pointer;
+      font-size: 1rem;
+      color: #374151;
+    }
+
+    .config-section {
+      margin-top: 20px;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .radio-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .radio-item:hover {
+      background: #f9fafb;
+    }
+
+    .radio-item input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+
+    .radio-item label {
+      cursor: pointer;
+      font-size: 1rem;
+      color: #374151;
+    }
+
+    .input-group {
+      margin-top: 15px;
+    }
+
+    .input-group label {
+      display: block;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .alert {
+      margin-top: 15px;
+      padding: 12px;
+      background: #dbeafe;
+      border: 1px solid #93c5fd;
+      border-radius: 6px;
+      color: #1e40af;
+      font-size: 0.9rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+
+    .stat-card {
+      text-align: center;
+      padding: 15px;
+      background: #f9fafb;
+      border-radius: 8px;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: #6b7280;
+      text-transform: uppercase;
+    }
+
+    .stat-value.total { color: #3b82f6; }
+    .stat-value.success { color: #10b981; }
+    .stat-value.failed { color: #ef4444; }
+
+    .logs-container {
+      height: 600px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logs-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .logs-scroll {
+      flex: 1;
+      overflow-y: auto;
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 15px;
+    }
+
+    .logs-scroll::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .logs-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+
+    .logs-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .logs-scroll::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .log-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #9ca3af;
+      font-size: 0.95rem;
+    }
+
+    .log-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .log-item.info {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .log-item.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .log-item.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .log-item.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .log-time {
+      font-family: monospace;
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-right: 8px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🍽️ Order Simulator</h1>
+      <p>Stress test your order API with simulated data</p>
+    </div>
+
+    <!-- API Status Info -->
+    <div style="background: #fef3c7; border: 1px solid #fbbf24; color: #92400e; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;">
+      <strong>⚙️ Setup Instructions:</strong>
+      <ul style="margin: 8px 0 0 20px;">
+        <li>Make sure your server is running on <code>http://localhost:8000</code></li>
+        <li>CORS has been configured - restart your server if it was already running</li>
+        <li>Open this file directly in your browser or serve it locally</li>
+        <li>Check browser console (F12) for detailed error messages if orders fail</li>
+      </ul>
+    </div>
+
+    <div class="grid">
+      <!-- Left Column: Configuration -->
+      <div>
+        <!-- Tenant Card -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <div class="card-title">Tenant Information</div>
+          </div>
+          <div class="card-content">
+            <div class="tenant-info">
+              <div class="tenant-row">
+                <span class="tenant-label">Name:</span>
+                <span class="tenant-value" id="tenantName">IndusFlavour</span>
+              </div>
+              <div class="tenant-row">
+                <span class="tenant-label">ID:</span>
+                <span class="tenant-value" id="tenantId">69688d4ebfbbfb917da85ef4</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Outlets Card -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <div class="card-title">Select Outlets</div>
+            <div class="card-description">Choose which outlets to simulate orders for</div>
+          </div>
+          <div class="card-content">
+            <div class="button-group">
+              <button class="btn btn-outline" onclick="selectAllOutlets()">Select All</button>
+              <button class="btn btn-outline" onclick="deselectAllOutlets()">Deselect All</button>
+            </div>
+            <div class="outlet-selection" id="outletsContainer"></div>
+          </div>
+        </div>
+
+        <!-- Configuration Card -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <div class="card-title">Simulation Configuration</div>
+            <div class="card-description">Configure simulation parameters</div>
+          </div>
+          <div class="card-content">
+            <div class="config-section">
+              <label style="font-weight: 500; color: #374151; display: block; margin-bottom: 10px;">Simulation Type</label>
+              <div class="radio-group">
+                <div class="radio-item">
+                  <input type="radio" id="typeToday" name="simType" value="today" checked onchange="updateSimType()">
+                  <label for="typeToday">Today's Orders</label>
+                </div>
+                <div class="radio-item">
+                  <input type="radio" id="typeHistorical" name="simType" value="historical" onchange="updateSimType()">
+                  <label for="typeHistorical">Historical Data</label>
+                </div>
+              </div>
+            </div>
+
+            <div id="todayConfig" class="input-group">
+              <label for="todayOrders">Orders per outlet (today)</label>
+              <input type="number" id="todayOrders" min="1" max="100" value="5">
+            </div>
+
+            <div id="historicalConfig" style="display: none;">
+              <div class="input-group">
+                <label for="histDays">Number of days</label>
+                <input type="number" id="histDays" min="1" max="30" value="7">
+              </div>
+              <div class="input-group">
+                <label for="ordersPerDay">Orders per day per outlet</label>
+                <input type="number" id="ordersPerDay" min="1" max="100" value="10">
+              </div>
+            </div>
+
+            <div class="alert" id="configAlert">
+              Will create 5 orders per outlet with today's timestamp
+            </div>
+
+            <div class="controls">
+              <button class="btn btn-primary" id="startBtn" onclick="startSimulation()">
+                ▶️ Start Simulation
+              </button>
+              <button class="btn btn-danger" id="stopBtn" style="display: none;" onclick="stopSimulation()">
+                ⏹️ Stop
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Stats and Logs -->
+      <div>
+        <!-- Stats Card -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <div class="card-title">Statistics</div>
+          </div>
+          <div class="card-content">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value total" id="statTotal">0</div>
+                <div class="stat-label">Total</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value success" id="statSuccess">0</div>
+                <div class="stat-label">Success</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value failed" id="statFailed">0</div>
+                <div class="stat-label">Failed</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logs Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="logs-header">
+              <div>
+                <div class="card-title">Logs</div>
+                <div class="card-description">Real-time simulation logs</div>
+              </div>
+              <button class="btn btn-outline" onclick="clearLogs()">
+                🗑️ Clear
+              </button>
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="logs-container">
+              <div class="logs-scroll" id="logsContainer">
+                <div class="log-empty">No logs yet. Start a simulation to see logs.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const API_URL = "http://localhost:8000/api/v1/sales";
+
+    const tenant = {
+      tenantId: "69688d4ebfbbfb917da85ef4",
+      tenantName: "IndusFlavour"
+    };
+
+    const outlets = [
+      { outletId: "696a2158448eaa44cbb20e3e", outletName: "NSP" },
+      { outletId: "697750a866bf3e3f6b5c2df6", outletName: "CP" },
+      { outletId: "6977bc4ece1177f4a76c4cbb", outletName: "Saket" },
+      { outletId: "6977bc78ce1177f4a76c4cbf", outletName: "Gurgaon" },
+      { outletId: "6977bc8bce1177f4a76c4cc1", outletName: "Noida" }
+    ];
+
+    const items = [
+      { itemId: "696a2181448eaa44cbb20e56", itemName: "Large Cold Coffee" },
+      { itemId: "6977bf41ce1177f4a76c4cda", itemName: "Butter Chicken" },
+      { itemId: "6977bf41ce1177f4a76c4cdb", itemName: "Paneer Butter Masala" },
+      { itemId: "6977bf41ce1177f4a76c4cde", itemName: "Chicken Burger" },
+      { itemId: "6977bf41ce1177f4a76c4cdf", itemName: "Garlic Naan" },
+      { itemId: "6977bf41ce1177f4a76c4ce3", itemName: "Cheese Omelette" },
+      { itemId: "697b88912241fd3a9b4cbcb9", itemName: "pizza" },
+      { itemId: "697b88ad2241fd3a9b4cbcca", itemName: "Hakka Noddles" },
+      { itemId: "697b88c52241fd3a9b4cbcdb", itemName: "Pasta" },
+      { itemId: "6969d0fb0bb5db2d4a3932a8", itemName: "Latte" },
+      { itemId: "696a42eaf3dc0ee373dd3f92", itemName: "Dal Makhni" },
+      { itemId: "6977bf41ce1177f4a76c4cdd", itemName: "Veg Burger" },
+      { itemId: "6977bf41ce1177f4a76c4ce0", itemName: "Plain Rice" },
+      { itemId: "6977bf41ce1177f4a76c4ce2", itemName: "Cold Coffee" }
+    ];
+
+    let isRunning = false;
+    let shouldStop = false;
+    let stats = { total: 0, success: 0, failed: 0 };
+
+    // Utility functions
+    const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    const buildOrderItems = () => {
+      const shuffled = [...items].sort(() => 0.5 - Math.random());
+      const count = randomInt(1, 2);
+      return shuffled.slice(0, count).map(item => ({
+        itemId: item.itemId,
+        itemName: item.itemName,
+        qty: randomInt(1, 3)
+      }));
+    };
+
+    const getDateDaysAgo = daysAgo => {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      d.setHours(randomInt(9, 22));
+      d.setMinutes(randomInt(0, 59));
+      d.setSeconds(randomInt(0, 59));
+      return d;
+    };
+
+    // UI Functions
+    function initializeUI() {
+      const container = document.getElementById('outletsContainer');
+      outlets.forEach(outlet => {
+        const div = document.createElement('div');
+        div.className = 'checkbox-item';
+        div.innerHTML = `
+          <input type="checkbox" id="outlet_${outlet.outletId}" value="${outlet.outletId}">
+          <label for="outlet_${outlet.outletId}">${outlet.outletName}</label>
+        `;
+        container.appendChild(div);
+      });
+      updateConfigAlert();
+    }
+
+    function selectAllOutlets() {
+      document.querySelectorAll('#outletsContainer input[type="checkbox"]').forEach(cb => {
+        cb.checked = true;
+      });
+    }
+
+    function deselectAllOutlets() {
+      document.querySelectorAll('#outletsContainer input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+      });
+    }
+
+    function updateSimType() {
+      const simType = document.querySelector('input[name="simType"]:checked').value;
+      document.getElementById('todayConfig').style.display = simType === 'today' ? 'block' : 'none';
+      document.getElementById('historicalConfig').style.display = simType === 'historical' ? 'block' : 'none';
+      updateConfigAlert();
+    }
+
+    function updateConfigAlert() {
+      const simType = document.querySelector('input[name="simType"]:checked').value;
+      const alert = document.getElementById('configAlert');
+      
+      if (simType === 'today') {
+        const orders = document.getElementById('todayOrders').value;
+        alert.textContent = `Will create ${orders} orders per outlet with today's timestamp`;
+      } else {
+        const days = document.getElementById('histDays').value;
+        const ordersPerDay = document.getElementById('ordersPerDay').value;
+        alert.textContent = `Will create ${ordersPerDay} orders per day for ${days} days per outlet`;
+      }
+    }
+
+    // Update alert on input change
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeUI();
+      
+      document.getElementById('todayOrders').addEventListener('input', updateConfigAlert);
+      document.getElementById('histDays').addEventListener('input', updateConfigAlert);
+      document.getElementById('ordersPerDay').addEventListener('input', updateConfigAlert);
+    });
+
+    function addLog(message, type = 'info') {
+      const container = document.getElementById('logsContainer');
+      const empty = container.querySelector('.log-empty');
+      if (empty) empty.remove();
+
+      const logItem = document.createElement('div');
+      logItem.className = `log-item ${type}`;
+      const time = new Date().toLocaleTimeString();
+      logItem.innerHTML = `<span class="log-time">${time}</span>${message}`;
+      
+      container.appendChild(logItem);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function updateStats() {
+      document.getElementById('statTotal').textContent = stats.total;
+      document.getElementById('statSuccess').textContent = stats.success;
+      document.getElementById('statFailed').textContent = stats.failed;
+    }
+
+    function clearLogs() {
+      const container = document.getElementById('logsContainer');
+      container.innerHTML = '<div class="log-empty">No logs yet. Start a simulation to see logs.</div>';
+      stats = { total: 0, success: 0, failed: 0 };
+      updateStats();
+    }
+
+    // API Functions
+    async function sendOrder(outlet, createdAt) {
+      try {
+        const orderData = {
+          outlet,
+          tenant,
+          items: buildOrderItems(),
+          createdAt: createdAt || new Date()
+        };
+
+        console.log('Sending order:', orderData);
+
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(orderData)
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        console.log('Order response:', data);
+        stats.success++;
+        stats.total++;
+        updateStats();
+        addLog(`✅ Order sent for ${outlet.outletName}`, 'success');
+        return true;
+      } catch (error) {
+        console.error('Order error:', error);
+        stats.failed++;
+        stats.total++;
+        updateStats();
+        addLog(`❌ Order failed for ${outlet.outletName}: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
+    async function simulateHistoricalForOutlet(outlet, days, ordersPerDay) {
+      const START_OFFSET = 8;
+      addLog(`🏬 Starting historical simulation: ${outlet.outletName}`, 'info');
+
+      for (let day = START_OFFSET + days - 1; day >= START_OFFSET; day--) {
+        if (shouldStop) {
+          addLog(`⏸️ Stopped by user: ${outlet.outletName}`, 'warning');
+          return;
+        }
+
+        addLog(`📅 Day-${day} for ${outlet.outletName}`, 'info');
+
+        for (let i = 0; i < ordersPerDay; i++) {
+          if (shouldStop) return;
+          await sendOrder(outlet, getDateDaysAgo(day));
+          await sleep(randomInt(300, 1200));
+        }
+      }
+
+      addLog(`✅ Historical simulation complete: ${outlet.outletName}`, 'success');
+    }
+
+    async function simulateTodayForOutlet(outlet, orderCount) {
+      addLog(`📍 Sending today's orders: ${outlet.outletName}`, 'info');
+
+      for (let i = 0; i < orderCount; i++) {
+        if (shouldStop) {
+          addLog(`⏸️ Stopped by user: ${outlet.outletName}`, 'warning');
+          return;
+        }
+        await sendOrder(outlet, new Date());
+        await sleep(1200);
+      }
+
+      addLog(`✅ Today's orders complete: ${outlet.outletName}`, 'success');
+    }
+
+    // Main simulation control
+    async function startSimulation() {
+      const selectedOutlets = Array.from(document.querySelectorAll('#outletsContainer input[type="checkbox"]:checked'))
+        .map(cb => outlets.find(o => o.outletId === cb.value));
+
+      if (selectedOutlets.length === 0) {
+        addLog('⚠️ Please select at least one outlet', 'warning');
+        return;
+      }
+
+      isRunning = true;
+      shouldStop = false;
+      stats = { total: 0, success: 0, failed: 0 };
+      updateStats();
+
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('stopBtn').style.display = 'flex';
+      document.querySelectorAll('input, .btn-outline').forEach(el => el.disabled = true);
+
+      addLog('🚀 Simulation starting...', 'info');
+
+      const simType = document.querySelector('input[name="simType"]:checked').value;
+
+      try {
+        if (simType === 'historical') {
+          const days = parseInt(document.getElementById('histDays').value);
+          const ordersPerDay = parseInt(document.getElementById('ordersPerDay').value);
+          await Promise.all(selectedOutlets.map(outlet => 
+            simulateHistoricalForOutlet(outlet, days, ordersPerDay)
+          ));
+        } else {
+          const orderCount = parseInt(document.getElementById('todayOrders').value);
+          await Promise.all(selectedOutlets.map(outlet => 
+            simulateTodayForOutlet(outlet, orderCount)
+          ));
+        }
+
+        if (!shouldStop) {
+          addLog('🎉 Simulation complete!', 'success');
+        }
+      } catch (error) {
+        addLog(`💥 Simulation error: ${error.message}`, 'error');
+      }
+
+      isRunning = false;
+      document.getElementById('startBtn').style.display = 'flex';
+      document.getElementById('stopBtn').style.display = 'none';
+      document.querySelectorAll('input, .btn-outline').forEach(el => el.disabled = false);
+    }
+
+    function stopSimulation() {
+      shouldStop = true;
+      addLog('🛑 Stopping simulation...', 'warning');
+    }
+
+    // Test API connection on page load
+    async function testConnection() {
+      try {
+        const response = await fetch(API_URL.replace('/sales', '/health'), { method: 'GET' });
+        if (response.ok) {
+          addLog('✅ API server is reachable', 'success');
+        }
+      } catch (error) {
+        addLog('⚠️ Cannot reach API server. Make sure:', 'warning');
+        addLog('1. Server is running on http://localhost:8000', 'warning');
+        addLog('2. CORS is enabled on the server', 'warning');
+        addLog(`3. Error: ${error.message}`, 'error');
+      }
+    }
+
+    // Initialize on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(testConnection, 500);
+    });
+  </script>
+</body>
+</html>

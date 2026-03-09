@@ -14,21 +14,26 @@ const handler = (req, res, next) => {
         )
     );
 };
+// const makeStore = (prefix) => {
+//     if (redis && redis.status === "ready") {
+//         console.log(`Rate limiter using Redis (${prefix})`);
 
-const makeStore = (prefix) => {
-    if (redis && redis.status === "ready") {
-        console.log(`Rate limiter using Redis (${prefix})`);
+//         return new RedisStore({
+//             sendCommand: (...args) => redis.call(...args),
+//             prefix,
+//             resetExpiryOnChange: true,
+//         });
+//     }
 
-        return new RedisStore({
-            sendCommand: (...args) => redis.call(...args),
-            prefix,
-            resetExpiryOnChange: true,
-        });
-    }
-
-    console.warn(`Redis unavailable → using memory store (${prefix})`);
-    return undefined; // express-rate-limit will use default memory store
-};
+//     console.warn(`Redis unavailable → using memory store (${prefix})`);
+//     return undefined; // express-rate-limit will use default memory store
+// };
+const makeStore = (prefix) =>
+    new RedisStore({
+        sendCommand: (...args) => redis.call(...args),
+        prefix,
+        resetExpiryOnChange: true,
+    });
 
 export const generalRateLimit = rateLimit({
     windowMs: 60 * 1000,

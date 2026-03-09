@@ -6,7 +6,7 @@ const REDIS_URL = config.REDIS_URL;
 
 const redis = new IORedis(REDIS_URL, {
     maxRetriesPerRequest: 0,           
-    enableOfflineQueue: false,        
+    // enableOfflineQueue: false,        
     retryStrategy: () => null,         
     connectTimeout: 2000,              
     commandTimeout: 1000,              
