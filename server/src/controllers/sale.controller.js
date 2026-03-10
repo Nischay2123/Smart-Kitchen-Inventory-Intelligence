@@ -101,7 +101,7 @@ const loadRecipeMap = async ({ tenant, items }) => {
       recipeMap.set(itemId, recipe);
 
       const key = cacheService.generateKey("recipe", tenant.tenantId, itemId);
-      cacheService.set(key, recipe).catch(err => console.error("Cache Write Error:", err));
+      cacheService.set(key, recipe).catch(err => console.error("Cache Write Error (recipe)"));
     }
   }
 

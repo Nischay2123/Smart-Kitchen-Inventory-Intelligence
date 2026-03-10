@@ -44,7 +44,6 @@ export const processStockMovement = async (data) => {
       }
     }
 
-    // ── 2. Stock: always fetch from DB (changes frequently) ───────────
     const dbStocks = await Stock.find({
       "outlet.outletId": outlet.outletId,
       "masterIngredient.ingredientMasterId": { $in: ingredientIds },
@@ -92,7 +91,7 @@ export const processStockMovement = async (data) => {
                 ingredient.name,
             },
             quantity: r.requiredBaseQty,
-            unit: ingredient.unit?.[0]?.baseUnit,
+            unit: ingredient.unit?.[0]?.baseUnit || null,
             reason: "ORDER",
             stockId: stock?._id ?? null,
             unitCost: stock?.unitCost ?? 0,

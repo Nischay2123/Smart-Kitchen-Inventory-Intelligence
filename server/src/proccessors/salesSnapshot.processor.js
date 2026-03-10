@@ -13,7 +13,6 @@ export const processSalesSnapshot = async (data) => {
 
     const itemIds = [...new Set(items.map((i) => String(i.itemId)))];
 
-    // ── 1. MenuItems: cache-first ─────────────────────────────────────
     const menuMap = new Map();
     {
       const keys = itemIds.map((id) =>
@@ -44,7 +43,6 @@ export const processSalesSnapshot = async (data) => {
       }
     }
 
-    // ── 2. Recipes: cache-first ───────────────────────────────────────
     const recipeMap = new Map();
     {
       const keys = itemIds.map((id) =>
@@ -78,7 +76,6 @@ export const processSalesSnapshot = async (data) => {
       }
     }
 
-    // ── 3. Stocks: always fetch from DB (changes frequently) ──────────
     const ingredientIds = [
       ...new Set(
         [...recipeMap.values()].flatMap((r) =>
@@ -96,7 +93,6 @@ export const processSalesSnapshot = async (data) => {
       dbStocks.map((s) => [String(s.masterIngredient.ingredientMasterId), s])
     );
 
-    // ── 4. Build final items ──────────────────────────────────────────
     const finalItems = sale.items.map((item) => {
       if (state !== "CONFIRMED") {
         return { ...item.toObject(), totalAmount: 0, makingCost: 0 };

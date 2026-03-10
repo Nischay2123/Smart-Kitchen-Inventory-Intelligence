@@ -2,6 +2,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
 import redis from "../utils/redis.js";
 import { ApiError } from "../utils/apiError.js";
+import { cacheBreaker } from "../utils/circuitBreaker.js";
 
 const handler = (req, res, next) => {
     const retryAfter = parseInt(res.getHeader("Retry-After") || "60", 10);
@@ -14,26 +15,23 @@ const handler = (req, res, next) => {
         )
     );
 };
-// const makeStore = (prefix) => {
-//     if (redis && redis.status === "ready") {
-//         console.log(`Rate limiter using Redis (${prefix})`);
-
-//         return new RedisStore({
-//             sendCommand: (...args) => redis.call(...args),
-//             prefix,
-//             resetExpiryOnChange: true,
-//         });
-//     }
-
-//     console.warn(`Redis unavailable → using memory store (${prefix})`);
-//     return undefined; // express-rate-limit will use default memory store
-// };
-const makeStore = (prefix) =>
-    new RedisStore({
-        sendCommand: (...args) => redis.call(...args),
-        prefix,
-        resetExpiryOnChange: true,
-    });
+const makeStore = (prefix) => {
+    try {
+        return new RedisStore({
+            sendCommand: async (...args) => {
+                if (cacheBreaker.opened || !redis || (redis.status !== "ready" && redis.status !== "connecting")) {
+                    throw new Error("Redis circuit open or unavailable");
+                }
+                return await redis.call(...args);
+            },
+            prefix,
+            resetExpiryOnChange: true,
+        });
+    } catch (error) {
+        console.warn(`[RateLimit] Failed to create RedisStore for ${prefix}, using in-memory fallback:`, error.message);
+        return undefined;
+    }
+};
 
 export const generalRateLimit = rateLimit({
     windowMs: 60 * 1000,

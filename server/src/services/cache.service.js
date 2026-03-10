@@ -1,4 +1,5 @@
 import redis from "../utils/redis.js";
+import { cacheBreaker } from "../utils/circuitBreaker.js";
 
 const DEFAULT_TTL = 60 * 60 * 24; 
 
@@ -8,42 +9,73 @@ export const cacheService = {
     },
 
     get: async (key) => {
-        const data = await redis.get(key);
-        return data ? JSON.parse(data) : null;
+        try {
+            return await cacheBreaker.fire(async () => {
+                const data = await redis.get(key);
+                return data ? JSON.parse(data) : null;
+            });
+        } catch (err) {
+            return null;
+        }
     },
 
     set: async (key, value, ttl = DEFAULT_TTL) => {
-        await redis.set(key, JSON.stringify(value), "EX", ttl);
+        try {
+            return await cacheBreaker.fire(async () => {
+                await redis.set(key, JSON.stringify(value), "EX", ttl);
+            });
+        } catch (err) {
+            return undefined;
+        }
     },
 
     del: async (key) => {
-        await redis.del(key);
+        try {
+            return await cacheBreaker.fire(async () => {
+                await redis.del(key);
+            });
+        } catch (err) {
+            return undefined;
+        }
     },
 
     mget: async (keys) => {
         if (!keys || keys.length === 0) return [];
-        const data = await redis.mget(keys);
-        return data.map(item => item ? JSON.parse(item) : null);
+        
+        try {
+            return await cacheBreaker.fire(async () => {
+                const data = await redis.mget(keys);
+                return data.map(item => item ? JSON.parse(item) : null);
+            });
+        } catch (err) {
+            return new Array(keys.length).fill(null);
+        }
     },
 
     delByPattern: async (pattern) => {
-        const stream = redis.scanStream({
-            match: pattern,
-            count: 100
-        });
+        try {
+            return await cacheBreaker.fire(async () => {
+                const stream = redis.scanStream({
+                    match: pattern,
+                    count: 100
+                });
 
-        stream.on("data", async (keys) => {
-            if (keys.length) {
-                const pipeline = redis.pipeline();
-                keys.forEach(key => pipeline.del(key));
-                await pipeline.exec();
-            }
-        });
+                stream.on("data", async (keys) => {
+                    if (keys.length) {
+                        const pipeline = redis.pipeline();
+                        keys.forEach(key => pipeline.del(key));
+                        await pipeline.exec();
+                    }
+                });
 
-        return new Promise((resolve, reject) => {
-            stream.on("end", resolve);
-            stream.on("error", reject);
-        });
+                return new Promise((resolve, reject) => {
+                    stream.on("end", resolve);
+                    stream.on("error", reject);
+                });
+            });
+        } catch (err) {
+            return undefined;
+        }
     }
 
 };

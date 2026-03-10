@@ -40,7 +40,7 @@ connection.on("connect", () => {
 });
 
 connection.on("error", (err) => {
-  console.error("[orderWorker] REDIS ERROR:", err.message, redisDownEmailSent ? "(Alert already sent)" : "(Sending alert)" );
+  console.error("[orderWorker] REDIS ERROR:", redisDownEmailSent ? "(Alert already sent)" : "(Sending alert)" );
   
   if (!redisDownEmailSent) {
     redisDownEmailSent = true;

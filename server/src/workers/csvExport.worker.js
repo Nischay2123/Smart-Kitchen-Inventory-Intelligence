@@ -89,7 +89,7 @@ export const csvExportWorker = new Worker(
 );
 
 csvExportWorker.on("failed", async (job, err) => {
-    console.error(`[csvExport.worker] Job ${job?.id} failed:`, err.message);
+    console.error(`[csvExport.worker] Job ${job?.id} failed:`);
 
     if (!job?.data) return;
     const { userEmail, userName, outletName, fromDate, toDate, reportType } = job.data;

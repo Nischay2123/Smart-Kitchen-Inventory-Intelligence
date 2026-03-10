@@ -18,7 +18,7 @@ const connection = new IORedis(config.REDIS_URL, {
 });
 
 connection.on("error", (err) => {
-    console.warn("[dailySnapshotQueue] Redis error:", err.message);
+    console.warn("[dailySnapshotQueue] Redis error");
 });
 
 connection.on("end", () => {

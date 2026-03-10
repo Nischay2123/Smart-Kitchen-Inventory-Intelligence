@@ -23,3 +23,7 @@ export const csvExportQueue = new Queue("csv-export", {
         removeOnFail: 200,
     },
 });
+
+connection.on("error", (err) => {
+    console.error("Redis connection error in CSV Export Queue");
+});
