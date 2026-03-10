@@ -29,7 +29,7 @@ connectDB();
 
 const connection = new IORedis(config.REDIS_URL, {
   maxRetriesPerRequest: 0,
-  // enableOfflineQueue: false, 
+  enableOfflineQueue: false, 
   retryStrategy: () => null,
   connectTimeout: 2000
 });
