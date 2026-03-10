@@ -10,7 +10,7 @@ export const generateAPIKey = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Only BRAND_ADMIN can generate API keys");
   }
 
-  const { outletId, description } = req.body;
+  const { outletId,description  } = req.body;
 
   if (!outletId) {
     throw new ApiError(400, "outletId is required");
@@ -32,13 +32,11 @@ export const generateAPIKey = asyncHandler(async (req, res) => {
   }
 
   const plainAPIKey = POSApiKey.generateAPIKey(outlet._id.toString());
-  const keyPrefix = POSApiKey.getKeyPrefix(plainAPIKey);
 
 
 
   const apiKeyRecord = await POSApiKey.create({
     apiKeyHash: plainAPIKey,
-    keyPrefix,
     tenant: {
       tenantId: tenantContext.tenantId,
       tenantName: tenantContext.tenantName,
@@ -60,7 +58,6 @@ export const generateAPIKey = asyncHandler(async (req, res) => {
       {
         apiKey: plainAPIKey,
         keyId: apiKeyRecord._id,
-        keyPrefix,
         tenant: apiKeyRecord.tenant,
         outlet: apiKeyRecord.outlet,
         description: apiKeyRecord.description,
@@ -139,14 +136,11 @@ export const listAPIKeys = asyncHandler(async (req, res) => {
         count: apiKeys.length,
         apiKeys: apiKeys.map((key) => ({
           keyId: key._id,
-          keyPrefix: key.keyPrefix,
           tenant: key.tenant,
           outlet: key.outlet,
           isActive: key.isActive,
-          lastUsedAt: key.lastUsedAt,
-          createdAt: key.createdAt,
-          expiresAt: key.expiresAt,
           description: key.description,
+          createdAt: key.createdAt,
           createdBy: key.createdBy,
         })),
       },

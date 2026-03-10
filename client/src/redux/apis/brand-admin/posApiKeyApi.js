@@ -13,10 +13,10 @@ export const posApiKeys = baseApi.injectEndpoints({
     }),
 
     generateApiKey: builder.mutation({
-      query: ({ outletId }) => ({
+      query: ({ outletId, description }) => ({
         url: "pos-api-keys/generate",
         method: "POST",
-        body: { outletId },
+        body: { outletId, description },
       }),
       invalidatesTags: ["PosApiKeys"],
     }),

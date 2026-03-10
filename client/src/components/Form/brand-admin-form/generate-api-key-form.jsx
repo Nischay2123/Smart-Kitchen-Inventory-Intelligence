@@ -23,6 +23,7 @@ import { useGetAllOutletsQuery } from "@/redux/apis/brand-admin/outletApi";
 
 export function GenerateApiKeyModal({ open, onOpenChange }) {
   const [selectedOutlet, setSelectedOutlet] = React.useState("");
+  const [description, setDescription] = React.useState("");
   const [generatedKey, setGeneratedKey] = React.useState("");
   const [copied, setCopied] = React.useState(false);
 
@@ -31,6 +32,7 @@ export function GenerateApiKeyModal({ open, onOpenChange }) {
 
   const resetForm = () => {
     setSelectedOutlet("");
+    setDescription("");
     setGeneratedKey("");
     setCopied(false);
   };
@@ -45,6 +47,7 @@ export function GenerateApiKeyModal({ open, onOpenChange }) {
     try {
       const result = await generateApiKey({
         outletId: selectedOutlet,
+        description: description || undefined,
       }).unwrap();
 
       setGeneratedKey(result.data.apiKey);
@@ -101,6 +104,22 @@ export function GenerateApiKeyModal({ open, onOpenChange }) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description (Optional)</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g., Main POS system integration"
+                className="w-full min-h-20 px-3 py-2 text-sm rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                maxLength={200}
+              />
+              {description && (
+                <p className="text-xs text-muted-foreground">
+                  {description.length}/200 characters
+                </p>
+              )}
             </div>
 
             <Alert>

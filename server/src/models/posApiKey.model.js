@@ -12,11 +12,6 @@ const POSApiKeySchema = new Schema(
       select: false,
     },
 
-    keyPrefix: {
-      type: String,
-      required: true,
-    },
-
     tenant: {
       _id: false,
       type: {
@@ -84,7 +79,6 @@ const POSApiKeySchema = new Schema(
   }
 );
 
-POSApiKeySchema.index({ keyPrefix: 1, isActive: 1 });
 POSApiKeySchema.index({ "tenant.tenantId": 1, "outlet.outletId": 1 });
 
 POSApiKeySchema.statics.generateAPIKey = function (outletId) {

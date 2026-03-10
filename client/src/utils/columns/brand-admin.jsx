@@ -336,20 +336,13 @@ export  const unitColumn = () => [
 
 export const apiKeyColumns = (onRevoke) => [
   {
-    accessorKey: "maskedKey",
-    header: "API Key",
-    cell: ({ row }) => {
-      const key = row.original.apiKey || row.original.maskedKey
-      const masked = key ? `${key.substring(0, 12)}...${key.slice(-4)}` : "****"
-      return (
-        <div className="flex items-center gap-2">
-          <Key className="h-4 w-4 text-muted-foreground" />
-          <span className="font-mono text-sm">
-            {masked}
-          </span>
-        </div>
-      )
-    },
+    accessorKey: "description",
+    header: "Description",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {row.original.description || "N/A"}
+      </span>
+    ),
   },
   {
     accessorKey: "outlet.outletName",
