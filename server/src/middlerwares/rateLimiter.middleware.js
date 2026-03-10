@@ -2,7 +2,6 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
 import redis from "../utils/redis.js";
 import { ApiError } from "../utils/apiError.js";
-import { cacheBreaker } from "../utils/circuitBreaker.js";
 
 const handler = (req, res, next) => {
     const retryAfter = parseInt(res.getHeader("Retry-After") || "60", 10);
@@ -15,13 +14,11 @@ const handler = (req, res, next) => {
         )
     );
 };
+
 const makeStore = (prefix) => {
     try {
         return new RedisStore({
-            sendCommand: async (...args) => {
-                if (cacheBreaker.opened || !redis || (redis.status !== "ready" && redis.status !== "connecting")) {
-                    throw new Error("Redis circuit open or unavailable");
-                }
+            sendCommand: async (...args) => {                
                 return await redis.call(...args);
             },
             prefix,
