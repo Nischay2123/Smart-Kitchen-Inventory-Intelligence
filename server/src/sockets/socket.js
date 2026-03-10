@@ -41,7 +41,6 @@ export const initSocket = (httpServer, corsOptions) => {
 
     socket.on("join_outlet", ({ tenantId, outletId }) => {
       if (!tenantId || !outletId) return;
-      // console.log(socket.user);
 
       if (socket.user.tenantId !== tenantId || socket.user.outletId !== outletId) {
         console.warn(`User ${socket.user._id} attempted unauthorized join to ${tenantId}`);
@@ -72,7 +71,6 @@ export const initSocket = (httpServer, corsOptions) => {
     });
 
     socket.on("worker_emit", ({ room, event, payload }) => {
-      // console.log("socket server",room);
 
       io.to(room).emit(event, payload);
     });

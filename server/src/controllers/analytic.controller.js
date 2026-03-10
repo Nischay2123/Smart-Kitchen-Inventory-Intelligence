@@ -9,69 +9,6 @@ import TenantDailySnapshot from "../models/tenantDailySnapshot.model.js";
 import OutletItemDailySnapshot from "../models/outletItemDailySnapshot.model.js";
 import { csvExportQueue } from "../queues/csvExport.queue.js";
 
-// export const itemLiveReport  = asyncHandler(async (req, res) => {
-//   if (req.user.role !== "BRAND_ADMIN") {
-//     throw new ApiError(403, "Unauthorized");
-//   }
-//   const { fromDate, toDate, outletId } = req.query;
-//   const tenant = req.user.tenant;
-
-//   if (!fromDate || !toDate || !outletId) {
-//     throw new ApiError(400, "fromDate, toDate, and outletId are required");
-//   }
-
-//   const pipeline = [
-//     {
-//       $match: {
-//         "tenant.tenantId": tenant.tenantId,
-//         state: "CONFIRMED",
-//         createdAt: {
-//           $gte: new Date(fromDate),
-//           $lte: new Date(toDate),
-//         },
-//         "outlet.outletId": new mongoose.Types.ObjectId(outletId),
-//       },
-//     },
-//     {
-//       $project: { items: 1 }
-//     },
-//     { $unwind: "$items" },
-//     {
-//       $group: {
-//         _id: "$items.itemId",
-//         itemName: { $first: "$items.itemName" },
-//         totalQty: { $sum: "$items.qty" },
-//         totalRevenue: { $sum: "$items.totalAmount" },
-//         totalMakingCost: { $sum: "$items.makingCost" },
-//       },
-//     },
-//     // {
-//     //   $project: {
-//     //     _id: 0,
-//     //     // outletId: "$_id.outletId",
-//     //     // outletName: "$_id.outletName",
-//     //     itemId: "$_id.itemId",
-//     //     itemName: "$_id.itemName",
-//     //     totalQty: 1,
-//     //     totalRevenue: 1,
-//     //     totalMakingCost: 1,
-//     //   },
-//     // },
-//     {
-//       $project: {
-//         _id: 0,
-//         itemId: "$_id",
-//         itemName: 1,
-//         totalQty: 1,
-//         totalRevenue: 1,
-//         totalMakingCost: 1,
-//       },
-//     },
-//   ];
-//   const data = await Sale.aggregate(pipeline, { allowDiskUse: true });
-//   return res.status(200).json(new ApiResoponse(200, data, "success"));
-// });
-
 export const requestReportExport = asyncHandler(async (req, res) => {
   
   const { fromDate, toDate, outletId, email, type } = req.body;
@@ -216,56 +153,6 @@ export const brandAnalyticsLiveReport = asyncHandler(async (req, res) => {
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
   const outletObjectIds = outletIds.map((i) => new mongoose.Types.ObjectId(i))
-  // const pipeline = [
-  //   {
-  //     $match: {
-  //       "tenant.tenantId": tenantContext.tenantId,
-  //       "outlet.outletId": { $in: outletObjectIds },
-  //       createdAt: { $gte: todayStart }
-  //     }
-  //   },
-  //   { $unwind: "$items" },
-  //   {
-  //     $group: {
-  //       _id: "$_id",
-  //       outlet: { $first: "$outlet" },
-  //       state: { $first: "$state" },
-  //       sale: { $sum: "$items.totalAmount" },
-  //       cogs: { $sum: "$items.makingCost" }
-  //     }
-  //   },
-  //   {
-  //     $group: {
-  //       _id: {
-  //         outletId: "$outlet.outletId",
-  //         outletName: "$outlet.outletName"
-  //       },
-  //       totalSale: {
-  //         $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$sale", 0] }
-  //       },
-  //       cogs: {
-  //         $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, "$cogs", 0] }
-  //       },
-  //       confirmedOrders: {
-  //         $sum: { $cond: [{ $eq: ["$state", "CONFIRMED"] }, 1, 0] }
-  //       },
-  //       canceledOrders: {
-  //         $sum: { $cond: [{ $eq: ["$state", "CANCELED"] }, 1, 0] }
-  //       }
-  //     }
-  //   },
-  //   {
-  //     $project: {
-  //       _id: 0,
-  //       outletId: "$_id.outletId",
-  //       outletName: "$_id.outletName",
-  //       totalSale: 1,
-  //       confirmedOrders: 1,
-  //       canceledOrders: 1,
-  //       cogs: 1
-  //     }
-  //   },
-  // ];
 
   const pipeline = [
     {

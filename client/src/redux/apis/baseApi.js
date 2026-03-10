@@ -13,7 +13,6 @@ export const baseApi = createApi({
   reducerPath: "api",
   baseQuery: async (args, api, extraOption) => {
 
-    // console.log("args apis", args, api, extraOption)
     const result = await baseQuery(args, api, extraOption)
     if (result.error?.status === 401) {
       const message = result.error?.data?.message;

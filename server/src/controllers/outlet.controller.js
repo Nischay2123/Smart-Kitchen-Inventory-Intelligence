@@ -111,7 +111,6 @@ export const deleteOutlet = asyncHandler(async (req, res) => {
   if (!tenantContext?.tenantId) {
     throw new ApiError(400, "User is not associated with any tenant");
   }
-  //console.log(outletId, tenantContext);
   
   if (!mongoose.Types.ObjectId.isValid(outletId)) {
     throw new ApiError(400, "Invalid outletId");

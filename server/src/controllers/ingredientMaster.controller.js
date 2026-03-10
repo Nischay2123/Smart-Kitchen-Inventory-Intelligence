@@ -353,10 +353,6 @@ export const getAllIngredients = asyncHandler(async (req, res) => {
     "tenant.tenantId": tenantContext.tenantId,
   };
 
-
-  // const ingredients = await IngredientMaster.find(filter)
-  //   .sort({ createdAt: -1 });
-
   const { data: ingredients, meta } = await paginate(IngredientMaster, filter, {
     page,
     limit,

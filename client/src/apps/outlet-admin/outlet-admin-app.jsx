@@ -73,7 +73,6 @@ export const OutletAdminApp = () => {
       setIsLogoutOpen(false);
     }
   };
-  // console.log(user);
 
   if (!user) {
     return (

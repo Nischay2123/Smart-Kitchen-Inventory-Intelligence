@@ -30,7 +30,6 @@ const CreateRecipeForm = ({
 
   const navigate = useNavigate();
   const { itemId } = useParams();
-  // console.log(itemId);
 
   const {
     data: ingredientOptions = { data: [] },

@@ -14,7 +14,6 @@ export default function BrandGrid({
       </div>
     )
   }
-  //console.log(brands);
   
   return (
     <div

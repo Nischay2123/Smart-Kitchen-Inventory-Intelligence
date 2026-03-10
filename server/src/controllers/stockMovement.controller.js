@@ -16,7 +16,6 @@ const validatePayload = (req) => {
     purchasePricePerUnit,
     unitId,
   } = req.body;
-  // console.log("validatePayload start");
 
   if (
     !ingredientMasterId ||
@@ -47,7 +46,6 @@ const validatePayload = (req) => {
       "purchasePricePerUnit is required for PURCHASE"
     );
   }
-  // console.log("validatePayload end");
 
   return {
     ingredientMasterId,
@@ -61,12 +59,10 @@ const validatePayload = (req) => {
 const validateContext = (req) => {
   const tenant = req.user.tenant;
   const outlet = req.user.outlet;
-  // console.log("validatePayload start");
 
   if (!tenant?.tenantId || !outlet?.outletId) {
     throw new ApiError(400, "User not linked to tenant or outlet");
   }
-  // console.log("validatePayload start");
 
   return { tenant, outlet };
 };
@@ -90,15 +86,12 @@ const validateIngredient = async ({
     _id: ingredientMasterId,
     "tenant.tenantId": tenantId,
   }).session(session);
-  // console.log("validatePayload start");
 
   if (!ingredient) {
     throw new ApiError(404, "Ingredient not found");
   }
 
   await cacheService.set(cacheKey, ingredient);
-
-  // console.log("validatePayload start");
 
   return ingredient;
 };
@@ -111,14 +104,11 @@ const validateUnit = (ingredient, unitId) => {
   if (!unit) {
     throw new ApiError(400, "Invalid unit for this ingredient");
   }
-  // console.log("validatePayload start");
 
   return unit;
 };
 
 const calculateQuantities = ({ quantity, unit, reason }) => {
-  // console.log("start");
-
   const conversionRate = unit.conversionRate;
   const quantityInBase = quantity * conversionRate;
 
@@ -132,7 +122,6 @@ const calculateQuantities = ({ quantity, unit, reason }) => {
   )
     ? quantityInBase
     : -quantityInBase;
-  // console.log("validatePayload start");
 
   return {
     conversionRate,
@@ -220,7 +209,6 @@ const upsertStock = async ({
 
     stock.currentStockInBase = newQty;
   }
-  // console.log("validatePayload start");
 
   applyAlertState(stock, ingredient);
 

@@ -44,7 +44,6 @@ const isDeleting = false
 
 const SuperAdmin = () => {
   const handleDeleteGroup = (groupId) => {
-    //console.log('Delete group:', groupId)
   }
 
   return (

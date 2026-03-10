@@ -16,7 +16,6 @@ const writeCsvRow = (stream, row) =>
     });
 
 const validateTenant = async (tenantId) => {
-    // console.log("tenant",tenantId);
 
     const tenant = await Tenant.findOne({ _id: tenantId }).lean();
     console.log(tenant);
@@ -26,7 +25,6 @@ const validateTenant = async (tenantId) => {
 };
 
 const validateOutlet = async (tenantId, outletId) => {
-    // console.log("outlet",tenantId, outletId);
 
     const outlet = await Outlet.findOne({
         "tenant.tenantId": new mongoose.Types.ObjectId(tenantId),

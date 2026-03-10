@@ -16,17 +16,6 @@ export const paginate = async (model, filter = {}, options = {}) => {
     };
   }
 
-  // const totalDocs = await model.countDocuments(finalFilter);
-  // const totalPages = Math.ceil(totalDocs / limit) || 1;
-
-  // const data = await model
-  //   .find(finalFilter)
-  //   .sort(sort)
-  //   .skip(skip)
-  //   .limit(limit);
-
-  
-  
   const [totalDocs, data] = await Promise.all([
     model.countDocuments(finalFilter),
     model.find(finalFilter).sort(sort).skip(skip).limit(limit) 

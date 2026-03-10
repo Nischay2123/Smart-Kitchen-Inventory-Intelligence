@@ -24,7 +24,6 @@ export const validateStock = async (requirementList, outletId) => {
       stock
     );
   });
-  // console.log(requirementList);
   
   for (const req of requirementList) {
     const stock = result.stockMap.get(

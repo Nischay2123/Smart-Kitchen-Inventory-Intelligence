@@ -15,10 +15,10 @@ const tenant = {
 ========================= */
 const outlets = [
   { outletId: "696a2158448eaa44cbb20e3e", outletName: "NSP" },
-  // { outletId: "697750a866bf3e3f6b5c2df6", outletName: "CP" },
-  // { outletId: "6977bc4ece1177f4a76c4cbb", outletName: "Saket" },
-  // { outletId: "6977bc78ce1177f4a76c4cbf", outletName: "Gurgaon" },
-  // { outletId: "6977bc8bce1177f4a76c4cc1", outletName: "Noida" }
+  { outletId: "697750a866bf3e3f6b5c2df6", outletName: "CP" },
+  { outletId: "6977bc4ece1177f4a76c4cbb", outletName: "Saket" },
+  { outletId: "6977bc78ce1177f4a76c4cbf", outletName: "Gurgaon" },
+  { outletId: "6977bc8bce1177f4a76c4cc1", outletName: "Noida" }
 ];
 
 /* =========================
@@ -27,11 +27,11 @@ const outlets = [
    Replace with your actual API keys before running
 ========================= */
 const API_KEYS = {
-  "696a2158448eaa44cbb20e3e": "pos_696a2158448eaa44cbb20e3e_1eedab0f56a82c4dbf1a40f34b13e7b31b95f131f95c8761",
-  // "697750a866bf3e3f6b5c2df6": "YOUR_API_KEY_FOR_CP_OUTLET",
-  // "6977bc4ece1177f4a76c4cbb": "YOUR_API_KEY_FOR_SAKET_OUTLET",
-  // "6977bc78ce1177f4a76c4cbf": "YOUR_API_KEY_FOR_GURGAON_OUTLET",
-  // "6977bc8bce1177f4a76c4cc1": ""
+    "696a2158448eaa44cbb20e3e": "pos_696a2158448eaa44cbb20e3e_8e7437ee5a230a615901ac825d135b3556e5e139226a1385",
+    "697750a866bf3e3f6b5c2df6": "pos_697750a866bf3e3f6b5c2df6_606bbe39076d27858d3f059c42fc51dfbff0cfed66f5d0ea",
+    "6977bc4ece1177f4a76c4cbb": "pos_6977bc4ece1177f4a76c4cbb_50e66556b6d4d950c40a12a221f406d27db00b40566a23ef",
+    "6977bc78ce1177f4a76c4cbf": "pos_6977bc78ce1177f4a76c4cbf_45ee9fd059fe0a5afe0cf906d21e845ebbb045a6d0bb1e1a",
+    "6977bc8bce1177f4a76c4cc1": "pos_6977bc8bce1177f4a76c4cc1_2094896161413b8733c280f059af28a4547c95493c6f2436"
 };
 
 /* =========================

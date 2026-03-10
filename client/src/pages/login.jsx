@@ -20,7 +20,6 @@ const Login = () => {
     try {
       const res = await loginApi({ email, password }).unwrap();
       const user = res?.data?.user;
-      // console.log(user);
       
       localStorage.setItem("user", JSON.stringify(user));
       setUser(user);

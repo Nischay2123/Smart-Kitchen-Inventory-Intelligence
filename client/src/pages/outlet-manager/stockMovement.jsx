@@ -49,7 +49,6 @@ export const StockMovement = () => {
   }, [data])
 
   const handleSocketCreate = useCallback((newDoc) => {
-    // console.log(newDoc);
 
     setStockMovements(prev => {
       const exists = prev.some(item => item._id === newDoc._id)

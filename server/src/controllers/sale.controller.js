@@ -21,7 +21,6 @@ import { paginate } from "../utils/pagination.js";
 import { cacheService } from "../services/cache.service.js";
 
 const validateTenant = async (tenantId) => {
-  // console.log("tenant",tenantId);
 
   const tenant = await Tenant.findOne({ _id: tenantId }).lean();
   if (!tenant) throw new ApiError(404, "TENANT_NOT_FOUND");
@@ -29,7 +28,6 @@ const validateTenant = async (tenantId) => {
 };
 
 const validateOutlet = async (tenantId, outletId) => {
-  // console.log("outlet",tenantId, outletId);
 
   const outlet = await Outlet.findOne({
     "tenant.tenantId": tenantId,
@@ -264,7 +262,6 @@ export const createSale = asyncHandler(async (req, res) => {
   }
 
   await validateTenant(tenant.tenantId);
-  // console.log("create sale",tenant , outlet);
 
   await validateOutlet(tenant.tenantId, outlet.outletId);
 
@@ -386,7 +383,6 @@ export const getAllSales = asyncHandler(async (req, res) => {
     if (toDate) filter.createdAt.$lte = new Date(toDate);
   }
 
-  // const sales = await Sale.find(filter).sort({ createdAt: -1 });
   const { data: saleRecords, meta } = await paginate(Sale, filter, {
     page,
     limit,

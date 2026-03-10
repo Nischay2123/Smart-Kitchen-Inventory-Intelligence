@@ -7,7 +7,6 @@ import {
 
 const CancelIngredientsDialog = ({ items ,open, onClose,reason}) => {
   if (!items?.length) return null;
-// console.log(items);
 
   return (
     <Dialog open={open} onOpenChange={onClose} >

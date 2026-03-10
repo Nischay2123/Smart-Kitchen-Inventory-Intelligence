@@ -57,7 +57,6 @@ export const AnalyticsCards = ({ data }) => {
 
 
 export const SecondaryMetrics = ({ data }) => {
-  // console.log(data);
   
   const cardsConfig = [
     {
