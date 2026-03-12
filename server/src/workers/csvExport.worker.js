@@ -1,5 +1,4 @@
 import { Worker } from "bullmq";
-import IORedis from "ioredis";
 import mongoose from "mongoose";
 import { PassThrough } from "stream";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
@@ -9,6 +8,7 @@ import { format as csvFormat } from "fast-csv";
 import config from "../utils/config.js";
 import { sendMenuItemExportEmail, sendMenuItemExportErrorEmail } from "../utils/emailAlert.js";
 import { generateReportRows } from "../proccessors/csvExport.processor.js";
+import { redisManager } from "../utils/redis/redisManager.js";
 
 const connectDB = async () => {
     try {
@@ -22,10 +22,7 @@ const connectDB = async () => {
 
 connectDB();
 
-const connection = new IORedis(config.REDIS_URL, { maxRetriesPerRequest: null,enableOfflineQueue: false,retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-    }, });
+const connection = redisManager.getConnection("WORKER");
 
 const s3 = new S3Client({
     region: config.AWS.REGION,

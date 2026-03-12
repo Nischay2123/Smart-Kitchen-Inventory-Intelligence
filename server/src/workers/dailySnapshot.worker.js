@@ -1,12 +1,11 @@
 
 import { Worker } from "bullmq";
-import IORedis from "ioredis";
 import mongoose from "mongoose";
 import { processDailySnapshot } from "../proccessors/dailySnapshot.processor.js";
 import QueueFail from "../models/queueFail.model.js";
-
 import config from "../utils/config.js";
 import { processDailyItemSnapshot } from "../proccessors/dailyItemSnapshot.processor.js";
+import { redisManager } from "../utils/redis/redisManager.js";
 
 const connectDB = async () => {
     try {
@@ -20,22 +19,7 @@ const connectDB = async () => {
 
 connectDB();
 
-const connection = new IORedis(config.REDIS_URL, {
-    maxRetriesPerRequest: null,
-    enableOfflineQueue: false,
-    retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-    },
-});
-
-connection.on("connect", () => {
-    console.log("REDIS CONNECTED (Snapshot Worker)");
-});
-
-connection.on("error", (err) => {
-    console.error("REDIS ERROR (Snapshot Worker):", err);
-});
+const connection = redisManager.getConnection("WORKER");
 
 export const dailySnapshotWorker = new Worker(
     "daily-snapshot",

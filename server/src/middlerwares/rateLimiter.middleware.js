@@ -1,8 +1,10 @@
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { RedisStore } from "rate-limit-redis";
-import redis from "../utils/redis.js";
+import { redisManager } from "../utils/redis/redisManager.js";
 import { ApiError } from "../utils/apiError.js";
 import { MemoryStore } from "express-rate-limit";
+
+const redis = redisManager.getConnection("RATE_LIMIT");
 
 const handler = (req, res, next) => {
     const retryAfter = parseInt(res.getHeader("Retry-After") || "60", 10);
@@ -25,7 +27,6 @@ class DynamicRateLimitStore {
     this.options = null;
 
     this.current = this.memoryStore;
-    this.localKeys = false;
   }
 
   init(options) {

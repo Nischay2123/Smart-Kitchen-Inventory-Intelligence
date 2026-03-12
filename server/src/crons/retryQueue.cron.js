@@ -3,7 +3,9 @@ import QueueFail from "../models/queueFail.model.js";
 import { orderQueue } from "../queues/order.queue.js";
 import { dailySnapshotQueue } from "../queues/dailySnapshot.queue.js";
 import SchedulerLog from "../models/schedulerLog.model.js";
-import redis from "../utils/redis.js";
+import { redisManager } from "../utils/redis/redisManager.js"
+
+const redis = redisManager.getConnection("QUEUE_PRODUCER");
 
 let isRunning = false;
 

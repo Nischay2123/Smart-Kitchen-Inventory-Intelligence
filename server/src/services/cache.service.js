@@ -1,5 +1,7 @@
-import redis from "../utils/redis.js";
+import { redisManager } from "../utils/redis/redisManager.js";
 import { cacheBreaker } from "../utils/circuitBreaker.js";
+
+const redis = redisManager.getConnection("CACHE");
 
 const DEFAULT_TTL = 60 * 60 * 24; 
 
@@ -60,18 +62,13 @@ export const cacheService = {
                     count: 100
                 });
 
-                stream.on("data", async (keys) => {
+                for await (const keys of stream) {
                     if (keys.length) {
                         const pipeline = redis.pipeline();
                         keys.forEach(key => pipeline.del(key));
                         await pipeline.exec();
                     }
-                });
-
-                return new Promise((resolve, reject) => {
-                    stream.on("end", resolve);
-                    stream.on("error", reject);
-                });
+                }
             });
         } catch (err) {
             return undefined;

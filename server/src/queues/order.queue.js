@@ -1,43 +1,7 @@
 import { Queue } from "bullmq";
-import IORedis from "ioredis";
+import { redisManager } from "../utils/redis/redisManager.js";
 
-import config from "../utils/config.js";
-import { sendRedisDownAlertEmail } from "../utils/emailAlert.js";
-
-let redisDownEmailSent = false;
-
-const connection = new IORedis(config.REDIS_URL, {
-  maxRetriesPerRequest: 0,
-  enableOfflineQueue: false, 
-  retryStrategy: () => null,
-  connectTimeout: 2000
-});
-
-connection.on("connect", () => {
-  console.log("[orderQueue] REDIS CONNECTED");
-  redisDownEmailSent = false; 
-});
-
-connection.on("error", (err) => {
-  console.error("[orderQueue] REDIS ERROR:", err.message, redisDownEmailSent ? "(Alert already sent)" : "(Sending alert)");
-  
-  if (!redisDownEmailSent) {
-    redisDownEmailSent = true;
-    
-    sendRedisDownAlertEmail(err)
-      .then(() => {
-        console.log("📧 [orderQueue] Redis down notification email sent");
-      })
-      .catch((emailErr) => {
-        console.error("[orderQueue] Failed to send Redis down email:", emailErr.message);
-        console.error("[orderQueue] Full error:", emailErr);
-      });
-  }
-});
-
-connection.on("end", () => {
-  console.warn("[orderQueue] Redis connection ended.");
-});
+const connection = redisManager.getConnection("QUEUE_PRODUCER");
 
 export const orderQueue = new Queue("orders", {
   connection,

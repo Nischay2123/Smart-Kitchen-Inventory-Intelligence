@@ -164,7 +164,7 @@ export const sendMenuItemExportEmail = async ({
 };
 
 
-export const sendRedisDownAlertEmail = async (err) => {
+export const sendRedisDownAlertEmail = async (alertData) => {
   try {
     const smtpUser = process.env.SMTP_USER;
     
@@ -172,18 +172,22 @@ export const sendRedisDownAlertEmail = async (err) => {
       throw new Error("SMTP_USER environment variable is not set");
     }
     
-    console.log("[emailAlert] Attempting to send Redis down alert to:", smtpUser);
+    const role = alertData.role || "Unknown Service";
+    const errorMessage = alertData.error || alertData.message || "Unknown error";
+    const timestamp = alertData.timestamp || new Date().toISOString();
+    
+    console.log(`[emailAlert] Attempting to send Redis down alert for ${role} to:`, smtpUser);
     
     const result = await mailer.sendMail({
       from: smtpUser,
       to: smtpUser,
-      subject: "🚨 CRITICAL: Redis Connection Failed - Order Worker",
+      subject: `🚨 CRITICAL: Redis Connection Failed - ${role}`,
       html: `
         <h2>Redis Connection Error</h2>
-        <p><strong>Service:</strong> Order Worker</p>
-        <p><strong>Error:</strong> ${err.message}</p>
-        <p><strong>Time:</strong> ${new Date().toISOString()}</p>
-        <p><strong>Impact:</strong> Order processing will fail until Redis is restored.</p>
+        <p><strong>Service:</strong> ${role}</p>
+        <p><strong>Error:</strong> ${errorMessage}</p>
+        <p><strong>Time:</strong> ${timestamp}</p>
+        <p><strong>Impact:</strong> Service will be degraded or unavailable until Redis is restored.</p>
         <hr>
         <p>Action Required: Check Redis server status immediately.</p>
       `,

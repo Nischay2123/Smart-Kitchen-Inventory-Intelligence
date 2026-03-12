@@ -1,15 +1,7 @@
 import { Queue } from "bullmq";
-import IORedis from "ioredis";
-import config from "../utils/config.js";
+import { redisManager } from "../utils/redis/redisManager.js";
 
-const connection = new IORedis(config.REDIS_URL, {
-    maxRetriesPerRequest: null,
-    enableOfflineQueue: false,
-    retryStrategy(times) {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-    },
-});
+const connection = redisManager.getConnection("QUEUE_PRODUCER");
 
 export const csvExportQueue = new Queue("csv-export", {
     connection,
@@ -22,8 +14,4 @@ export const csvExportQueue = new Queue("csv-export", {
         removeOnComplete: 50,
         removeOnFail: 200,
     },
-});
-
-connection.on("error", (err) => {
-    console.error("Redis connection error in CSV Export Queue");
 });

@@ -1,5 +1,4 @@
 import { Worker } from "bullmq";
-import IORedis from "ioredis";
 import mongoose from "mongoose";
 
 import { processStockMovement } from "../proccessors/stockMovement.processor.js";
@@ -7,11 +6,8 @@ import { processSalesSnapshot } from "../proccessors/salesSnapshot.processor.js"
 import { processAlerts } from "../proccessors/proccessAlerts.processor.js";
 import { ApiError } from "../utils/apiError.js";
 import QueueFail from "../models/queueFail.model.js";
-
 import config from "../utils/config.js";
-import { sendRedisDownAlertEmail } from "../utils/emailAlert.js";
-
-let redisDownEmailSent = false;
+import { redisManager } from "../utils/redis/redisManager.js";
 
 const connectDB = async () => {
   try {
@@ -25,42 +21,7 @@ const connectDB = async () => {
 
 connectDB();
 
-
-
-const connection = new IORedis(config.REDIS_URL, {
-  maxRetriesPerRequest: 0,
-  enableOfflineQueue: false, 
-  retryStrategy: () => null,
-  connectTimeout: 2000
-});
-
-connection.on("connect", () => {
-  console.log("[orderWorker] REDIS CONNECTED");
-  redisDownEmailSent = false; 
-});
-
-connection.on("error", (err) => {
-  console.error("[orderWorker] REDIS ERROR:", redisDownEmailSent ? "(Alert already sent)" : "(Sending alert)" );
-  
-  if (!redisDownEmailSent) {
-    redisDownEmailSent = true;
-    
-    sendRedisDownAlertEmail(err)
-      .then(() => {
-        console.log("📧 [orderWorker] Redis down notification email sent");
-      })
-      .catch((emailErr) => {
-        console.error("[orderWorker] Failed to send Redis down email:", emailErr.message);
-        console.error("[orderWorker] Full error:", emailErr);
-      });
-  }
-});
-
-connection.on("end", () => {
-  console.warn("[orderWorker] Redis connection ended. Worker will stop processing jobs.");
-});
-
-
+const connection = redisManager.getConnection("ORDER_WORKER");
 
 export const orderWorker = new Worker(
   "orders",
