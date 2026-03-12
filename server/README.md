@@ -183,9 +183,9 @@ All routes are mounted under `/api/v1`. Every route passes through the **general
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `GET` | `/` | JWT | List all sales for the outlet |
-| `POST` | `/` | — | Create a new sale (POS push — intentionally unauthenticated) |
+| `POST` | `/` | POS API Key (`X-API-Key`) | Create a new sale (POS push — authenticated via per-outlet API key) |
 
-> `POST /sales` places a job on the BullMQ `orders` queue. Stock deduction and snapshot processing happen asynchronously in workers.
+> `POST /sales` validates the `X-API-Key` header against the `POSApiKeys` collection, then immediately places a job on the BullMQ `orders` queue. Stock deduction and snapshot processing happen asynchronously in workers.
 
 ---
 
@@ -201,6 +201,18 @@ All routes are mounted under `/api/v1`. Every route passes through the **general
 | `GET` | `/menu-matrix` | JWT | Menu Engineering Matrix (popularity × profitability) |
 | `POST` | `/reports/export` | JWT | Enqueue async CSV export job |
 | `GET` | `/outlets` | JWT | Outlets accessible to the caller (for filter dropdowns) |
+
+---
+
+### POS API Keys  `/api/v1/pos-api-keys`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/generate` | JWT (BRAND_ADMIN) | Generate a new POS API key for an outlet |
+| `POST` | `/:keyId/revoke` | JWT (BRAND_ADMIN) | Revoke an existing POS API key |
+| `GET` | `/` | JWT | List all POS API keys for the caller’s tenant |
+
+Keys are returned in plain text **only at generation time** and are bcrypt-hashed before storage. A key carries the format `pos_{outletId}_{randomHex}` so the prefix can be used for efficient DB lookup without scanning all keys.
 
 ---
 
@@ -243,9 +255,18 @@ Wraps Passport's `jwt` strategy. Reads the `accessToken` httpOnly cookie, verifi
 | Invalid / tampered token | `Invalid or expired access token` |
 | Expired token | `Invalid or expired access token` |
 
+### `verifyPOSApiKey`  (`src/middlerwares/verifyPOSApiKey.middleware.js`)
+
+Validates the `X-API-Key` header for `POST /api/v1/sales`. Lookup flow:
+1. Read key from `X-API-Key` header (401 if missing)
+2. Extract outlet prefix from key format `pos_{outletId}_{hex}`
+3. Query `POSApiKeys` collection by `(outlet.outletId, isActive: true)`
+4. `bcrypt.compare()` against the stored hash
+5. On success, attaches `req.posAuth = { apiKeyId, tenant, outlet }` and calls `next()`
+
 ### Rate Limiters  (`src/middlerwares/rateLimiter.middleware.js`)
 
-All limiters use **Redis** as their counter store (via `rate-limit-redis`) so limits are shared across multiple server instances.
+All limiters use a `DynamicRateLimitStore` that delegates to `RedisStore` (via `rate-limit-redis`) when Redis is healthy and falls back to in-memory `MemoryStore` automatically when Redis is unreachable.
 
 | Limiter | Window | Max | Key | Used on |
 |---|---|---|---|---|
@@ -383,7 +404,7 @@ CSV files are stored at: `reports/<reportType>_<tenantId>_<fromDate>_<toDate>_<t
 
 | File | Responsibility |
 |---|---|
-| `cache.service.js` | Redis `get` / `set` / `del` wrappers; TTL-based response caching |
+| `cache.service.js` | Redis `get` / `set` / `del` wrappers with circuit-breaker (`opossum`) protection; TTL-based response caching |
 | `outletManagers.service.js` | Query helpers scoped to outlet-manager relationships |
 | `stockRequirement.service.js` | Calculates per-ingredient base-unit requirements from a sale order + recipe |
 | `stockValidator.service.js` | Validates that sufficient stock exists before confirming an order |
@@ -396,7 +417,9 @@ CSV files are stored at: `reports/<reportType>_<tenantId>_<fromDate>_<toDate>_<t
 |---|---|
 | `config.js` | Loads & validates all env vars at boot; throws on missing required |
 | `db.js` | `mongoose.connect()` wrapper used by the API server process |
-| `redis.js` | Singleton `ioredis` client (shared by rate limiter, cache service) |
+| `redis/redisManager.js` | `RedisManager` class — per-role ioredis connections, health tracking, alert emails on failure |
+| `redis/redisProfiles.js` | ioredis option profiles: `CACHE`, `RATE_LIMIT`, `QUEUE_PRODUCER`, `WORKER`, `ORDER_WORKER` |
+| `circuitBreaker.js` | `opossum`-based `cacheBreaker` wrapping all Redis cache operations |
 | `token.js` | JWT `sign` / `verify` helpers |
 | `passport.js` | Passport JWT strategy — reads `accessToken` from signed cookie |
 | `apiError.js` | `ApiError` class extending `Error` with `statusCode` and `errors[]` |
@@ -404,7 +427,7 @@ CSV files are stored at: `reports/<reportType>_<tenantId>_<fromDate>_<toDate>_<t
 | `asyncHandler.js` | Wraps async controller functions; auto-forwards thrown errors to Express error handler |
 | `pagination.js` | Parallel `countDocuments` + `find` for paginated list responses |
 | `mailer.js` | Nodemailer transporter factory (SMTP) |
-| `emailAlert.js` | Pre-built email templates: CSV ready, CSV error |
+| `emailAlert.js` | Pre-built email templates: CSV ready, CSV error, stock alert, Redis down alert |
 | `alertState.js` | Computes `OK / LOW / CRITICAL` from stock quantity vs ingredient thresholds |
 
 ---

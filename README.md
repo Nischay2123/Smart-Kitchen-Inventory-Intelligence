@@ -24,7 +24,7 @@
 - [System Architecture](#system-architecture)
 - [Order Processing Pipeline — The Core Flow](#order-processing-pipeline--the-core-flow)
 - [Tech Stack](#tech-stack)
-- [Database — 14 Collections](#database--14-collections)
+- [Database — 15 Collections](#database--15-collections)
 - [Why it is Designed This Way](#why-it-is-designed-this-way)
 - [Key Features](#key-features)
 - [Project Structure](#project-structure)
@@ -143,7 +143,7 @@ graph TD
     end
 
     %% Client Interactions
-    POS -- "POST /sales (no auth)" --> Controllers
+    POS -- "POST /sales (X-API-Key)" --> Controllers
     UI -- "JWT (httpOnly Cookie)" --> Middlewares
     UI -- "WebSocket" --> Sockets
 
@@ -353,13 +353,14 @@ If the cron itself fails to enqueue (e.g. Redis down):
 | `passport` / `passport-jwt` | v0.7 / v4 | JWT strategy reading from httpOnly cookie |
 | `jsonwebtoken` | v9 | Sign + verify tokens |
 | `bcrypt` | v6 | Password hashing (salt rounds applied at save) |
-| `express-rate-limit` | v8 | Three-tier rate limiting middleware |
+| `express-rate-limit` | v8 | Three-tier rate limiting middleware with memory fallback |
 | `rate-limit-redis` | v4 | Redis backing store for rate limiter (distributed) |
+| `opossum` | v7 | Circuit breaker wrapping Redis cache operations |
 | `@aws-sdk/client-s3` | v3 | S3 object commands |
 | `@aws-sdk/lib-storage` | v3 | Streaming multipart upload — no temp files |
 | `@aws-sdk/s3-request-presigner` | v3 | Pre-signed download URLs (7-day expiry) |
 | `fast-csv` | v5 | Streaming CSV write with BOM — piped to S3 |
-| `nodemailer` | v7 | SMTP email — OTP delivery + stock alerts + CSV export links |
+| `nodemailer` | v7 | SMTP email — OTP delivery + stock alerts + CSV export links + Redis down alerts |
 | `multer` | v2 | Multipart file upload handling for CSV imports |
 | `uuid` | v13 | Unique ID generation |
 | `cookie-parser` | v1 | Parse signed cookies (accessToken) |
@@ -394,7 +395,7 @@ If the cron itself fails to enqueue (e.g. Redis down):
 
 ---
 
-## Database — 14 Collections
+## Database — 15 Collections
 
 The data model uses **denormalised multi-tenancy**: every document embeds `{ tenantId, tenantName }` and (where applicable) `{ outletId, outletName }`. This avoids `$lookup` joins and lets compound indexes cover all common query shapes.
 
@@ -510,6 +511,15 @@ erDiagram
         String status
     }
 
+    POSApiKeys {
+        ObjectId _id
+        String apiKeyHash
+        Boolean isActive
+        Map createdBy
+        Ref tenant
+        Ref outlet
+    }
+
     %% Relationships based on document structure
     Tenants ||--o{ Outlets : "owns"
     Tenants ||--o{ Users : "employs (BrandAdmin)"
@@ -524,6 +534,8 @@ erDiagram
     StockMovements }o--|| Sales : "belongs to sale"
     Sales }o--o{ MenuItems : "sold items"
     OutletItemDailySnapshots }o--|| MenuItems : "snapshot of item"
+    POSApiKeys }o--|| Outlets : "scoped to outlet"
+    POSApiKeys }o--|| Tenants : "scoped to tenant"
 
 ```
 
@@ -681,6 +693,19 @@ status          pending_retry | investigate
 source          scheduler | worker
 ```
 
+### POSApiKeys
+
+```
+_id
+apiKeyHash      — bcrypt hash (select:false)
+tenant          { tenantId, tenantName }
+outlet          { outletId, outletName }
+isActive        — revocation flag
+createdBy       { userId, userEmail }
+description     — optional label set at generation time
+```
+Index: `(outlet.outletId, isActive)`
+
 ---
 
 ## Why it is Designed This Way
@@ -753,9 +778,9 @@ Every analytics query that asks "how did this outlet perform from date A to date
 
 The "live" report endpoints (`/reports/deployment-live`, `/reports/item-live`) skip snapshots and aggregate directly from `Sales` — useful for today's in-progress data.
 
-### 7. Distributed Rate Limiting
+### 7. Distributed Rate Limiting with Memory Fallback
 
-All three `rateLimit()` instances use `RedisStore` from `rate-limit-redis`:
+All three `rateLimit()` instances use a `DynamicRateLimitStore` that normally delegates to `RedisStore` but falls back to an in-memory `MemoryStore` if the Redis connection is unavailable:
 
 | Limiter | Window | Max | Key |
 |---|---|---|---|
@@ -763,9 +788,34 @@ All three `rateLimit()` instances use `RedisStore` from `rate-limit-redis`:
 | `authRateLimit` | 10 min | 20 req | `rl:auth:` + IP |
 | `csvRateLimit` | 5 min | 5 req | `rl:csv:` + user `_id` or IP |
 
-Because counters live in Redis (not process memory), limits are enforced correctly across any number of horizontal API server replicas.
+When Redis is healthy, counters are shared across all horizontal replicas. When Redis is down, each process falls back to in-process counting — rate limiting is still enforced, just not shared across instances.
 
-### 8. Socket.IO Room-Based Broadcasting
+### 8. Per-Role Redis Connection Profiles (`RedisManager`)
+
+Instead of a single shared `ioredis` client, a `RedisManager` class manages connections with distinct profiles per role:
+
+| Role | Used by | Key settings |
+|---|---|---|
+| `CACHE` | `cache.service.js` | `maxRetriesPerRequest=0`, `enableOfflineQueue=false`, instant fail-fast |
+| `RATE_LIMIT` | `rateLimiter.middleware.js` | `maxRetriesPerRequest=null`, reconnection backoff |
+| `QUEUE_PRODUCER` | BullMQ queue producers | `maxRetriesPerRequest=0`, `enableOfflineQueue=false` |
+| `WORKER` | Snapshot + CSV workers | `maxRetriesPerRequest=null`, long-lived |
+| `ORDER_WORKER` | Order workers | `maxRetriesPerRequest=null`, dedicated per fork |
+
+CACHE and RATE_LIMIT roles share singleton connections; all other roles get a new connection per caller. The manager also fires `sendRedisDownAlertEmail()` on first connection error, ensuring ops are alerted immediately.
+
+### 9. Circuit Breaker on Redis Cache (`opossum`)
+
+`cache.service.js` wraps every Redis operation in a `cacheBreaker` (powered by `opossum`). Configuration:
+
+- **timeout**: 3 s per operation
+- **errorThresholdPercentage**: 50 % — circuit opens after half the calls fail
+- **resetTimeout**: 30 s — half-open probe after 30 s
+- **volumeThreshold**: 5 calls before statistics start
+
+When the circuit is open, all cache reads/writes silently return `null`/`undefined`. The sale pipeline continues — each recipe is loaded from MongoDB instead. This prevents a Redis outage from cascading into HTTP 500s for incoming POS orders.
+
+### 10. Socket.IO Room-Based Broadcasting
 
 The server maintains two room patterns:
 - `tenant:{tenantId}:outlet:{outletId}` — joined by outlet managers via `join_outlet`
@@ -788,7 +838,8 @@ Room membership is validated at join time by checking `socket.user.tenantId === 
 - Bulk restock via CSV upload + client-side validation
 
 ### Order & Sales
-- POS-friendly `POST /sales` endpoint (no auth required — designed for machine-to-machine)
+- POS-friendly `POST /sales` endpoint secured with a per-outlet API key (`X-API-Key` header)
+- Brand admins generate / revoke POS API keys per outlet via `/api/v1/pos-api-keys`
 - Atomic multi-ingredient stock deduction in a single MongoDB transaction
 - Per-item COGS (`makingCost`) computed in the worker and stamped onto the Sale
 - Partial order support: some items confirmed, others canceled if stock insufficient
@@ -813,6 +864,9 @@ Room membership is validated at join time by checking `socket.user.tenantId === 
 - Granular outlet manager permissions (toggle `RESTOCK` and `ANALYTICS` independently)
 - Cron execution audit trail visible in the Super Admin UI
 - Dead-letter queue with automatic retry — no permanently lost jobs
+- Redis health monitoring with automatic email alerts on connection failure
+- Circuit breaker on Redis cache — graceful degradation, no cascading failures
+- POS API key lifecycle management (generate, describe, revoke) per outlet
 
 ---
 
@@ -847,12 +901,13 @@ InventoryManagementSystem/
 │   ├── app.js                      # Bootstrap: DB, CORS, Socket.IO, routes, error handler
 │   └── src/
 │       ├── scheduler.js            # Scheduler process entry point
-│       ├── controllers/            # 13 controllers (one per resource)
-│       ├── routes/                 # 14 Express routers + index.js
-│       ├── models/                 # 14 Mongoose models
+│       ├── controllers/            # 14 controllers (one per resource)
+│       ├── routes/                 # 15 Express routers + index.js
+│       ├── models/                 # 15 Mongoose models
 │       ├── middlerwares/
-│       │   ├── auth.middleware.js  # verifyJwt — Passport JWT
-│       │   └── rateLimiter.middleware.js  # general / auth / csv
+│       │   ├── auth.middleware.js        # verifyJwt — Passport JWT
+│       │   ├── rateLimiter.middleware.js # general / auth / csv (dynamic Redis+memory store)
+│       │   └── verifyPOSApiKey.middleware.js  # X-API-Key header validation for POST /sales
 │       ├── services/
 │       │   ├── cache.service.js    # Redis get/set/mget/delByPattern (TTL 24h)
 │       │   ├── stockRequirement.service.js
@@ -882,7 +937,10 @@ InventoryManagementSystem/
 │       └── utils/
 │           ├── config.js           # Env validation (throws on missing required)
 │           ├── db.js               # mongoose.connect()
-│           ├── redis.js            # ioredis singleton
+│           ├── redis/
+│           │   ├── redisManager.js # RedisManager class — per-role connections + health alerts
+│           │   └── redisProfiles.js # ioredis option profiles (CACHE, RATE_LIMIT, WORKER…)
+│           ├── circuitBreaker.js   # opossum cacheBreaker wrapping Redis cache ops
 │           ├── token.js            # JWT sign/verify
 │           ├── passport.js         # passport-jwt strategy (cookie extraction)
 │           ├── apiError.js         # ApiError class
@@ -891,10 +949,11 @@ InventoryManagementSystem/
 │           ├── pagination.js       # Parallel count + find
 │           ├── alertState.js       # resolveAlertState() pure function
 │           ├── mailer.js           # Nodemailer transporter factory
-│           └── emailAlert.js       # Email templates (OTP, alert, CSV export)
+│           └── emailAlert.js       # Email templates (OTP, alert, CSV export, Redis down)
 │
 ├── orders/                         # Order load simulator
-│   ├── index.js                    # Fires concurrent POST /sales across outlets
+│   ├── index.js                    # Fires concurrent POST /sales (with POS API keys) across outlets
+│   ├── simulator.html              # Browser-based order simulator for stress testing
 │   └── dailysnapshot.js
 │
 └── docs/                           # Architecture diagrams
@@ -968,10 +1027,14 @@ cd client && npm install && npm run dev
 
 ### 5. (Optional) Load test
 
+Before running the order simulator, generate a POS API key for each outlet via the Brand Admin dashboard (or `POST /api/v1/pos-api-keys/generate`) and set them in `orders/index.js`.
+
 ```bash
 cd orders && npm install && node index.js
-# Fires concurrent orders across multiple outlets
+# Fires concurrent orders (with X-API-Key header) across multiple outlets
 ```
+
+Alternatively, open `orders/simulator.html` in a browser for an interactive stress-testing UI.
 
 ---
 
