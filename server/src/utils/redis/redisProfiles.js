@@ -33,7 +33,7 @@ export const PROFILES = {
 
   WORKER: {
     maxRetriesPerRequest: null,
-    enableOfflineQueue: false,
+    enableOfflineQueue: true,
     retryStrategy(times) {
       const delay = Math.min(times * 50, 2000);
       return delay;
@@ -48,7 +48,7 @@ export const PROFILES = {
       const delay = Math.min(times * 50, 2000);
       return delay;
     },
-    enableOfflineQueue: false,
+    enableOfflineQueue: true,
     connectTimeout: 2000,
   },
 };

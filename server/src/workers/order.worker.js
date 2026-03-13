@@ -29,7 +29,6 @@ export const orderWorker = new Worker(
     console.log(`🚀 Worker ${process.pid} started ${job.name}`);
 
     const { name, data } = job;
-
     switch (name) {
       case "sale.confirmed":
         await processStockMovement(data);

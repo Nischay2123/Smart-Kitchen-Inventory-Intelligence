@@ -307,11 +307,17 @@ export const createIngredientBulk = asyncHandler(async (req, res) => {
 
   let insertedDocs = [];
 
-  if (docsToInsert.length) {
-    insertedDocs = await IngredientMaster.insertMany(
-      docsToInsert,
-      { ordered: false }
-    );
+  try {
+    insertedDocs = await IngredientMaster.insertMany(docsToInsert, { ordered: false });
+  } catch (err) {
+    if (err.name === "BulkWriteError") {
+      err.writeErrors.forEach(e => {
+        errors.push(`DB Error: ${e.errmsg}`);
+      });
+      insertedDocs = err.insertedDocs || [];
+    } else {
+      throw err; 
+    }
   }
 
   await Promise.allSettled(
@@ -429,7 +435,7 @@ export const deleteIngredient = asyncHandler(async (req, res) => {
 
   await IngredientMaster.deleteOne({ _id: ingredient._id });
 
-  // Delete Cache
+
   const cacheKey = cacheService.generateKey(
     "ingredient",
     tenantContext.tenantId,

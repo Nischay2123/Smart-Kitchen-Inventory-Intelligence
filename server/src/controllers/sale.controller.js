@@ -376,11 +376,15 @@ export const getAllSales = asyncHandler(async (req, res) => {
   if (state) {
     filter.state = state;
   }
+   const startDate = new Date(fromDate);
+  startDate.setHours(0, 0, 0, 0);
 
+  const endDate = new Date(toDate);
+  endDate.setHours(23, 59, 59, 999);
   if (fromDate || toDate) {
     filter.createdAt = {};
-    if (fromDate) filter.createdAt.$gte = new Date(fromDate);
-    if (toDate) filter.createdAt.$lte = new Date(toDate);
+    if (fromDate) filter.createdAt.$gte = startDate;
+    if (toDate) filter.createdAt.$lte = endDate;
   }
 
   const { data: saleRecords, meta } = await paginate(Sale, filter, {

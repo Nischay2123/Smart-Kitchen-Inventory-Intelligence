@@ -33,6 +33,8 @@ const config = {
     REGION: requireEnv("AWS_REGION"),
     S3_BUCKET: requireEnv("AWS_S3_BUCKET"),
   },
+
+  WORKER_SOCKET_SHARED_SECRET: requireEnv("WORKER_SOCKET_SHARED_SECRET"),
 };
 
 export default config;

@@ -27,6 +27,7 @@ const task = cron.schedule(
             }
 
             const events = await QueueFail.find({
+                status: "pending_retry",
                 nextRetryAt: { $lte: new Date() },
             })
                 .sort({ createdAt: 1 })

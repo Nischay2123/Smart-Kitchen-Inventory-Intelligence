@@ -523,11 +523,17 @@ export const ingredientUsageAndBurnRate = asyncHandler(async (req, res) => {
     throw new ApiError(400, "fromDate and toDate are required");
   }
 
+  const startDate = new Date(fromDate);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(toDate);
+  endDate.setHours(23, 59, 59, 999);
+
   const match = {
     "tenant.tenantId": tenant.tenantId,
     createdAt: {
-      $gte: new Date(fromDate),
-      $lte: new Date(toDate),
+      $gte: startDate,
+      $lte: endDate,
     },
     reason: "ORDER",
   };

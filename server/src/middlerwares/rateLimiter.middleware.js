@@ -90,7 +90,7 @@ redis.on("close", () => {
 export const generalRateLimit = rateLimit({
     windowMs: 60 * 1000,
     max: 1000,
-    keyGenerator: (req) => ipKeyGenerator(req) ??req.user?._id?.toString() ,
+    keyGenerator: (req) =>req.user?._id?.toString() ?? ipKeyGenerator(req).ip,
     store: generalStore,
     handler,
     standardHeaders: true,
@@ -100,7 +100,7 @@ export const generalRateLimit = rateLimit({
 export const authRateLimit = rateLimit({
     windowMs: 10 * 60 * 1000,
     max: 20,
-    keyGenerator: (req) => ipKeyGenerator(req),
+    keyGenerator: (req) =>req.user?._id?.toString() ?? ipKeyGenerator(req).ip,
     store: authStore,
     handler,
     standardHeaders: true,
@@ -110,7 +110,7 @@ export const authRateLimit = rateLimit({
 export const csvRateLimit = rateLimit({
     windowMs: 5 * 60 * 1000,
     max: 5,
-    keyGenerator: (req) => ipKeyGenerator(req) ??req.user?._id?.toString() ,
+    keyGenerator: (req) => req.user?._id?.toString() ?? ipKeyGenerator(req).ip,
     store: csvStore,
     handler,
     standardHeaders: true,

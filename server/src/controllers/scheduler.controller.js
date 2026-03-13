@@ -40,8 +40,8 @@ export const getSchedulerLogs = asyncHandler(async (req, res) => {
 
   if (startDate && endDate) {
     query.startTime = {
-      $gte: new Date(startDate),
-      $lte: new Date(endDate),
+      $gte: new Date(startDate).setHours(0, 0, 0, 0),
+      $lte: new Date(endDate).setHours(23, 59, 59, 999),
     };
   }
 

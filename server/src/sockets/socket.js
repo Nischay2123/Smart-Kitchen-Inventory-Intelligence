@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
+import config from "../utils/config.js";
 
 const parser = cookieParser();
 
@@ -12,10 +13,18 @@ export const initSocket = (httpServer, corsOptions) => {
   });
 
   io.use((socket, next) => {
-
-    if (socket.handshake.auth?.service === "worker") {
+    const workerSharedSecret = config .WORKER_SOCKET_SHARED_SECRET;
+    const workerSecretFromHandshake = socket.handshake.auth?.workerSecret;
+    
+    if (
+      workerSharedSecret &&
+      workerSecretFromHandshake &&
+      workerSecretFromHandshake === workerSharedSecret
+    ) {
+      socket.isWorker = true;
       return next();
     }
+
     try {
       parser(socket.request, {}, () => { });
 
@@ -27,6 +36,7 @@ export const initSocket = (httpServer, corsOptions) => {
 
       const payload = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
 
+      socket.isWorker = false;
       socket.user = payload;
       next();
     } catch (err) {
@@ -40,6 +50,7 @@ export const initSocket = (httpServer, corsOptions) => {
     console.log("Socket connected:", socket.id);
 
     socket.on("join_outlet", ({ tenantId, outletId }) => {
+      if (socket.isWorker || !socket.user) return;
       if (!tenantId || !outletId) return;
 
       if (socket.user.tenantId !== tenantId || socket.user.outletId !== outletId) {
@@ -54,6 +65,7 @@ export const initSocket = (httpServer, corsOptions) => {
     });
 
     socket.on("join_tenant", ({ tenantId }) => {
+      if (socket.isWorker || !socket.user) return;
       if (!tenantId) return;
 
       if (socket.user.tenantId !== tenantId) {
@@ -71,7 +83,11 @@ export const initSocket = (httpServer, corsOptions) => {
     });
 
     socket.on("worker_emit", ({ room, event, payload }) => {
-
+      if (!socket.isWorker) {
+        console.warn(`Unauthorized worker_emit attempt by socket ${socket.id}`);
+        return;
+      }
+      
       io.to(room).emit(event, payload);
     });
 

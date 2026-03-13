@@ -14,7 +14,7 @@ const getDefaultRange = () => {
 
   return {
     from: formatDate(today),
-    to: formatDate(tomorrow),
+    to: formatDate(today),
   };
 };
 
@@ -54,6 +54,7 @@ return (
       <input
         type="date"
         value={range.from}
+        max={new Date().toISOString().split("T")[0]}
         onChange={(e) => handleChange("from", e.target.value)}
         className="border rounded px-3 py-2 text-sm h-9.5"
       />
@@ -64,6 +65,7 @@ return (
       <input
         type="date"
         value={range.to}
+        max={new Date().toISOString().split("T")[0]}
         onChange={(e) => handleChange("to", e.target.value)}
         className="border rounded px-3 py-2 text-sm h-9.5"
       />
