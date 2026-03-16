@@ -1,4 +1,3 @@
-import { Empty } from "../empty"
 import { DataTable } from "./table"
 
 const DataCard = ({
@@ -17,6 +16,7 @@ const DataCard = ({
   onPaginationChange,
   paginationState,
   onGlobalFilterChange,
+  getRowId,
 }) => {
   return (
     <section className="flex-1 min-w-0 flex flex-col rounded-xl bg-white border border-border/40 shadow-sm overflow-hidden">
@@ -48,6 +48,7 @@ const DataCard = ({
           onPaginationChange={onPaginationChange}
           paginationState={paginationState}
           onGlobalFilterChange={onGlobalFilterChange}
+          getRowId={getRowId}
         />
       </div>
 

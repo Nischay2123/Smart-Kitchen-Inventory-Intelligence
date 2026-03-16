@@ -77,6 +77,10 @@ export function DataTable({
 }) {
   const [sorting, setSorting] = React.useState([])
   const [globalFilter, setGlobalFilter] = React.useState("")
+  const normalizedSelectedRowId =
+    selectedRowId !== undefined && selectedRowId !== null
+      ? String(selectedRowId)
+      : null
 
   const [paginationStateInternal, setPaginationStateInternal] =
     React.useState({
@@ -198,7 +202,7 @@ export function DataTable({
                     className={`
                   cursor-pointer transition-colors
                   hover:bg-muted/50
-                  ${selectedRowId && row.original?._id === selectedRowId ? "bg-primary/5" : ""}
+                  ${normalizedSelectedRowId && row.id === normalizedSelectedRowId ? "bg-muted" : ""}
                 `}
                   >
                     {row.getVisibleCells().map((cell) => (

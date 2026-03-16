@@ -257,6 +257,8 @@ export const Overview = () => {
                 data={data}
                 columns={outletColumns}
                 onRowClick={handleRowClick}
+                selectedRowId={focusedDeployment?.outletId}
+                getRowId={(row) => row.outletId}
               />
             </div>
           </section>
