@@ -14,6 +14,7 @@ import {
   useGetItemLiveDataMutation,
   useRequestReportExportMutation,
 } from "@/redux/apis/brand-admin/analyticsApi";
+import { useGetSaleStockConsumptionQuery } from "@/redux/apis/outlet-manager/stockMovementApi";
 
 import { mergeItemAnalytics } from "@/utils/analyitcs/itemAnalyticsUtil";
 
@@ -70,6 +71,20 @@ const isOver30Days = (from, to) => {
   if (!from || !to) return false;
   return (new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24) > 30;
 };
+
+const ingredientColumn = () => [
+  { accessorKey: "ingredientName", header: "Ingredient" },
+  {
+    accessorKey: "totalCost", header: "Total Cost", cell: ({ row }) => (
+      <span>{row.original.totalCost.toFixed(3)}</span>
+    )
+  },
+  { accessorKey: "noOfOrders", header: "Used In Orders" },
+  { accessorKey: "avgQtyPerOrder", header: "Average Quantity Used Per Order" },
+  { accessorKey: "avgCostPerOrder", header: "Average Cost Per Order" },
+  { accessorKey: "totalQty", header: "Total Consumption" },
+  { accessorKey: "unit", header: "Unit" },
+];
 
 export const MenuItemAnalysis = () => {
   const { from, to } = useSelector((state) => state.dashboardFilters.dateRange);
@@ -140,14 +155,32 @@ export const MenuItemAnalysis = () => {
       await requestReportExport({
         from, to, outletId, email, type: "profit",
       }).unwrap();
-      toast.success("Report generation started! You'll receive an email when it's ready.");
+      toast.success("Item profit report generation started! You'll receive an email when it's ready.");
     } catch {
       toast.error("Failed to trigger export. Please try again.");
     }
   };
 
+  const handleConsumptionExport = async (email) => {
+    try {
+      await requestReportExport({
+        from, to, outletId, email, type: "consumption",
+      }).unwrap();
+      toast.success("Consumption report generation started! You'll receive an email when it's ready.");
+    } catch {
+      toast.error("Failed to trigger consumption export. Please try again.");
+    }
+  };
+
+  const { data: consumptionData, isLoading: consumptionLoading, isFetching: consumptionFetching } =
+    useGetSaleStockConsumptionQuery({
+      fromDate: from,
+      toDate: to,
+      outletId,
+    }, { skip: !from || !to || !outletId || rangeOver30 });
+
   return (
-    <div className="w-full bg-gray-50 min-h-screen pb-4">
+    <div className="w-full bg-gray-50 min-h-screen pb-4 overflow-x-hidden">
       <AnalyticsHeader
         headerTitle="Sales Analytics"
         description="Live performance insights across all outlets"
@@ -161,10 +194,15 @@ export const MenuItemAnalysis = () => {
       />
 
       {rangeOver30 ? (
-        <div className="px-6 pt-2">
+        <div className="px-6 pt-2 gap-4 flex flex-col">
           <ExportBanner
             label="Menu Item Profit"
             onExport={handleProfitExport}
+            isLoading={exportLoading}
+          />
+          <ExportBanner
+            label="Consumption Report"
+            onExport={handleConsumptionExport}
             isLoading={exportLoading}
           />
         </div>
@@ -178,18 +216,34 @@ export const MenuItemAnalysis = () => {
             )}
           </div>
 
-          <div className="flex flex-col gap-4 px-4 lg:px-6 lg:flex-row pt-4">
+          <div className="flex-1 min-h-0 p-4 lg:p-6">
             {outletDataLoading ? (
               <SkeletonLoader />
             ) : (
-              <DataCard
+               <DataCard
                 description="Per outlet sales and contribution"
-                title="Outlet Data"
+                title="Menu Item Data"
                 data={outletData ?? []}
                 columns={outletColumns}
               />
             )}
           </div>
+          <div className="flex-1 min-h-0 p-4 lg:p-6">
+            {outletDataLoading ? (
+              <SkeletonLoader />
+            ) : (
+               <DataCard
+                title="Stock Consumption Data"
+                description="Per outlet ingredient consumption based on orders in the selected time frame"
+                searchable={true}
+                columns={ingredientColumn()}
+                data={consumptionData?.data ?? []}
+                titleWhenEmpty="No ingredients found"
+                pagination={true}
+              />
+            )}
+          </div>
+
         </>
       )}
     </div>

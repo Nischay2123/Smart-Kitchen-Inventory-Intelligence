@@ -10,14 +10,14 @@ import OutletItemDailySnapshot from "../models/outletItemDailySnapshot.model.js"
 import { csvExportQueue } from "../queues/csvExport.queue.js";
 
 export const requestReportExport = asyncHandler(async (req, res) => {
-  
+
   const { fromDate, toDate, outletId, email, type } = req.body;
-  
+
   const tenant = req.user.tenant;
 
   if (type === "consumption") {
-    if (req.user.role !== "OUTLET_MANAGER") {
-      throw new ApiError(403, "Only Outlet Manager can export consumption report");
+    if (req.user.role !== "OUTLET_MANAGER" && req.user.role !== "BRAND_ADMIN") {
+      throw new ApiError(403, "Only Outlet Manager or Brand Admin can export consumption report");
     }
   } else {
     if (req.user.role !== "BRAND_ADMIN") {
@@ -58,7 +58,7 @@ export const requestReportExport = asyncHandler(async (req, res) => {
   }
 
   await csvExportQueue.add(`${type}`, jobPayload);
-  
+
   return res.status(202).json(
     new ApiResoponse(
       202,
@@ -511,13 +511,13 @@ export const itemLiveReport = asyncHandler(async (req, res) => {
 
 
 export const ingredientUsageAndBurnRate = asyncHandler(async (req, res) => {
-  if (req.user.role !== "OUTLET_MANAGER") {
+  if (req.user.role !== "OUTLET_MANAGER" && req.user.role !== "BRAND_ADMIN") {
     throw new ApiError(403, "Unauthorized");
   }
 
   const tenant = req.user.tenant;
   const { fromDate, toDate } = req.query;
-  const outletId = req.user.outlet.outletId
+  const outletId = req.user.role === "BRAND_ADMIN" ? req.query.outletId : req.user.outlet.outletId;
 
   if (!fromDate || !toDate) {
     throw new ApiError(400, "fromDate and toDate are required");

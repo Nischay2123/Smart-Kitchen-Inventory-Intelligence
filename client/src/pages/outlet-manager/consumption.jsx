@@ -112,7 +112,7 @@ export const Consumption = () => {
           <SkeletonLoader />
         ) : (
           <DataCard
-            title="Available Stock"
+            title="Stock Consumption"
             searchable={true}
             columns={ingredientColumn()}
             data={data?.data ?? []}
