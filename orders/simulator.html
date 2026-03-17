@@ -505,27 +505,7 @@
       <!-- Right Column: Stats and Logs -->
       <div>
         <!-- Stats Card -->
-        <div class="card" style="margin-bottom: 20px;">
-          <div class="card-header">
-            <div class="card-title">Statistics</div>
-          </div>
-          <div class="card-content">
-            <div class="stats-grid">
-              <div class="stat-card">
-                <div class="stat-value total" id="statTotal">0</div>
-                <div class="stat-label">Total</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value success" id="statSuccess">0</div>
-                <div class="stat-label">Success</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value failed" id="statFailed">0</div>
-                <div class="stat-label">Failed</div>
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         <!-- Logs Card -->
         <div class="card">
@@ -691,9 +671,7 @@
     }
 
     function updateStats() {
-      document.getElementById('statTotal').textContent = stats.total;
-      document.getElementById('statSuccess').textContent = stats.success;
-      document.getElementById('statFailed').textContent = stats.failed;
+      
     }
 
     function clearLogs() {

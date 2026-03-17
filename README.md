@@ -1,56 +1,67 @@
 <p align="center">
   <h1 align="center">🍳 Smart Kitchen Inventory Intelligence (SKII)</h1>
   <p align="center">
-    <strong>A multi-tenant, event-driven restaurant inventory platform with real-time order processing, automated stock tracking, and pre-aggregated analytics.</strong>
-  </p>
-  <p align="center">
-    <img src="https://img.shields.io/badge/Node.js-v20+-339933?style=for-the-badge&logo=node.js&logoColor=white" />
-    <img src="https://img.shields.io/badge/Express-v5-000000?style=for-the-badge&logo=express&logoColor=white" />
-    <img src="https://img.shields.io/badge/React-v19-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
-    <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" />
-    <img src="https://img.shields.io/badge/Redis-ioredis-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
-    <img src="https://img.shields.io/badge/BullMQ-v5-F4821F?style=for-the-badge" />
-    <img src="https://img.shields.io/badge/Socket.IO-v4-010101?style=for-the-badge&logo=socket.io&logoColor=white" />
-    <img src="https://img.shields.io/badge/AWS_S3-SDK_v3-FF9900?style=for-the-badge&logo=amazons3&logoColor=white" />
+    <strong>A scalable, event-driven backend system for real-time restaurant inventory, order processing, and analytics.</strong>
   </p>
 </p>
 
 ---
 
-## Table of Contents
+## 🚨 Problem
 
-- [What is SKII?](#what-is-skii)
-- [Role Architecture](#role-architecture)
-- [System Architecture](#system-architecture)
-- [Order Processing Pipeline — The Core Flow](#order-processing-pipeline--the-core-flow)
-- [Tech Stack](#tech-stack)
-- [Database — 15 Collections](#database--15-collections)
-- [Why it is Designed This Way](#why-it-is-designed-this-way)
-- [Key Features](#key-features)
-- [Project Structure](#project-structure)
-- [Running the Project](#running-the-project)
+Modern restaurant chains struggle with:
+
+- ❌ No real-time inventory visibility across outlets  
+- ❌ Manual stock tracking → frequent mismatches  
+- ❌ No automated deduction from POS orders  
+- ❌ Heavy analytics queries slowing down systems  
+
+This leads to **stock inconsistencies, operational inefficiencies, and poor decision-making**.
 
 ---
 
-## What is SKII?
+## 💡 Solution
 
-SKII is a **multi-tenant SaaS platform** for restaurant chains and cloud kitchens to manage ingredient inventory across multiple outlets. A single brand (`Tenant`) can operate many physical locations (`Outlets`), each with their own stock, staff, and order stream.
+SKII is a **multi-tenant, event-driven SaaS platform** that:
 
-The hardest problem the system solves: **when a POS order arrives, multiple ingredients must be atomically deducted from stock, COGS must be computed per item, low-stock thresholds must be re-evaluated, affected managers must be emailed, and the dashboard must update in real-time — without blocking the HTTP response or losing data if any step fails.**
-
-SKII solves this by splitting the work across a synchronous validation phase (fast, in-request) and an asynchronous processing phase (workers consuming a BullMQ queue).
+- Processes POS orders asynchronously using **BullMQ workers**
+- Ensures accurate stock updates using **MongoDB transactions + OCC**
+- Streams real-time updates via **Socket.IO**
+- Uses **pre-aggregated snapshots** for fast analytics
+- Remains fault-tolerant with **retry queues, DLQ, and circuit breakers**
 
 ---
 
-## Role Architecture
+## ⚡ Quick Overview
 
-| Role | Scope | What they can do |
-|---|---|---|
-| `SUPER_ADMIN` | Platform-wide | Create / delete tenants (brands), monitor cron scheduler logs |
-| `BRAND_ADMIN` | One tenant | Manage outlets, menu items, ingredients, units, recipes, brand managers, analytics |
-| `OUTLET_MANAGER` | One outlet | View stock, create restocks, view orders & movements. Access is gated by two flags: `RESTOCK` and `ANALYTICS` |
+- 🏢 Multi-tenant SaaS (Tenant → Outlets architecture)
+- ⚙️ Event-driven processing (Redis + BullMQ)
+- 🔄 Real-time system (WebSockets)
+- 🧠 Smart analytics (snapshot-based aggregation)
+- 🛡️ Fault tolerance (retries, DLQ, circuit breaker)
+- 🚀 Scalable architecture (separate API, workers, scheduler)
 
-Outlet manager permissions are toggled individually per user by the brand admin via `PUT /api/v1/users/outlet-managers/:userId/permissions`.
+---
+
+## 🚀 Why This Project Stands Out
+
+- Handles **concurrent order processing without overselling** (OCC + retries)
+- Prevents cascading failures using **Redis circuit breaker**
+- Ensures **data consistency with MongoDB transactions**
+- Achieves **fast analytics without heavy queries** via snapshots
+- Designed as **independent scalable services** (API, workers, scheduler)
+
+---
+
+## 🧾 Key Engineering Highlights
+
+- Designed an **event-driven backend system** using Node.js, Redis, and BullMQ  
+- Implemented **transaction-safe stock deduction** using MongoDB + OCC  
+- Built **fault-tolerant job processing** with retries, DLQ, and cron recovery  
+- Optimized read-heavy flows using **Redis caching + snapshot pipelines**  
+- Developed **real-time architecture** using Socket.IO with room-based events  
+
+---
 
 ---
 

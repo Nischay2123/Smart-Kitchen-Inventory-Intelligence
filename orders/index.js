@@ -144,7 +144,7 @@ const simulateOutlet = async outlet => {
 
 /* ---------- TODAY orders simulation ---------- */
 const simulateTodayForOutlet = async outlet => {
-  const ORDERS_TODAY = 5;
+  const ORDERS_TODAY = 1;
 
   console.log(`📍 Sending today's orders: ${outlet.outletName}`);
 
